@@ -1,0 +1,13 @@
+{
+  "name": "cartoon-engine-shorts-studio",
+  "version": "1.0.0",
+  "description": "Cartoon Engine 9:16 Vertical Shorts & Reels Studio (1080x1920 @ 60fps)",
+  "main": "render_shots.js",
+  "scripts": {
+    "render": "node render_shots.js",
+    "bgm": "node render_bgm.js"
+  },
+  "dependencies": {
+    "puppeteer": "^24.15.0"
+  }
+}

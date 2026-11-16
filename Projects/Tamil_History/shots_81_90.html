@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lumina 2.5D Storybook Studio (16:9) — Studio Player (Shots 81 to 90)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #05070d; color: #e2e8f0; font-family: 'Nunito', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#stage-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; overflow: hidden; }
+canvas { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; box-shadow: 0 16px 48px rgba(0,0,0,0.75); background: #070b16; }
+#controls { height: 58px; background: #101522; border-top: 1px solid #222b42; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 13px; }
+button, select, label.btn { background: #1c2539; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+button:hover, select:hover, label.btn:hover { background: #283552; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 12px; color: #ffb074; min-width: 230px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><canvas id="stage" width="1920" height="1080"></canvas></div>
+<div id="controls">
+  <button id="playBtn">Play</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.0s / 00.0s · Shot 81</div>
+  <select id="shotSelect"><option value="all">All Shots in Batch</option></select>
+  <select id="mixSelect">
+    <option value="sfxOnly" selected>SFX + Ambient Only (No BGM)</option>
+    <option value="mute">Mute</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="wavBtn">Export Batch SFX (.wav)</button>
+</div>
+<script src="../../engine.js"></script>
+<script>
+const THEME = {
+  CHARS: {
+    MALIK_KAFUR: {
+      skin: '#C88C68',
+      hairStyle: 'warriorKnot',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'medieval',
+      topColor: '#8B1E2F',
+      bottomColor: '#2B2D42',
+      headwear: 'turban',
+      foreheadMark: null,
+      s: 1.02
+    },
+    KALABHRA_GEN: {
+      skin: '#C88C68',
+      hairStyle: 'shortCrop',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'medieval',
+      topColor: '#5C3A21',
+      bottomColor: '#1E242B',
+      headwear: 'turban',
+      foreheadMark: null,
+      s: 1.0
+    },
+    THIRUVALLUVAR: {
+      skin: '#C88C68',
+      hairStyle: 'scholarBun',
+      hairColor: '#788092',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#F4EFE6',
+      bottomColor: '#E6DEC8',
+      headwear: 'none',
+      foreheadMark: 'vibhuti',
+      s: 1.0
+    },
+    PERUNTHACHAN: {
+      skin: '#7A4E38',
+      hairStyle: 'royalBun',
+      hairColor: '#4A2E20',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#D98238',
+      bottomColor: '#F4EFE6',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      s: 1.0
+    },
+    TAMIL_FARMER: {
+      skin: '#7A4E38',
+      hairStyle: 'wavyLocks',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#C87D4B',
+      bottomColor: '#F4EFE6',
+      headwear: 'none',
+      foreheadMark: 'vibhuti',
+      s: 0.98
+    },
+    THIRUMALAI_NAYAK: {
+      skin: '#C88C68',
+      hairStyle: 'royalBun',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#F7B928',
+      bottomColor: '#9E2A2B',
+      headwear: 'crown',
+      foreheadMark: 'tilak',
+      s: 1.04
+    },
+    RAGHUNATHA_NAYAK: {
+      skin: '#D69A72',
+      hairStyle: 'wavyLocks',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#38BDF8',
+      bottomColor: '#F4EFE6',
+      headwear: 'crown',
+      foreheadMark: 'tilak',
+      s: 1.03
+    },
+    PALLAVA_SCULPTOR: {
+      skin: '#7A4E38',
+      hairStyle: 'warriorKnot',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#E09F3E',
+      bottomColor: '#F4EFE6',
+      headwear: 'none',
+      foreheadMark: 'vibhuti',
+      s: 1.0
+    },
+    ILANGO_ADIGAL: {
+      skin: '#C88C68',
+      hairStyle: 'scholarBun',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#E63946',
+      bottomColor: '#F4EFE6',
+      headwear: 'none',
+      foreheadMark: 'vibhuti',
+      s: 1.0
+    }
+  },
+  ANIMALS: {
+    WAR_HORSE: {
+      kind: 'horse',
+      royal: true,
+      s: 1.08
+    }
+  },
+  ENVS: {
+    ENV_PALACE_DURBAR(g, gt, cam, heroFn, opts = {}) {
+      const isPlunder = !!opts.plunder;
+      const isNayakMahal = !!opts.nayakMahal;
+      DK.fivePlane(g, cam, {
+        bgSky: (ctx) => {
+          DK.mood(isPlunder ? 'ancientInterior' : 'parchmentGold');
+          const grad = ctx.createLinearGradient(0, 0, 0, 1080);
+          if (isPlunder) {
+            grad.addColorStop(0, '#1B1118');
+            grad.addColorStop(0.55, '#351D27');
+            grad.addColorStop(1, '#1A0F14');
+          } else {
+            grad.addColorStop(0, '#2C1B12');
+            grad.addColorStop(0.55, '#593822');
+            grad.addColorStop(1, '#2B1910');
+          }
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 1920, 1080);
+          if (!isPlunder) {
+            FX.godRays(ctx, 960, 120, { count: 7, color: 'rgba(255, 215, 115, 0.16)', radius: 980 });
+          }
+        },
+        bgFar: (ctx) => {
+          FX.storybookHorizon(ctx, { style: 'ancientTamil', y: 760, seed: 41 });
+          // Grand cusped arches & colonnade in far background
+          for (let i = 0; i < 6; i++) {
+            const ax = 180 + i * 310;
+            ctx.fillStyle = isNayakMahal ? '#EAE0D0' : '#8C583A';
+            ctx.fillRect(ax - 28, 220, 56, 560);
+            ctx.fillStyle = isNayakMahal ? '#D5C5AE' : '#6E4228';
+            ctx.beginPath();
+            ctx.arc(ax + 155, 260, 125, Math.PI, 0, false);
+            ctx.lineWidth = 26;
+            ctx.strokeStyle = isNayakMahal ? '#E2D4C0' : '#7A4A2E';
+            ctx.stroke();
+          }
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (ctx) => {
+          FX.storybookScene(ctx, gt, { preset: 'palaceInterior', y: 840, seed: 29 });
+          if (isNayakMahal) {
+            // Thirumalai Nayakkar Mahal monumental white stucco foliated pillars
+            [260, 620, 1300, 1660].forEach((px) => {
+              ctx.fillStyle = '#F5EFE6';
+              ctx.fillRect(px - 42, 160, 84, 680);
+              ctx.fillStyle = '#D99B26';
+              ctx.fillRect(px - 52, 160, 104, 28);
+              ctx.fillRect(px - 50, 812, 100, 28);
+              ctx.strokeStyle = '#C8B9A6';
+              ctx.lineWidth = 3;
+              ctx.strokeRect(px - 36, 195, 72, 610);
+            });
+          }
+          if (isPlunder) {
+            // Breached treasury vault archway & spilled gold chests
+            ctx.save();
+            ctx.fillStyle = '#120B0E';
+            ctx.beginPath();
+            ctx.arc(440, 590, 165, Math.PI, 0, false);
+            ctx.lineTo(605, 840);
+            ctx.lineTo(275, 840);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#D99B26';
+            ctx.lineWidth = 10;
+            ctx.stroke();
+            ctx.restore();
+          }
+        },
+        mgBackDepth: 0.72,
+        mgHero: (ctx) => {
+          FX.storybookGround(ctx, 840, {
+            style: 'marbleFloor',
+            baseCol: isPlunder ? '#3D272A' : '#6A4E3A',
+            grassCol: '#D99B26'
+          });
+          if (heroFn) heroFn(ctx);
+        },
+        fgBokeh: (ctx) => {
+          FX.bokehOrbs(ctx, gt, {
+            count: 14,
+            color: isPlunder ? 'rgba(255, 110, 75, 0.22)' : 'rgba(255, 215, 110, 0.20)'
+          });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_BATTLEFIELD_STORM(g, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (ctx) => {
+          DK.mood('storm');
+          const grad = ctx.createLinearGradient(0, 0, 0, 1080);
+          grad.addColorStop(0, '#0D111A');
+          grad.addColorStop(0.55, '#251C29');
+          grad.addColorStop(1, '#3D232A');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 1920, 1080);
+          FX.clouds(ctx, { seed: 83, count: 9, y: 160, h: 190, color: '#2B2635', a: 0.88, t: gt, speed: 28 });
+        },
+        bgFar: (ctx) => {
+          FX.storybookHorizon(ctx, { style: 'fortress', y: 760, seed: 83 });
+          FX.structure3D(ctx, 360, 760, 220, 320, { kind: 'gopuram', color: '#4A353B', t: gt });
+          FX.structure3D(ctx, 1460, 760, 260, 260, { kind: 'stoneFort', color: '#3E333B', t: gt });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 2,
+        mgBack: (ctx) => {
+          FX.storybookScene(ctx, gt, { preset: 'fortRamparts', y: 840, seed: 44 });
+          FX.structure3D(ctx, 760, 840, 380, 240, { kind: 'stoneFort', color: '#5A464C', t: gt });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (ctx) => {
+          FX.storybookGround(ctx, 840, { style: 'cobblestone', baseCol: '#3B3035', grassCol: '#4B3E3D' });
+          if (heroFn) heroFn(ctx);
+        },
+        fgBokeh: (ctx) => {
+          FX.bokehOrbs(ctx, gt, { count: 18, color: 'rgba(255, 95, 65, 0.25)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_TEMPLE_NIGHT(g, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (ctx) => {
+          DK.mood('nightSky');
+          const grad = ctx.createLinearGradient(0, 0, 0, 1080);
+          grad.addColorStop(0, '#070B16');
+          grad.addColorStop(0.6, '#121B30');
+          grad.addColorStop(1, '#1C253B');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 1920, 1080);
+          FX.stars(ctx, gt, { count: 90, seed: 84 });
+          FX.moon(ctx, 1520, 200, 52);
+          FX.clouds(ctx, { seed: 84, count: 6, y: 180, h: 130, color: '#1E293B', a: 0.7, t: gt, speed: 10 });
+        },
+        bgFar: (ctx) => {
+          FX.storybookHorizon(ctx, { style: 'ancientTamil', y: 760, seed: 84 });
+          FX.structure3D(ctx, 420, 760, 230, 360, { kind: 'gopuram', color: '#2D3748', t: gt });
+          FX.structure3D(ctx, 1480, 760, 240, 350, { kind: 'gopuram', color: '#2D3748', t: gt });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 2,
+        mgBack: (ctx) => {
+          FX.storybookScene(ctx, gt, { preset: 'templeCourtyard', y: 840, seed: 52 });
+          FX.structure3D(ctx, 260, 840, 240, 260, { kind: 'mandapam', color: '#3B4252', t: gt });
+          FX.structure3D(ctx, 1620, 840, 240, 260, { kind: 'mandapam', color: '#3B4252', t: gt });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (ctx) => {
+          FX.storybookGround(ctx, 840, { style: 'flagstone', baseCol: '#27303F', grassCol: '#1E293B' });
+          if (heroFn) heroFn(ctx);
+        },
+        fgBokeh: (ctx) => {
+          FX.bokehOrbs(ctx, gt, { count: 12, color: 'rgba(148, 163, 184, 0.18)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 9
+      });
+    },
+
+    ENV_FARM_CLEARING(g, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (ctx) => {
+          DK.mood('clearDay');
+          const grad = ctx.createLinearGradient(0, 0, 0, 1080);
+          grad.addColorStop(0, '#2B7AC9');
+          grad.addColorStop(0.58, '#6EC1F8');
+          grad.addColorStop(1, '#E0F2FE');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 1920, 1080);
+          FX.sun(ctx, 1520, 220, 68);
+          FX.clouds(ctx, { seed: 85, count: 7, y: 160, h: 140, color: '#FFFFFF', a: 0.90, t: gt, speed: 14 });
+        },
+        bgFar: (ctx) => {
+          FX.hills(ctx, { seed: 85, y: 750, amp: 120, color: '#5A8F68' });
+          FX.storybookHorizon(ctx, { style: 'ancientTamil', y: 760, seed: 85 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (ctx) => {
+          FX.storybookScene(ctx, gt, { preset: 'farmClearing', y: 840, seed: 85 });
+          FX.tree(ctx, 220, 840, 1.15, '#3E7B48', 'banyan');
+          FX.tree(ctx, 1660, 840, 1.1, '#4A8C4A', 'palm');
+        },
+        mgBackDepth: 0.72,
+        mgHero: (ctx) => {
+          FX.storybookGround(ctx, 840, { style: 'earthPath', baseCol: '#8C6849', grassCol: '#4A8C4A' });
+          if (heroFn) heroFn(ctx);
+        },
+        fgBokeh: (ctx) => {
+          FX.bokehOrbs(ctx, gt, { count: 10, color: 'rgba(255, 240, 180, 0.22)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_TEMPLE_COURTYARD(g, gt, cam, heroFn, opts = {}) {
+      const polychrome = opts.polychrome || 0;
+      DK.fivePlane(g, cam, {
+        bgSky: (ctx) => {
+          DK.mood('clearDay');
+          const grad = ctx.createLinearGradient(0, 0, 0, 1080);
+          grad.addColorStop(0, '#2563EB');
+          grad.addColorStop(0.55, '#60A5FA');
+          grad.addColorStop(1, '#DBEAFE');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 1920, 1080);
+          FX.sun(ctx, 1480, 210, 64);
+          FX.clouds(ctx, { seed: 86, count: 7, y: 150, h: 145, color: '#FFFFFF', a: 0.9, t: gt, speed: 12 });
+        },
+        bgFar: (ctx) => {
+          FX.storybookHorizon(ctx, { style: 'ancientTamil', y: 760, seed: 86 });
+          FX.structure3D(ctx, 380, 760, 250, 410, {
+            kind: 'gopuram',
+            color: polychrome > 0 ? '#D97706' : '#A84832',
+            t: gt
+          });
+          FX.structure3D(ctx, 1520, 760, 260, 430, {
+            kind: 'gopuram',
+            color: polychrome > 0 ? '#2563EB' : '#B8543A',
+            t: gt
+          });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (ctx) => {
+          FX.storybookScene(ctx, gt, { preset: 'templeCourtyard', y: 840, seed: 86 });
+          FX.structure3D(ctx, 960, 840, 320, 490, {
+            kind: 'gopuram',
+            color: polychrome > 0 ? '#E11D48' : '#C2593F',
+            t: gt
+          });
+          if (polychrome > 0) {
+            // Vivid Nayak-era polychrome stucco tiers blooming on Raja Gopuram
+            ctx.save();
+            ctx.globalAlpha = polychrome;
+            const tierColors = ['#F59E0B', '#10B981', '#3B82F6', '#EC4899', '#FBBF24'];
+            for (let tIdx = 0; tIdx < 5; tIdx++) {
+              const ty = 420 + tIdx * 68;
+              const tw = 160 + tIdx * 28;
+              ctx.fillStyle = tierColors[tIdx];
+              ctx.fillRect(960 - tw * 0.5, ty, tw, 24);
+            }
+            ctx.restore();
+          }
+          FX.structure3D(ctx, 260, 840, 280, 270, { kind: 'mandapam', color: '#C69C6D', t: gt });
+          FX.structure3D(ctx, 1660, 840, 280, 270, { kind: 'mandapam', color: '#C69C6D', t: gt });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (ctx) => {
+          FX.storybookGround(ctx, 840, { style: 'flagstone', baseCol: '#8C7A6B', grassCol: '#4A8C4A' });
+          if (heroFn) heroFn(ctx);
+        },
+        fgBokeh: (ctx) => {
+          FX.bokehOrbs(ctx, gt, { count: 12, color: 'rgba(255, 220, 130, 0.22)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    }
+  },
+  INFO: {
+    MAP_MALIK_KAFUR_INVASION: {
+      region: 'Tamil Nadu',
+      bbox: [76.2, 8.0, 80.6, 13.5],
+      style: 'terrainHistorical',
+      title: 'SULTANATE RAIDS ON TAMIL TEMPLE CITIES',
+      subTitle: '1311–1327 CE · CHIDAMBARAM · SRIRANGAM · MADURAI',
+      reading: 'SOUTHERN CAMPAIGN CORRIDOR',
+      territories: [
+        {
+          place: 'Tamil Nadu',
+          color: 'rgba(255, 77, 106, 0.32)',
+          border: '#FF4D6A',
+          label: 'PANDYA REALM UNDER SIEGE',
+          t0: 0.1
+        }
+      ],
+      routes: [
+        { from: [79.69, 11.40], to: [78.69, 10.86], t0: 0.25, dur: 1.1, color: '#FF4D6A' },
+        { from: [78.69, 10.86], to: [78.12, 9.92], t0: 1.0, dur: 1.2, color: '#FF4D6A' }
+      ],
+      pins: [
+        { lonLat: [79.69, 11.40], label: 'CHIDAMBARAM', diorama: 'gopuram', t0: 0.2 },
+        { lonLat: [78.69, 10.86], label: 'SRIRANGAM', diorama: 'gopuram', t0: 0.5 },
+        { lonLat: [78.12, 9.92], label: 'MADURAI', diorama: 'gopuram', t0: 0.8 }
+      ]
+    },
+    MAP_NAYAK_72_PALAIYAMS: {
+      region: 'Tamil Nadu',
+      bbox: [76.2, 8.0, 80.6, 13.5],
+      style: 'terrainHistorical',
+      title: 'THE NAYAK KINGDOMS OF TAMILAKAM',
+      subTitle: '16th–17th CENTURY CE · GINGEE · THANJAVUR · MADURAI',
+      reading: 'NAYAK VICEROYALTIES',
+      territories: [
+        {
+          place: 'Tamil Nadu',
+          color: 'rgba(247, 185, 40, 0.35)',
+          border: '#F7B928',
+          label: 'NAYAK PRINCIPALITIES',
+          t0: 0.1
+        }
+      ],
+      routes: [
+        { from: [79.42, 12.25], to: [79.13, 10.78], t0: 0.3, dur: 1.1, color: '#F7B928' },
+        { from: [79.13, 10.78], to: [78.12, 9.92], t0: 0.9, dur: 1.1, color: '#FF851B' }
+      ],
+      pins: [
+        { lonLat: [79.42, 12.25], label: 'GINGEE NAYAK', diorama: 'stoneFort', t0: 0.25 },
+        { lonLat: [79.13, 10.78], label: 'THANJAVUR NAYAK', diorama: 'gopuram', t0: 0.55 },
+        { lonLat: [78.12, 9.92], label: 'MADURAI NAYAK', diorama: 'gopuram', t0: 0.85 }
+      ]
+    },
+    PHY_TN_SHATTER_1311: {
+      opts: {
+        id: 'tn_shatter_1311',
+        x: 960,
+        y: 840,
+        w: 390,
+        h: 350,
+        impactTime: 1.40,
+        impactPoint: [960, 650],
+        force: 960,
+        cols: 7,
+        rows: 8,
+        material: 'stone',
+        floorY: 840,
+        seed: 84
+      }
+    }
+  },
+  SHOTS: {}
+};
+window.THEME = THEME;
+
+// Helper for Low Foreground Terrace on Unobstructed Map Shots (Rule 4)
+function drawMapForegroundTerrace(g, yTerrace, accentCol) {
+  g.save();
+  const grad = g.createLinearGradient(0, yTerrace - 18, 0, 1080);
+  grad.addColorStop(0, '#2A211B');
+  grad.addColorStop(0.25, '#1E1713');
+  grad.addColorStop(1, '#120E0B');
+  g.fillStyle = grad;
+  g.fillRect(0, yTerrace, 1920, 1080 - yTerrace);
+
+  // Carved stone cornice molding along yTerrace
+  g.fillStyle = accentCol || '#D99B26';
+  g.fillRect(0, yTerrace - 8, 1920, 8);
+  g.fillStyle = '#4A3B31';
+  for (let x = 40; x < 1920; x += 120) {
+    g.fillRect(x, yTerrace + 10, 84, 22);
+  }
+  g.restore();
+}
+
+// Helper for Non-Destructive Floating Era Chapter Dial HUD Banner at y = 110..175 (Rule 5)
+function drawFloatingEraDialHUD(g, lt, opts) {
+  const pop = DK.pop(lt, 0.1, 0.45);
+  const lockPulse = lt >= 1.35 ? Math.sin((lt - 1.35) * 6) * 0.04 : 0;
+  g.save();
+  g.translate(960, 138);
+  g.scale(pop + lockPulse, pop + lockPulse);
+
+  // Sleek dark glass HUD pill banner with golden dial ring
+  g.fillStyle = 'rgba(13, 18, 32, 0.88)';
+  g.strokeStyle = lt >= 1.35 ? '#F7B928' : '#38BDF8';
+  g.lineWidth = 3;
+  g.beginPath();
+  g.roundRect(-410, -40, 820, 80, 40);
+  g.fill();
+  g.stroke();
+
+  // Rotating compass/era dial wheel on left side of banner
+  g.save();
+  g.translate(-350, 0);
+  const dialAngle = DK.key(lt, [[0, -1.8], [1.35, 0]], DK.ease.outBack);
+  g.rotate(dialAngle);
+  g.strokeStyle = '#F7B928';
+  g.lineWidth = 2.5;
+  g.beginPath();
+  g.arc(0, 0, 26, 0, Math.PI * 2);
+  g.stroke();
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4;
+    g.beginPath();
+    g.moveTo(Math.cos(a) * 18, Math.sin(a) * 18);
+    g.lineTo(Math.cos(a) * 26, Math.sin(a) * 26);
+    g.stroke();
+  }
+  g.restore();
+
+  // Era & Century Typography
+  g.textAlign = 'left';
+  g.font = '800 22px "Fredoka", sans-serif';
+  g.fillStyle = '#F7B928';
+  g.fillText(opts.era || 'VIJAYANAGARA & NAYAK ERA', -305, -6);
+
+  g.font = '700 16px "Space Mono", monospace';
+  g.fillStyle = lt >= 1.35 ? '#38C878' : '#E2E8F0';
+  g.fillText('LOCKED ERA: ' + (opts.year || '14th–16th CENTURY CE'), -305, 22);
+  g.restore();
+}
+
+const SHOTS = [
+  // =========================================================================
+  // SHOT 081 · [04:28.6 - 04:31.5] — Plundering the Temple Treasuries
+  // =========================================================================
+  {
+    shot_number: 81,
+    start: 268.6,
+    end: 271.5,
+    duration: 2.9,
+    title: 'Plundering the Temple Treasuries',
+    vo_line: 'இந்த மாதிரி நிறைய செல்வங்களை எடுத்துக்கிறதுக்காக.',
+    env_id: 'STORYBOOK_SETTLEMENT · ENV_PALACE_DURBAR',
+    chars: 'MALIK_KAFUR (pulling treasure cart), KALABHRA_GEN (pushing cart)',
+    on_screen_text: 'PLUNDER OF TEMPLE TREASURIES · Gold, Jewels & Royal Elephants Taken North',
+    camera_sfx: 'cam z:1.05 · battlefield bed, thud, coinClink, pillBadge',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0, -15], [2.9, 15]], DK.ease.inOutSine),
+        y: 0,
+        z: 1.05
+      };
+
+      THEME.ENVS.ENV_PALACE_DURBAR(g, gt, cam, (ctx) => {
+        const cartX = DK.lerp(730, 1190, lt / 2.9);
+
+        // Plundered Treasure Cart at exact contact between Raider 2 (charX + 90) and Raider 1 (charX - 90)
+        FX.prop3D(ctx, cartX, 840, 1.0, { kind: 'spiceCrates', color: '#D99B26', t: gt });
+
+        // Overflowing Gold & Temple Jewels atop the wheeled cart
+        ctx.save();
+        ctx.translate(cartX, 785);
+        ctx.fillStyle = '#F7B928';
+        ctx.strokeStyle = '#92400E';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(-56, -38, 112, 42, 8);
+        ctx.fill();
+        ctx.stroke();
+        // Spilling coins & ruby crown
+        for (let c = 0; c < 9; c++) {
+          const cx = -42 + c * 10;
+          const cy = -42 - Math.sin(c * 1.4 + gt * 5) * 5;
+          ctx.fillStyle = c % 3 === 0 ? '#FF4D6A' : '#FFD54F';
+          ctx.beginPath();
+          ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // Raider 2 (KALABHRA_GEN) pushing the cart from behind (charX + 90px = cartX)
+        DK.char(ctx, {
+          ...THEME.CHARS.KALABHRA_GEN,
+          moveX: [640, 1100, lt, 2.9],
+          y: 840,
+          pose: { preset: 'push', speed: 1.3 },
+          prop: 'none',
+          eyeMode: 'warm',
+          brows: 'furrowed',
+          mouth: 'neutral',
+          t: gt,
+          seed: 811
+        });
+
+        // Raider 1 (MALIK_KAFUR) hauling the cart in front (charX - 90px = cartX)
+        DK.char(ctx, {
+          ...THEME.CHARS.MALIK_KAFUR,
+          moveX: [820, 1280, lt, 2.9],
+          y: 840,
+          pose: { preset: 'pull', speed: 1.3 },
+          prop: 'sword',
+          eyeMode: 'warm',
+          brows: 'furrowed',
+          mouth: 'smile',
+          t: gt,
+          seed: 812
+        });
+      }, { plunder: true });
+
+      // Mid-Shot Micro-Beat (lt = 1.45s): Technical Callout detailing the plunder carried north
+      UI.techCallout(g, lt, {
+        from: [910, 740],
+        elbow: [1120, 580],
+        to: [1480, 580],
+        title: 'PLUNDER OF TEMPLE TREASURIES',
+        spec: 'Gold, Jewels & Royal Elephants Taken North',
+        accent: '#FF4D6A',
+        t0: 1.2
+      });
+
+      UI.citation(g, 'Khaza’in ul-Futuh & Tarikh-i-Firuz Shahi Records', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.30, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 2.9, { gain: 0.22 });
+      k.play('thud', bt0 + 0.35, { gain: 0.52 });
+      k.play('coinClink', bt0 + 1.10, { gain: 0.55 });
+      k.play('pillBadge', bt0 + 1.45, { gain: 0.45 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 082 · [04:31.5 - 04:35.2] — Raids on Madurai, Srirangam & Chidambaram
+  // =========================================================================
+  {
+    shot_number: 82,
+    start: 271.5,
+    end: 275.2,
+    duration: 3.7,
+    title: 'Raids on Madurai, Srirangam & Chidambaram',
+    vo_line: 'மதுரை, ஸ்ரீரங்கம், சிதம்பரம்னு மாபெரும் கோயில்கள் சூறையாடப்படுது.',
+    env_id: 'CARTOGRAPHIC_MAP_OR_GLOBE · MAP_MALIK_KAFUR_INVASION',
+    chars: 'THIRUVALLUVAR (pushing protective wall), PERUNTHACHAN (mortaring wall)',
+    on_screen_text: 'RAIDS ON MADURAI · SRIRANGAM · CHIDAMBARAM (1311–1327 CE)',
+    camera_sfx: 'Unobstructed Strategic Map + y:980 Foreground Terrace · templeBell, impact',
+    draw(g, lt, gt, u) {
+      // Rule 4: Render strategicMap unobstructed across the canvas
+      UI.strategicMap(g, lt, THEME.INFO.MAP_MALIK_KAFUR_INVASION);
+
+      // Mid-Shot Micro-Beat (lt = 1.85s): Crimson pulse rings on Chidambaram, Srirangam & Madurai
+      if (lt >= 1.85) {
+        const pulseP = DK.clamp((lt - 1.85) / 1.4, 0, 1);
+        const templeCoords = [
+          { x: 1110, y: 415, name: 'CHIDAMBARAM' },
+          { x: 965, y: 530, name: 'SRIRANGAM' },
+          { x: 895, y: 690, name: 'MADURAI' }
+        ];
+        templeCoords.forEach((pt, idx) => {
+          const r = 18 + ((pulseP * 65 + idx * 14) % 65);
+          g.save();
+          g.strokeStyle = `rgba(255, 77, 106, ${1 - r / 85})`;
+          g.lineWidth = 3.5;
+          g.beginPath();
+          g.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+          g.stroke();
+          g.restore();
+        });
+      }
+
+      // Rule 4: Low foreground terrace at y = 980 for characters sealing the sanctum
+      drawMapForegroundTerrace(g, 980, '#FF4D6A');
+
+      // Protective brick wall at x = 1050, y = 980 concealing the sacred idol
+      FX.interactiveProp(g, {
+        kind: 'brickWallBuild',
+        x: 1050,
+        y: 980,
+        cutTime: 1.85,
+        lt,
+        gt
+      });
+
+      // THIRUVALLUVAR pushing the protective brick wall (arrives at x: 960, charX + 90px = 1050)
+      DK.char(g, {
+        ...THEME.CHARS.THIRUVALLUVAR,
+        moveX: [520, 960, lt, 3.7],
+        y: 980,
+        s: 0.88,
+        pose: { preset: 'push', speed: 1.25 },
+        prop: 'none',
+        eyeMode: 'panic',
+        brows: 'furrowed',
+        mouth: 'neutral',
+        t: gt,
+        seed: 821
+      });
+
+      // PERUNTHACHAN mortaring the right side of the protective wall (x: 1135, charX - 85px = 1050)
+      DK.char(g, {
+        ...THEME.CHARS.PERUNTHACHAN,
+        x: 1135,
+        y: 980,
+        s: 0.88,
+        flipX: true,
+        pose: { preset: 'build', speed: 1.25 },
+        prop: 'hammer',
+        eyeMode: 'warm',
+        brows: 'furrowed',
+        mouth: 'neutral',
+        t: gt,
+        seed: 822
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'RAIDS ON MADURAI · SRIRANGAM · CHIDAMBARAM (1311–1327 CE)',
+        x: 960,
+        y: 120,
+        accent: '#FF4D6A',
+        t0: 0.3
+      });
+
+      UI.citation(g, 'Koil Olugu (Srirangam Temple Chronicle) & Madura Vijayam', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('nightCrickets', bt0 + 0.0, bt0 + 3.7, { gain: 0.22 });
+      k.play('templeBell', bt0 + 0.40, { gain: 0.52 });
+      k.play('templeBell', bt0 + 1.15, { gain: 0.52 });
+      k.play('impact', bt0 + 1.85, { gain: 0.60 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 083 · [04:35.2 - 04:38.8] — Establishment of the Madurai Sultanate (1335 CE)
+  // =========================================================================
+  {
+    shot_number: 83,
+    start: 275.2,
+    end: 278.8,
+    duration: 3.6,
+    title: 'Thousands Perish & Establishment of the Madurai Sultanate (1335 CE)',
+    vo_line: 'ஆயிரக்கணக்கான மக்கள் கொல்லப்படுறாங்க. இவ்வளவு ஏன், மதுரையில கூட இந்த சுல்தானோட ஆட்சி அமையுது.',
+    env_id: 'STORYBOOK_SETTLEMENT · ENV_BATTLEFIELD_STORM',
+    chars: 'MALIK_KAFUR (planting Sultanate flag), TAMIL_FARMER (fleeing)',
+    on_screen_text: 'MADURAI (MA’BAR) SULTANATE · 1335–1378 CE',
+    camera_sfx: 'cam z:1.0->1.06 · battlefield bed, marchSteps, thud, thunder',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0, -18], [3.6, 18]], DK.ease.outCubic),
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [3.6, 1.06]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_BATTLEFIELD_STORM(g, gt, cam, (ctx) => {
+        // Battlement at x = 930 where the Sultanate flag is planted (charX + 90px at arrival)
+        FX.interactiveProp(ctx, {
+          kind: 'brickWallBuild',
+          x: 930,
+          y: 840,
+          cutTime: 99,
+          lt,
+          gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.80s): Planted Sultanate Banner atop battlement
+        if (lt >= 1.80) {
+          const flagPop = DK.pop(lt, 1.80, 0.35);
+          ctx.save();
+          ctx.translate(930, 690);
+          ctx.scale(flagPop, flagPop);
+          ctx.strokeStyle = '#E2E8F0';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.moveTo(0, 60);
+          ctx.lineTo(0, -110);
+          ctx.stroke();
+          ctx.fillStyle = '#991B1B';
+          ctx.beginPath();
+          ctx.moveTo(0, -110);
+          ctx.lineTo(95, -85 + Math.sin(gt * 6) * 6);
+          ctx.lineTo(0, -55);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Fallen pillar at x = 1650 (fleeing citizen reaches x = 1560, charX + 90px = 1650)
+        FX.interactiveProp(ctx, {
+          kind: 'crumblingPillar',
+          x: 1650,
+          y: 840,
+          cutTime: 1.2,
+          lt,
+          gt
+        });
+
+        // Sultanate Governor (MALIK_KAFUR) marching to plant flag at x: 840 (840 + 90 = 930)
+        DK.char(ctx, {
+          ...THEME.CHARS.MALIK_KAFUR,
+          moveX: [380, 840, lt, 3.6],
+          y: 840,
+          pose: { preset: 'march', speed: 1.15 },
+          prop: 'flag',
+          eyeMode: 'warm',
+          brows: 'furrowed',
+          mouth: 'neutral',
+          t: gt,
+          seed: 831
+        });
+
+        // Fleeing Citizen (TAMIL_FARMER) running across ramparts (1180 -> 1560)
+        DK.char(ctx, {
+          ...THEME.CHARS.TAMIL_FARMER,
+          moveX: [1180, 1560, lt, 3.6],
+          y: 840,
+          pose: { preset: 'run', speed: 1.3 },
+          prop: 'none',
+          eyeMode: 'panic',
+          brows: 'raised',
+          mouth: 'gasp',
+          t: gt,
+          seed: 832
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'MADURAI (MA’BAR) SULTANATE · 1335–1378 CE',
+        x: 960,
+        y: 120,
+        accent: '#FF4D6A',
+        t0: 0.3
+      });
+
+      UI.citation(g, 'Ibn Battuta, Rihla (Visit to Madurai Sultanate, 1344 CE)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.34, grain: 0.03 });
+    },
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 3.6, { gain: 0.22 });
+      k.play('marchSteps', bt0 + 0.55, { gain: 0.42 });
+      k.play('thud', bt0 + 1.80, { gain: 0.58 });
+      k.play('thunder', bt0 + 2.40, { gain: 0.50 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 084 · [04:38.8 - 04:42.9] — Tamil Nadu Shatters into Fragments
+  // =========================================================================
+  {
+    shot_number: 84,
+    start: 278.8,
+    end: 282.9,
+    duration: 4.1,
+    title: 'Tamil Nadu Shatters into Fragments',
+    vo_line: 'தமிழ்நாடு பல துண்டுகளா சிதறுது. கலாச்சாரம் ஒரு மிகப்பெரிய இருட்டுக்குள்ள தள்ளப்படுது.',
+    env_id: 'COSMIC_MICROSCOPIC_OR_PHYSICS_SIM + STORYBOOK_SETTLEMENT · ENV_TEMPLE_NIGHT',
+    chars: 'TAMIL_FARMER (walking with lantern to shattered stone emblem)',
+    on_screen_text: 'POLITICAL FRAGMENTATION & CULTURAL CRISIS · 14th CENT. CE',
+    camera_sfx: 'PHY.shatterWall at lt:1.40s · nightCrickets, shatter, stoneCollapse',
+    draw(g, lt, gt, u) {
+      const shk = DK.shake(lt > 1.4 && lt < 2.3 ? lt - 1.4 : 0, 8, 18, 84);
+      const cam = {
+        x: shk.x,
+        y: shk.y * 0.5,
+        z: DK.key(lt, [[0, 1.0], [4.1, 1.07]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_TEMPLE_NIGHT(g, gt, cam, (ctx) => {
+        // Pre-baked 120Hz Voronoi Stone Emblem Shatter Wall at x: 960, y: 840
+        PHY.shatterWall(ctx, lt, THEME.INFO.PHY_TN_SHATTER_1311.opts);
+
+        // Mourning Citizen (TAMIL_FARMER) walking slowly with lantern to x: 855 (855 + 105 = 960)
+        const charX = DK.lerp(360, 855, lt / 4.1);
+        DK.char(ctx, {
+          ...THEME.CHARS.TAMIL_FARMER,
+          moveX: [360, 855, lt, 4.1],
+          y: 840,
+          pose: { preset: 'walk', speed: 1.0 },
+          prop: 'lantern',
+          eyeMode: 'warm',
+          brows: 'sad',
+          mouth: 'frown',
+          t: gt,
+          seed: 841
+        });
+
+        // Warm lantern light pool illuminating the shattered rubble at Mid-Shot Micro-Beat (lt >= 2.05s)
+        const glowRadius = lt >= 2.05 ? 240 : 160;
+        const lanternGrad = ctx.createRadialGradient(charX + 65, 760, 10, charX + 65, 760, glowRadius);
+        lanternGrad.addColorStop(0, 'rgba(255, 190, 85, 0.42)');
+        lanternGrad.addColorStop(1, 'rgba(255, 190, 85, 0.0)');
+        ctx.fillStyle = lanternGrad;
+        ctx.beginPath();
+        ctx.arc(charX + 65, 760, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'POLITICAL FRAGMENTATION & CULTURAL CRISIS · 14th CENT. CE',
+        x: 960,
+        y: 120,
+        accent: '#94A3B8',
+        t0: 0.3
+      });
+
+      UI.citation(g, 'Gangadevi, Madura Vijayam (Sanskrit Chronicle, late 14th Cent. CE)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.36, grain: 0.03 });
+    },
+    sfx(k, bt0) {
+      k.bed('nightCrickets', bt0 + 0.0, bt0 + 4.1, { gain: 0.22 });
+      k.play('shatter', bt0 + 1.40, { gain: 0.70 });
+      k.play('stoneCollapse', bt0 + 1.55, { gain: 0.62 });
+      if (window.PHY && PHY.scheduleImpacts) {
+        PHY.scheduleImpacts(k, 'shatter', THEME.INFO.PHY_TN_SHATTER_1311.opts, 278.8, BATCH_START);
+      }
+    }
+  },
+
+  // =========================================================================
+  // SHOT 085 · [04:42.9 - 04:45.6] — Vijayanagara Forces March South
+  // =========================================================================
+  {
+    shot_number: 85,
+    start: 282.9,
+    end: 285.6,
+    duration: 2.7,
+    title: 'Vijayanagara Forces March South',
+    vo_line: 'இப்ப நம்ம 16-ஆம் நூற்றாண்டுல இருக்கோம். 16-ஆம் நூற்றாண்டுல விஜயநகர படைகள்',
+    env_id: 'STORYBOOK_LANDSCAPE · ENV_FARM_CLEARING',
+    chars: 'THIRUMALAI_NAYAK (marching south), WAR_HORSE (forward-walking)',
+    on_screen_text: 'VIJAYANAGARA & NAYAK ERA · 14th–16th CENTURY CE',
+    camera_sfx: 'cam pan -30..+30 · forestMorning, horseGallop, timerChime, warHorn',
+    draw(g, lt, gt, u) {
+      // Rule 3: Centered camera origin with -30..+30 pan
+      const cam = {
+        x: DK.key(lt, [[0, -30], [2.7, 30]], DK.ease.outCubic),
+        y: 0,
+        z: 1.04
+      };
+
+      THEME.ENVS.ENV_FARM_CLEARING(g, gt, cam, (ctx) => {
+        // Southern boundary stone pillar at x = 1050, y = 840 (charX + 90px at arrival)
+        FX.interactiveProp(ctx, {
+          kind: 'crumblingPillar',
+          x: 1050,
+          y: 840,
+          cutTime: 99,
+          lt,
+          gt
+        });
+
+        // Forward-walking Royal War Horse (380 -> 1100)
+        DK.animal(ctx, {
+          ...THEME.ANIMALS.WAR_HORSE,
+          moveX: [380, 1100, lt, 2.7],
+          y: 840,
+          expr: 'happy',
+          t: gt
+        });
+
+        // Vijayanagara Commander (THIRUMALAI_NAYAK) marching to x: 960 (960 + 90 = 1050)
+        DK.char(ctx, {
+          ...THEME.CHARS.THIRUMALAI_NAYAK,
+          moveX: [240, 960, lt, 2.7],
+          y: 840,
+          pose: { preset: 'march', speed: 1.3 },
+          prop: 'sword',
+          eyeMode: 'warm',
+          brows: 'raised',
+          mouth: 'smile',
+          t: gt,
+          seed: 851
+        });
+      });
+
+      // Rule 5: Non-destructive floating HUD Era Chapter Dial banner at y = 110..175
+      drawFloatingEraDialHUD(g, lt, {
+        era: 'VIJAYANAGARA & NAYAK ERA',
+        year: '14th–16th CENTURY CE'
+      });
+
+      UI.citation(g, 'Kumara Kampana (1378 CE) & Krishnadevaraya Consolidation (1529 CE)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('forestMorning', bt0 + 0.0, bt0 + 2.7, { gain: 0.20 });
+      k.play('horseGallop', bt0 + 0.30, { gain: 0.48 });
+      k.play('timerChime', bt0 + 1.35, { gain: 0.52 });
+      k.play('warHorn', bt0 + 1.65, { gain: 0.55 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 086 · [04:45.6 - 04:48.4] — Defeating the Madurai Sultanate & Reopening the Temples
+  // =========================================================================
+  {
+    shot_number: 86,
+    start: 285.6,
+    end: 288.4,
+    duration: 2.8,
+    title: 'Defeating the Madurai Sultanate & Reopening the Temples',
+    vo_line: 'மதுரைக்கு வந்து சுல்தானை வெற்றி பெறுறாங்க.',
+    env_id: 'STORYBOOK_SETTLEMENT · ENV_TEMPLE_COURTYARD',
+    chars: 'THIRUMALAI_NAYAK vs. MALIK_KAFUR (swordFight at 115px contact)',
+    on_screen_text: 'LIBERATION & RESTORATION OF MADURAI TEMPLES',
+    camera_sfx: 'cam z:1.0->1.06 · templeCourtyard, swordClash, templeBell, conchShell',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [2.8, 1.06]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_TEMPLE_COURTYARD(g, gt, cam, (ctx) => {
+        // Mid-Shot Micro-Beat (lt = 1.40s): Golden godRays & reopened Madurai temple sanctum doors
+        if (lt >= 1.40) {
+          FX.godRays(ctx, 960, 260, { count: 9, color: 'rgba(255, 215, 90, 0.28)', radius: 860 });
+        }
+
+        // Reopened temple sanctum gate at x = 960, y = 840
+        FX.interactiveProp(ctx, {
+          kind: 'brickWallBuild',
+          x: 960,
+          y: 840,
+          cutTime: 1.40,
+          lt,
+          gt
+        });
+
+        // Ornate Golden Sanctum Doors swinging open at lt >= 1.40s
+        const openProg = DK.segTime(lt, 1.25, 2.1, DK.ease.outBack);
+        ctx.save();
+        ctx.translate(960, 840);
+        const doorW = 68 * (1 - openProg * 0.65);
+        ctx.fillStyle = '#D99B26';
+        ctx.strokeStyle = '#78350F';
+        ctx.lineWidth = 4;
+        ctx.fillRect(-72, -190, doorW, 190);
+        ctx.strokeRect(-72, -190, doorW, 190);
+        ctx.fillRect(72 - doorW, -190, doorW, 190);
+        ctx.strokeRect(72 - doorW, -190, doorW, 190);
+        ctx.restore();
+
+        // THIRUMALAI_NAYAK at x = 640 clashing swords with MALIK_KAFUR at x = 755 (exact charX + 115px contact)
+        DK.char(ctx, {
+          ...THEME.CHARS.THIRUMALAI_NAYAK,
+          x: 640,
+          y: 840,
+          pose: { preset: 'swordFight', speed: 1.35 },
+          prop: 'sword',
+          eyeMode: 'warm',
+          brows: 'furrowed',
+          mouth: 'smile',
+          t: gt,
+          seed: 861
+        });
+
+        DK.char(ctx, {
+          ...THEME.CHARS.MALIK_KAFUR,
+          x: 755,
+          y: 840,
+          flipX: true,
+          pose: { preset: 'swordFight', speed: 1.2 },
+          prop: 'sword',
+          eyeMode: 'panic',
+          brows: 'raised',
+          mouth: 'gasp',
+          t: gt,
+          seed: 862
+        });
+
+        // Sword clash sparks at midpoint (x = 698, y = 735)
+        ctx.save();
+        ctx.translate(698, 735);
+        ctx.strokeStyle = '#FFD54F';
+        ctx.lineWidth = 3;
+        for (let s = 0; s < 6; s++) {
+          const ang = (s * Math.PI) / 3 + gt * 12;
+          const r1 = 6 + (gt * 40 % 10);
+          const r2 = r1 + 14;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(ang) * r1, Math.sin(ang) * r1);
+          ctx.lineTo(Math.cos(ang) * r2, Math.sin(ang) * r2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'LIBERATION & RESTORATION OF MADURAI TEMPLES',
+        x: 960,
+        y: 120,
+        accent: '#38C878',
+        t0: 0.25
+      });
+
+      UI.citation(g, 'Madura Vijayam & Madurai Temple Chronicles (Tiruppani Malai)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 2.8, { gain: 0.22 });
+      k.play('swordClash', bt0 + 0.45, { gain: 0.60 });
+      k.play('templeBell', bt0 + 1.40, { gain: 0.58 });
+      k.play('conchShell', bt0 + 1.65, { gain: 0.52 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 087 · [04:48.4 - 04:51.5] — Rise of the Nayak Rulers (Madurai, Thanjavur & Gingee)
+  // =========================================================================
+  {
+    shot_number: 87,
+    start: 288.4,
+    end: 291.5,
+    duration: 3.1,
+    title: 'Rise of the Nayak Rulers (Madurai, Thanjavur & Gingee)',
+    vo_line: 'ஆனா அவங்களுக்கு பதிலா தமிழ்நாட்டை நிர்வாகம் பண்ண வந்தவங்கதான் நாயக்கர்கள்.',
+    env_id: 'CARTOGRAPHIC_MAP_OR_GLOBE · MAP_NAYAK_72_PALAIYAMS',
+    chars: 'THIRUMALAI_NAYAK (left of pedestal), RAGHUNATHA_NAYAK (right of pedestal)',
+    on_screen_text: 'THE NAYAK DYNASTIES · MADURAI · THANJAVUR · GINGEE',
+    camera_sfx: 'Unobstructed Strategic Map + y:980 Foreground Terrace · pop, ding',
+    draw(g, lt, gt, u) {
+      // Rule 4: Render strategicMap unobstructed across the canvas
+      UI.strategicMap(g, lt, THEME.INFO.MAP_NAYAK_72_PALAIYAMS);
+
+      // Mid-Shot Micro-Beat (lt = 1.55s): Golden highlight rings on Gingee, Thanjavur & Madurai
+      if (lt >= 1.55) {
+        const glowP = DK.clamp((lt - 1.55) / 1.2, 0, 1);
+        const nayakCapitals = [
+          { x: 1065, y: 315 },
+          { x: 1025, y: 540 },
+          { x: 895, y: 690 }
+        ];
+        nayakCapitals.forEach((pt, idx) => {
+          const r = 16 + ((glowP * 55 + idx * 12) % 55);
+          g.save();
+          g.strokeStyle = `rgba(247, 185, 40, ${1 - r / 75})`;
+          g.lineWidth = 3.5;
+          g.beginPath();
+          g.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+          g.stroke();
+          g.restore();
+        });
+      }
+
+      // Rule 4: Low foreground terrace at y = 980 for Nayak rulers & charter pedestal
+      drawMapForegroundTerrace(g, 980, '#F7B928');
+
+      // Royal Charter Pedestal at x = 710, y = 980
+      FX.interactiveProp(g, {
+        kind: 'scholarDesk',
+        x: 710,
+        y: 980,
+        lt,
+        gt
+      });
+
+      // Madurai Nayak (THIRUMALAI_NAYAK) marching to x: 620 (620 + 90 = 710)
+      DK.char(g, {
+        ...THEME.CHARS.THIRUMALAI_NAYAK,
+        moveX: [280, 620, lt, 3.1],
+        y: 980,
+        s: 0.88,
+        pose: { preset: 'march', speed: 1.15 },
+        prop: 'scroll',
+        eyeMode: 'warm',
+        brows: 'neutral',
+        mouth: 'smile',
+        t: gt,
+        seed: 871
+      });
+
+      // Thanjavur Nayak (RAGHUNATHA_NAYAK) marching to x: 800 (800 - 90 = 710)
+      DK.char(g, {
+        ...THEME.CHARS.RAGHUNATHA_NAYAK,
+        moveX: [1340, 800, lt, 3.1],
+        y: 980,
+        s: 0.88,
+        flipX: true,
+        pose: { preset: 'march', speed: 1.15 },
+        prop: 'palmLeaf',
+        eyeMode: 'warm',
+        brows: 'neutral',
+        mouth: 'smile',
+        t: gt,
+        seed: 872
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'THE NAYAK DYNASTIES · MADURAI · THANJAVUR · GINGEE',
+        x: 960,
+        y: 120,
+        accent: '#F7B928',
+        t0: 0.25
+      });
+
+      UI.citation(g, 'R. Sathyanatha Aiyar, History of the Nayaks of Madura (1924)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.1, { gain: 0.20 });
+      k.play('pop', bt0 + 0.45, { gain: 0.42 });
+      k.play('pop', bt0 + 1.00, { gain: 0.42 });
+      k.play('ding', bt0 + 1.55, { gain: 0.50 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 088 · [04:51.5 - 04:54.5] — Thirumalai Nayak (Madurai) & Raghunatha Nayak (Thanjavur)
+  // =========================================================================
+  {
+    shot_number: 88,
+    start: 291.5,
+    end: 294.5,
+    duration: 3.0,
+    title: 'Thirumalai Nayak (Madurai) & Raghunatha Nayak (Thanjavur)',
+    vo_line: 'மதுரையில திருமலை நாயக்கர்களும், தஞ்சாவூர்ல ரகுநாத நாயக்கரும்',
+    env_id: 'STORYBOOK_SETTLEMENT · ENV_PALACE_DURBAR (Thirumalai Nayakkar Mahal)',
+    chars: 'THIRUMALAI_NAYAK (at architectural desk), RAGHUNATHA_NAYAK (at Sarasvati Mahal lectern)',
+    on_screen_text: 'THIRUMALAI NAYAK (MADURAI) & RAGHUNATHA NAYAK (THANJAVUR)',
+    camera_sfx: 'cam z:1.0->1.06 · templeCourtyard, pillBadge, starShimmer',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [3.0, 1.06]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_PALACE_DURBAR(g, gt, cam, (ctx) => {
+        // Architectural blueprint desk at x = 645 (560 + 85 = 645)
+        FX.interactiveProp(ctx, {
+          kind: 'scholarDesk',
+          x: 645,
+          y: 840,
+          lt,
+          gt
+        });
+
+        // Sarasvati Mahal manuscript lectern at x = 930 (1020 - 90 = 930)
+        FX.interactiveProp(ctx, {
+          kind: 'scholarDesk',
+          x: 930,
+          y: 840,
+          lt,
+          gt
+        });
+
+        // Thirumalai Nayak (THIRUMALAI_NAYAK) at x = 560 reviewing architectural blueprints
+        DK.char(ctx, {
+          ...THEME.CHARS.THIRUMALAI_NAYAK,
+          x: 560,
+          y: 840,
+          pose: { preset: 'experiment', speed: 1.15 },
+          prop: 'scroll',
+          eyeMode: 'warm',
+          brows: 'neutral',
+          mouth: 'smile',
+          t: gt,
+          seed: 881
+        });
+
+        // Raghunatha Nayak (RAGHUNATHA_NAYAK) walking to x = 1020 (1020 - 90 = 930)
+        DK.char(ctx, {
+          ...THEME.CHARS.RAGHUNATHA_NAYAK,
+          moveX: [1380, 1020, lt, 3.0],
+          y: 840,
+          flipX: true,
+          pose: { preset: 'walk', speed: 1.15 },
+          prop: 'palmLeaf',
+          eyeMode: 'warm',
+          brows: 'neutral',
+          mouth: 'smile',
+          t: gt,
+          seed: 882
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.50s): Dual Royal Nameplates lock in
+        if (lt >= 1.50) {
+          const p = DK.pop(lt, 1.50, 0.35);
+          const drawNameplate = (nx, ny, name, sub, col) => {
+            ctx.save();
+            ctx.translate(nx, ny);
+            ctx.scale(p, p);
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.roundRect(-145, -30, 290, 56, 12);
+            ctx.fill();
+            ctx.stroke();
+            ctx.textAlign = 'center';
+            ctx.font = '800 16px "Fredoka", sans-serif';
+            ctx.fillStyle = col;
+            ctx.fillText(name, 0, -5);
+            ctx.font = '700 13px "Nunito", sans-serif';
+            ctx.fillStyle = '#E2E8F0';
+            ctx.fillText(sub, 0, 16);
+            ctx.restore();
+          };
+          drawNameplate(560, 595, 'THIRUMALAI NAYAK', 'Madurai · Mahal & Gopurams', '#F7B928');
+          drawNameplate(1020, 595, 'RAGHUNATHA NAYAK', 'Thanjavur · Sarasvati Mahal', '#38BDF8');
+        }
+      }, { nayakMahal: true });
+
+      UI.pillBadge(g, lt, {
+        text: 'THIRUMALAI NAYAK (MADURAI) & RAGHUNATHA NAYAK (THANJAVUR)',
+        x: 960,
+        y: 120,
+        accent: '#FF851B',
+        t0: 0.25
+      });
+
+      UI.citation(g, 'V. Vriddhagirisan, The Nayaks of Tanjore (1942)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.0, { gain: 0.20 });
+      k.play('pillBadge', bt0 + 0.25, { gain: 0.42 });
+      k.play('starShimmer', bt0 + 1.50, { gain: 0.50 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 089 · [04:54.5 - 04:57.6] — Reviving Art, Literature & 1,000-Pillar Gopuram Architecture
+  // =========================================================================
+  {
+    shot_number: 89,
+    start: 294.5,
+    end: 297.6,
+    duration: 3.1,
+    title: 'Reviving Art, Literature & 1,000-Pillar Gopuram Architecture',
+    vo_line: 'கலை, இலக்கியம் மற்றும் கட்டிடக்கலைகளுக்கு மறுபடியும் உயிர் கொடுக்குறாங்க.',
+    env_id: 'STORYBOOK_SETTLEMENT · ENV_TEMPLE_COURTYARD',
+    chars: 'PALLAVA_SCULPTOR (sculpting Yali pillar), ILANGO_ADIGAL (walking with palmLeaf)',
+    on_screen_text: '1,000-PILLAR MANDAPAMS & TOWERING RAJA GOPURAMS',
+    camera_sfx: 'cam pan -25..+25 · templeCourtyard, anvilStrike, templeBell, starShimmer',
+    draw(g, lt, gt, u) {
+      // Rule 3: Centered camera origin with -25..+25 pan
+      const cam = {
+        x: DK.key(lt, [[0, -25], [3.1, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: 1.05
+      };
+
+      // Mid-Shot Micro-Beat (lt = 1.55s): Polychrome stucco colors bloom across Raja Gopuram
+      const polyBloom = DK.segTime(lt, 1.45, 2.3, DK.ease.outCubic);
+
+      THEME.ENVS.ENV_TEMPLE_COURTYARD(g, gt, cam, (ctx) => {
+        // Mythical Yali stone pillar at x = 725, y = 840
+        FX.interactiveProp(ctx, {
+          kind: 'brickWallBuild',
+          x: 725,
+          y: 840,
+          cutTime: 1.55,
+          lt,
+          gt
+        });
+
+        // Sculpted Yali Capital detail atop the pillar at x = 725
+        ctx.save();
+        ctx.translate(725, 695);
+        ctx.fillStyle = '#D99B26';
+        ctx.strokeStyle = '#78350F';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(-28, -55, 56, 55, 8);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Nayak Sculptor (PALLAVA_SCULPTOR) at x = 640 (640 + 85 = 725)
+        DK.char(ctx, {
+          ...THEME.CHARS.PALLAVA_SCULPTOR,
+          x: 640,
+          y: 840,
+          pose: { preset: 'build', speed: 1.25 },
+          prop: 'hammer',
+          eyeMode: 'warm',
+          brows: 'neutral',
+          mouth: 'smile',
+          t: gt,
+          seed: 891
+        });
+
+        // Court Poet (ILANGO_ADIGAL) walking to x = 815 (815 - 90 = 725)
+        DK.char(ctx, {
+          ...THEME.CHARS.ILANGO_ADIGAL,
+          moveX: [1320, 815, lt, 3.1],
+          y: 840,
+          flipX: true,
+          pose: { preset: 'walk', speed: 1.1 },
+          prop: 'palmLeaf',
+          eyeMode: 'warm',
+          brows: 'neutral',
+          mouth: 'smile',
+          t: gt,
+          seed: 892
+        });
+      }, { polychrome: polyBloom });
+
+      UI.pillBadge(g, lt, {
+        text: '1,000-PILLAR MANDAPAMS & TOWERING RAJA GOPURAMS',
+        x: 960,
+        y: 120,
+        accent: '#38C878',
+        t0: 0.25
+      });
+
+      UI.citation(g, 'George Michell, Architecture and Art of Southern India (1995)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.1, { gain: 0.22 });
+      k.play('anvilStrike', bt0 + 0.50, { gain: 0.48 });
+      k.play('templeBell', bt0 + 1.55, { gain: 0.55 });
+      k.play('starShimmer', bt0 + 1.80, { gain: 0.45 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 090 · [04:57.6 - 05:02.1] — Creation of the Palaiyakkarar System (c. 1529 CE)
+  // =========================================================================
+  {
+    shot_number: 90,
+    start: 297.6,
+    end: 302.1,
+    duration: 4.5,
+    title: 'Creation of the Palaiyakkarar System (பாளையக்காரர் முறை, c. 1529 CE)',
+    vo_line: 'ஆனா இங்கதான் ஒரு மாபெரும் அரசியல் system உருவாச்சு. இதுக்கு பேருதான் பாளையக்காரர் முறை.',
+    env_id: 'STORYBOOK_SETTLEMENT · ENV_PALACE_DURBAR',
+    chars: 'THIRUMALAI_NAYAK (Viswanatha Nayak at charter desk), PERUNTHACHAN (Ariyanatha Mudaliar)',
+    on_screen_text: 'PALAIYAKKARAR SYSTEM (பாளையக்காரர் முறை) · 72 Bastions (c. 1529 CE)',
+    camera_sfx: 'cam z:1.0->1.07 · templeCourtyard, swish, pillBadge, ding',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [4.5, 1.07]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_PALACE_DURBAR(g, gt, cam, (ctx) => {
+        // Master Charter Desk at x = 710, y = 840
+        FX.interactiveProp(ctx, {
+          kind: 'scholarDesk',
+          x: 710,
+          y: 840,
+          lt,
+          gt
+        });
+
+        // Unrolling 72-Bastion Charter Scroll across the desk
+        const unroll = DK.segTime(lt, 0.3, 1.8, DK.ease.outCubic);
+        ctx.save();
+        ctx.translate(710, 745);
+        ctx.fillStyle = '#FDE68A';
+        ctx.strokeStyle = '#B45309';
+        ctx.lineWidth = 3;
+        const sw = 18 + unroll * 88;
+        ctx.beginPath();
+        ctx.roundRect(-sw * 0.5, -12, sw, 22, 4);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Nayak Ruler (Viswanatha Nayak / THIRUMALAI_NAYAK) at x = 620 (620 + 90 = 710)
+        DK.char(ctx, {
+          ...THEME.CHARS.THIRUMALAI_NAYAK,
+          x: 620,
+          y: 840,
+          pose: { preset: 'experiment', speed: 1.15 },
+          prop: 'scroll',
+          eyeMode: 'warm',
+          brows: 'neutral',
+          mouth: 'smile',
+          t: gt,
+          seed: 901
+        });
+
+        // Minister Ariyanatha Mudaliar (PERUNTHACHAN) walking to x = 805 (805 - 95 = 710)
+        DK.char(ctx, {
+          ...THEME.CHARS.PERUNTHACHAN,
+          moveX: [1280, 805, lt, 4.5],
+          y: 840,
+          flipX: true,
+          pose: { preset: 'walk', speed: 1.15 },
+          prop: 'scroll',
+          eyeMode: 'warm',
+          brows: 'neutral',
+          mouth: 'smile',
+          t: gt,
+          seed: 902
+        });
+
+        // Mid-Shot Micro-Beat (lt = 2.25s): Illuminated 72-Bastion Blueprint Grid Badge above desk
+        if (lt >= 2.25) {
+          const gridPop = DK.pop(lt, 2.25, 0.4);
+          ctx.save();
+          ctx.translate(710, 460);
+          ctx.scale(gridPop, gridPop);
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+          ctx.strokeStyle = '#FF851B';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.roundRect(-150, -70, 300, 120, 14);
+          ctx.fill();
+          ctx.stroke();
+          // Mini 12x6 = 72 Bastion Fort Grid
+          for (let r = 0; r < 6; r++) {
+            for (let c = 0; c < 12; c++) {
+              ctx.fillStyle = (r + c) % 3 === 0 ? '#F7B928' : '#38BDF8';
+              ctx.fillRect(-124 + c * 21, -48 + r * 12, 15, 8);
+            }
+          }
+          ctx.textAlign = 'center';
+          ctx.font = '800 15px "Space Mono", monospace';
+          ctx.fillStyle = '#FFD54F';
+          ctx.fillText('72 AUTONOMOUS PALAIYAMS', 0, 38);
+          ctx.restore();
+        }
+      }, { nayakMahal: true });
+
+      UI.techCallout(g, lt, {
+        from: [710, 720],
+        elbow: [960, 560],
+        to: [1380, 560],
+        title: 'PALAIYAKKARAR SYSTEM (பாளையக்காரர் முறை)',
+        spec: 'Instituted by Viswanatha Nayak & Ariyanatha Mudaliar (c. 1529 CE)',
+        accent: '#FF851B',
+        t0: 1.9
+      });
+
+      UI.citation(g, 'K. Rajayyan, Rise and Fall of the Poligars of Tamilnadu (1974)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 4.5, { gain: 0.20 });
+      k.play('swish', bt0 + 0.45, { gain: 0.45 });
+      k.play('pillBadge', bt0 + 1.90, { gain: 0.42 });
+      k.play('ding', bt0 + 2.25, { gain: 0.50 });
+    }
+  }
+];
+
+if (window.DK && DK.linkShotTransitions) DK.linkShotTransitions(SHOTS, window.THEME);
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const BATCH_START = SHOTS[0].start;
+const BATCH_END = SHOTS[SHOTS.length - 1].end;
+const DURATION = BATCH_END - BATCH_START;
+
+// Auto-runs each shot's attached sfx(k, bt0) if scoreSound(k) is not defined separately
+if (typeof window.scoreSound !== 'function') {
+  window.scoreSound = function scoreSound(k) {
+    SHOTS.forEach((s) => {
+      if (typeof s.sfx === 'function') s.sfx(k, s.start - BATCH_START);
+    });
+  };
+}
+const scoreSound = window.scoreSound;
+
+window.BATCH_START = BATCH_START;
+window.BATCH_END = BATCH_END;
+window.DURATION = DURATION;
+window.SHOTS = SHOTS;
+window.scoreSound = scoreSound;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, activeShotFilter = 'all', voAudio = null;
+
+function findShotAtGlobal(gt) {
+  for (let i = 0; i < SHOTS.length; i++) {
+    if (gt >= SHOTS[i].start && gt <= SHOTS[i].end) return SHOTS[i];
+  }
+  return gt < SHOTS[0].start ? SHOTS[0] : SHOTS[SHOTS.length - 1];
+}
+
+function renderAtLocal(localT) {
+  currentT = DK.clamp(localT, 0, DURATION);
+  const gt = BATCH_START + currentT;
+  const s = findShotAtGlobal(gt);
+  const lt = DK.clamp(gt - s.start, 0, s.duration);
+  const u = s.duration > 0 ? lt / s.duration : 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1920, 1080);
+  ctx.save();
+  if (window.DK && DK.drawShot) DK.drawShot(ctx, s, lt, gt, u);
+  else s.draw(ctx, lt, gt, u);
+  ctx.restore();
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = gt.toFixed(2) + 's (' + currentT.toFixed(2) + 's) · Shot ' + s.shot_number;
+}
+
+window.seek = function (t, opts) {
+  if (playing) pause();
+  const localT = opts && opts.global ? t - BATCH_START : t;
+  renderAtLocal(localT);
+};
+
+function startAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('mixSelect').value;
+  if (mixMode !== 'mute' && window.SOUND) stopSound = SOUND.live(scoreSound, currentT, { mixMode: 'sfxOnly' });
+  if (voAudio) { voAudio.currentTime = BATCH_START + currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (activeShotFilter !== 'all') {
+      const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+      if (s) {
+        const sLocal0 = s.start - BATCH_START, sLocal1 = s.end - BATCH_START;
+        if (nextT >= sLocal1) { nextT = sLocal0; currentT = nextT; startAudio(); }
+      }
+    } else if (nextT >= DURATION) {
+      nextT = 0; currentT = 0; startAudio();
+    }
+    renderAtLocal(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+const shotSelect = document.getElementById('shotSelect');
+SHOTS.forEach((s) => {
+  const opt = document.createElement('option');
+  opt.value = String(s.shot_number);
+  opt.textContent = 'Shot ' + s.shot_number + ': ' + s.title + ' (' + s.start.toFixed(1) + 's-' + s.end.toFixed(1) + 's)';
+  shotSelect.appendChild(opt);
+});
+
+shotSelect.addEventListener('change', () => {
+  activeShotFilter = shotSelect.value;
+  if (activeShotFilter !== 'all') {
+    const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+    if (s) { renderAtLocal(s.start - BATCH_START); if (playing) startAudio(); }
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  renderAtLocal(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('mixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('wavBtn').addEventListener('click', async () => {
+  const res = await SOUND.renderOffline(scoreSound, DURATION, 48000, { mixMode: 'sfxOnly' });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'batch_sfx_' + SHOTS[0].shot_number + '_' + SHOTS[SHOTS.length - 1].shot_number + '.wav';
+  a.click();
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  if (window.MAP && MAP.preloadAll) await MAP.preloadAll(SHOTS);
+  renderAtLocal(0);
+});
+</script>
+</body>
+</html>

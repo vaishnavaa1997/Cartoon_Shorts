@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lumina 2.5D Storybook Studio (16:9) — Studio Player (Shots 131 to 140)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #05070d; color: #e2e8f0; font-family: 'Nunito', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#stage-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; overflow: hidden; }
+canvas { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; box-shadow: 0 16px 48px rgba(0,0,0,0.75); background: #070b16; }
+#controls { height: 58px; background: #101522; border-top: 1px solid #222b42; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 13px; }
+button, select, label.btn { background: #1c2539; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+button:hover, select:hover, label.btn:hover { background: #283552; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 12px; color: #ffb074; min-width: 230px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><canvas id="stage" width="1920" height="1080"></canvas></div>
+<div id="controls">
+  <button id="playBtn">Play</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.0s / 00.0s · Shot 131</div>
+  <select id="shotSelect"><option value="all">All Shots in Batch</option></select>
+  <select id="mixSelect">
+    <option value="sfxOnly" selected>SFX + Ambient Only (No BGM)</option>
+    <option value="mute">Mute</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="wavBtn">Export Batch SFX (.wav)</button>
+</div>
+<script src="../../engine.js"></script>
+<script>
+// ============================================================================
+// MASTER CONSISTENCY BIBLE & GLOBAL THEME DICTIONARY (SHOTS 131 TO 140)
+// ============================================================================
+const THEME = {
+  CHARS: {
+    HOST_PROTAG: {
+      skin: '#C88C68',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'shirtTie',
+      topColor: '#2B6CB0',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      prop: 'none',
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 1.0
+    },
+    HOST_SWEATER: {
+      skin: '#C88C68',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'sweater',
+      topColor: '#FF851B',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      prop: 'none',
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 1.0
+    },
+    HOST_SCIENTIST: {
+      skin: '#C88C68',
+      hairStyle: 'sidePart',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'scientist',
+      topColor: '#F8FAFC',
+      bottomColor: '#334155',
+      headwear: 'none',
+      foreheadMark: null,
+      prop: 'scroll',
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 1.0
+    },
+    SATYAMURTI: {
+      skin: '#C88C68',
+      hairStyle: 'scholarBun',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'indianIndependence',
+      topColor: '#F8FAFC',
+      bottomColor: '#F1F5F9',
+      headwear: 'gandhiCap',
+      foreheadMark: 'vibhuti',
+      prop: 'none',
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 1.02
+    },
+    KAMARAJAR: {
+      skin: '#7A4E38',
+      hairStyle: 'shortCrop',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'indianIndependence',
+      topColor: '#F8FAFC',
+      bottomColor: '#F4EFE6',
+      headwear: 'none',
+      foreheadMark: null,
+      prop: 'none',
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 1.06
+    },
+    KEELADI_WEAVER: {
+      skin: '#C88C68',
+      hairStyle: 'braidedCrown',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#38BDF8',
+      bottomColor: '#F8FAFC',
+      headwear: 'none',
+      foreheadMark: 'bindi',
+      prop: 'palmLeaf',
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 0.78
+    },
+    MODERN_ENG: {
+      skin: '#D69A72',
+      hairStyle: 'sidePart',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'shirtTie',
+      topColor: '#38BDF8',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      prop: 'none',
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 1.0
+    }
+  },
+
+  ANIMALS: {
+    VILLAGE_BULL: { kind: 'bull', s: 0.95, expr: 'happy' },
+    PEACE_DOVE: { kind: 'pigeon', s: 0.55, expr: 'happy' },
+    VILLAGE_SPARROW: { kind: 'sparrow', s: 0.5, expr: 'singing' }
+  },
+
+  spawnChar(g, id, overrides = {}) {
+    const base = this.CHARS[id] || this.CHARS.HOST_PROTAG;
+    const cfg = Object.assign({}, base, overrides);
+    cfg.beard = false;
+    cfg.mustache = false;
+    if (overrides.pose) {
+      cfg.pose = Object.assign({}, base.pose || {}, overrides.pose);
+    }
+    return DK.char(g, cfg);
+  },
+
+  spawnAnimal(g, id, overrides = {}) {
+    const base = this.ANIMALS[id] || { kind: 'pigeon', s: 0.6 };
+    const cfg = Object.assign({}, base, overrides);
+    return DK.animal(g, cfg);
+  },
+
+  // Non-destructive floating HUD Era Chapter Dial (Rule 5 Compliant)
+  drawFloatingEraDial(g, lt, opts = {}) {
+    const era = opts.era || 'INDIAN INDEPENDENCE';
+    const year = opts.year || '*15 AUGUST 1947';
+    const accent = opts.accent || '#F7B928';
+    const popK = DK.clamp(lt / 0.45, 0, 1);
+
+    g.save();
+    g.translate(960, 128);
+    g.scale(0.92 + 0.08 * popK, 0.92 + 0.08 * popK);
+    g.globalAlpha = popK;
+
+    // Outer pill frame
+    g.fillStyle = 'rgba(10, 15, 29, 0.90)';
+    g.strokeStyle = accent;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.roundRect(-410, -44, 820, 88, 44);
+    g.fill();
+    g.stroke();
+
+    // Inner decorative gold trim
+    g.strokeStyle = 'rgba(255, 213, 79, 0.35)';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.roundRect(-400, -36, 800, 72, 36);
+    g.stroke();
+
+    // Rotating compass/wheel emblem on left
+    g.save();
+    g.translate(-345, 0);
+    g.rotate(lt * 0.65);
+    g.strokeStyle = accent;
+    g.lineWidth = 2.5;
+    g.beginPath();
+    g.arc(0, 0, 24, 0, Math.PI * 2);
+    g.stroke();
+    for (let i = 0; i < 12; i++) {
+      const a = (i * Math.PI) / 6;
+      g.beginPath();
+      g.moveTo(Math.cos(a) * 8, Math.sin(a) * 8);
+      g.lineTo(Math.cos(a) * 22, Math.sin(a) * 22);
+      g.stroke();
+    }
+    g.restore();
+
+    // Era Title & Year readout
+    g.textAlign = 'center';
+    g.fillStyle = '#94A3B8';
+    g.font = '800 14px "Space Mono", monospace';
+    g.fillText('CHAPTER MILESTONE · ' + era, 24, -10);
+
+    g.fillStyle = '#FFFFFF';
+    g.font = '900 26px "Fredoka", sans-serif';
+    g.fillText(year, 24, 22);
+
+    g.restore();
+  },
+
+  ENVS: {
+    // 1. Fort St. George Independence Day (15 August 1947)
+    ENV_FORT_ST_GEORGE(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'clearDay');
+          FX.sun(g, 1520, 210, 68);
+          FX.clouds(g, { seed: 131, count: 7, y: 155, h: 140, color: '#FFFFFF', a: 0.90, t: gt, speed: 12 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'colonial', y: 760, seed: 47 });
+          FX.waterBody(g, gt, { x: 1280, y: 745, w: 640, h: 95, color: '#2B7AC9', waves: true });
+        },
+        bgFarDepth: 0.32,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          // Fort St. George Whitewashed Neoclassical Secretariat & Ramparts
+          FX.structure3D(g, 280, 840, 340, 260, { kind: 'colonialHall', color: '#F8FAFC', t: gt });
+          FX.structure3D(g, 680, 840, 420, 310, { kind: 'colonialHall', color: '#F1F5F9', t: gt });
+          FX.structure3D(g, 1220, 840, 360, 250, { kind: 'stoneFort', color: '#CBD5E1', t: gt });
+          FX.tree(g, 140, 840, 1.15, '#3E7B46', 'palm');
+          FX.tree(g, 1690, 840, 1.15, '#3E7B46', 'palm');
+
+          // Festive Independence Day Mango-Leaf & Marigold Toran Bunting
+          g.save();
+          g.strokeStyle = '#D97706';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.moveTo(220, 560);
+          g.quadraticCurveTo(580, 615, 950, 555);
+          g.quadraticCurveTo(1310, 615, 1660, 560);
+          g.stroke();
+          for (let x = 250; x <= 1630; x += 46) {
+            const sag = Math.sin(((x - 220) / 1440) * Math.PI * 2) * 18;
+            g.fillStyle = (x / 46) % 3 === 0 ? '#FF9933' : (x / 46) % 3 === 1 ? '#FFFFFF' : '#138808';
+            g.beginPath();
+            g.moveTo(x - 10, 572 + sag);
+            g.lineTo(x + 10, 572 + sag);
+            g.lineTo(x, 596 + sag);
+            g.closePath();
+            g.fill();
+          }
+          g.restore();
+        },
+        mgBackDepth: 0.68,
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#8C7A6B', grassCol: '#4A8C4A' });
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 14, color: 'rgba(255, 215, 110, 0.22)' });
+        },
+        fgBokehDepth: 1.4,
+        fgBokehBlur: 8
+      });
+    },
+
+    // 2. Rural Tamil Nadu Village & Panchayat School (Kamarajar Era)
+    ENV_IRON_VILLAGE(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'clearDay');
+          FX.sun(g, 1480, 200, 64);
+          FX.clouds(g, { seed: 132, count: 6, y: 150, h: 135, color: '#FFFFFF', a: 0.88, t: gt, speed: 11 });
+        },
+        bgFar: (g) => {
+          FX.hills(g, { seed: 54, y: 750, amp: 105, color: '#5A8F68' });
+          FX.storybookHorizon(g, { style: 'ancientTamil', y: 760, seed: 19 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'ancientVillage', y: 840, seed: 24 });
+          FX.tree(g, 210, 840, 1.35, '#3B7A47', 'banyan');
+          FX.tree(g, 1660, 840, 1.15, '#4A8C4A', 'palm');
+
+          // Newly Opened Panchayat Union School Building in Midground
+          g.save();
+          // Whitewashed school walls
+          g.fillStyle = '#F8FAFC';
+          g.strokeStyle = '#94A3B8';
+          g.lineWidth = 3;
+          g.fillRect(620, 560, 680, 280);
+          g.strokeRect(620, 560, 680, 280);
+
+          // Mangalore red-terracotta tiled roof
+          g.fillStyle = '#B84A39';
+          g.strokeStyle = '#7C2D12';
+          g.beginPath();
+          g.moveTo(580, 565);
+          g.lineTo(650, 485);
+          g.lineTo(1270, 485);
+          g.lineTo(1340, 565);
+          g.closePath();
+          g.fill();
+          g.stroke();
+
+          // Verandah pillars
+          for (let px = 670; px <= 1250; px += 145) {
+            g.fillStyle = '#E2E8F0';
+            g.fillRect(px - 12, 565, 24, 275);
+          }
+
+          // Tamil School Nameboard
+          g.fillStyle = '#0F172A';
+          g.strokeStyle = '#F7B928';
+          g.lineWidth = 2.5;
+          g.fillRect(735, 512, 450, 42);
+          g.strokeRect(735, 512, 450, 42);
+          g.fillStyle = '#FFD54F';
+          g.textAlign = 'center';
+          g.font = '800 17px "Nunito", sans-serif';
+          g.fillText('ஊராட்சி ஒன்றிய தொடக்கப்பள்ளி · PANCHAYAT SCHOOL', 960, 539);
+          g.restore();
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'earthPath', baseCol: '#7C5D43', grassCol: '#4A8C4A' });
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: 'rgba(255, 230, 150, 0.18)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 9
+      });
+    },
+
+    // 3. Modern Government School & Education Boulevard
+    ENV_FREEDOM_STREET(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'clearDay');
+          FX.sun(g, 1540, 195, 62);
+          FX.clouds(g, { seed: 133, count: 6, y: 145, h: 130, color: '#FFFFFF', a: 0.88, t: gt, speed: 14 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'modern', y: 760, seed: 33 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.envExterior(g, gt, { preset: 'suburbanStreet', y: 840, seed: 39 });
+          // Modern Government Higher Secondary Smart School Wing
+          g.save();
+          g.fillStyle = '#F1F5F9';
+          g.strokeStyle = '#CBD5E1';
+          g.lineWidth = 3;
+          g.fillRect(340, 470, 1240, 370);
+          g.strokeRect(340, 470, 1240, 370);
+
+          // Blue-tinted smart classroom windows
+          for (let wx = 390; wx <= 1460; wx += 180) {
+            g.fillStyle = '#BAE6FD';
+            g.strokeStyle = '#0284C7';
+            g.lineWidth = 2;
+            g.fillRect(wx, 545, 130, 110);
+            g.strokeRect(wx, 545, 130, 110);
+          }
+
+          // Header banner on building
+          g.fillStyle = '#1E3A8A';
+          g.fillRect(540, 482, 840, 44);
+          g.fillStyle = '#FFFFFF';
+          g.textAlign = 'center';
+          g.font = '900 18px "Nunito", sans-serif';
+          g.fillText('அரசு மேல்நிலைப் பள்ளி · GOVT. HIGHER SECONDARY SMART SCHOOL', 960, 510);
+          g.restore();
+
+          FX.tree(g, 190, 840, 1.15, '#38A169', 'oak');
+          FX.tree(g, 1730, 840, 1.15, '#38A169', 'oak');
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'cobblestone', baseCol: '#64748B', grassCol: '#38A169' });
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: 'rgba(92, 225, 255, 0.16)' });
+        },
+        fgBokehDepth: 1.4,
+        fgBokehBlur: 8
+      });
+    },
+
+    // 4. Rural Dam, Irrigation Canal & Electrification Landscape
+    ENV_FARM_CLEARING(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'clearDay');
+          FX.sun(g, 1460, 200, 66);
+          FX.clouds(g, { seed: 135, count: 7, y: 150, h: 140, color: '#FFFFFF', a: 0.88, t: gt, speed: 14 });
+        },
+        bgFar: (g) => {
+          FX.hills(g, { seed: 88, y: 730, amp: 130, color: '#4B8364' });
+          // Masonry Reservoir Dam across the valley (Lower Bhavani / Vaigai / Manimuthar Dam)
+          g.save();
+          g.fillStyle = '#94A3B8';
+          g.strokeStyle = '#475569';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.moveTo(680, 740);
+          g.lineTo(740, 560);
+          g.lineTo(1380, 560);
+          g.lineTo(1440, 740);
+          g.closePath();
+          g.fill();
+          g.stroke();
+
+          // Spillway gates & white water plumes
+          for (let sx = 800; sx <= 1300; sx += 100) {
+            g.fillStyle = '#334155';
+            g.fillRect(sx - 22, 575, 44, 42);
+            const flowH = lt >= 1.4 ? 120 : 55;
+            g.fillStyle = 'rgba(186, 230, 253, 0.85)';
+            g.fillRect(sx - 18, 617, 36, flowH);
+          }
+
+          // Rural Electrification Pylons on horizon
+          g.strokeStyle = '#334155';
+          g.lineWidth = 2.5;
+          for (let tx = 260; tx <= 580; tx += 160) {
+            g.beginPath();
+            g.moveTo(tx - 18, 720);
+            g.lineTo(tx, 540);
+            g.lineTo(tx + 18, 720);
+            g.moveTo(tx - 28, 575);
+            g.lineTo(tx + 28, 575);
+            g.moveTo(tx - 22, 610);
+            g.lineTo(tx + 22, 610);
+            g.stroke();
+          }
+          g.restore();
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.0,
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'farmClearing', y: 840, seed: 62 });
+          FX.tree(g, 180, 840, 1.15, '#3B7A47', 'palm');
+          FX.tree(g, 480, 840, 1.05, '#3B7A47', 'palm');
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'grassland', baseCol: '#6E523C', grassCol: '#489E4E' });
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 12, color: 'rgba(125, 211, 252, 0.20)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    // 5. Modern Chennai Industrial, Auto, IT & Medical Hub
+    ENV_MODERN_CHENNAI(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'clearDay');
+          FX.sun(g, 1520, 195, 62);
+          FX.clouds(g, { seed: 137, count: 6, y: 145, h: 130, color: '#FFFFFF', a: 0.85, t: gt, speed: 14 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'modern', y: 760, seed: 91 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.envExterior(g, gt, { preset: 'modernDowntown', y: 840, seed: 77 });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#334155', grassCol: '#10B981' });
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 12, color: 'rgba(56, 189, 248, 0.18)' });
+        },
+        fgBokehDepth: 1.4,
+        fgBokehBlur: 8
+      });
+    }
+  },
+
+  INFO: {
+    CHART_LITERACY_SURGE(g, lt, gt) {
+      // Translucent backing card so chart is 100% crisp over the school courtyard
+      g.save();
+      g.fillStyle = 'rgba(11, 18, 34, 0.84)';
+      g.strokeStyle = 'rgba(56, 200, 120, 0.55)';
+      g.lineWidth = 2.5;
+      g.beginPath();
+      g.roundRect(270, 210, 1380, 560, 20);
+      g.fill();
+      g.stroke();
+      g.restore();
+
+      UI.chartLine(g, lt, {
+        x: 960,
+        y: 495,
+        w: 1260,
+        h: 470,
+        title: 'TAMIL NADU LITERACY & HIGHER EDUCATION SURGE (1951–2026)',
+        xLabels: ['1951', '1961', '1981', '2001', '2011', '2026'],
+        yRange: [0, 100],
+        unit: '%',
+        series: [
+          {
+            name: 'Tamil Nadu Literacy Rate (%)',
+            color: '#38C878',
+            area: true,
+            values: [20.8, 36.4, 54.4, 73.5, 80.1, 85.5]
+          },
+          {
+            name: 'Higher Ed GER (%) · #1 in India',
+            color: '#5CE1FF',
+            area: false,
+            values: [2.1, 4.8, 9.5, 19.0, 38.2, 51.4]
+          }
+        ],
+        anomalies: [
+          { idx: 1, label: 'KAMARAJAR SCHOOL REVOLUTION', color: '#F7B928' },
+          { idx: 5, label: '85.5% LITERACY · #1 GER (51.4%)', color: '#38C878' }
+        ],
+        t0: 0.1,
+        dur: 1.4
+      });
+    },
+
+    CHART_GDP_RANK(g, lt, gt) {
+      // Translucent dark-glass analytic frame so 3D bars pop cleanly
+      g.save();
+      g.fillStyle = 'rgba(11, 18, 34, 0.86)';
+      g.strokeStyle = 'rgba(247, 185, 40, 0.60)';
+      g.lineWidth = 2.5;
+      g.beginPath();
+      g.roundRect(260, 205, 1400, 575, 22);
+      g.fill();
+      g.stroke();
+      g.restore();
+
+      UI.chartBar3D(g, lt, {
+        x: 960,
+        y: 510,
+        w: 1240,
+        h: 475,
+        title: 'INDIA’S LARGEST STATE ECONOMIES · GSDP (₹ LAKH CRORE · 2025–26)',
+        unit: 'L Cr',
+        depth3D: 28,
+        data: [
+          { label: '#1 MAHARASHTRA', value: 42.6, color: '#4A6FA5' },
+          { label: '#2 TAMIL NADU', value: 31.5, color: '#F7B928', highlight: true },
+          { label: '#3 UTTAR PRADESH', value: 27.5, color: '#4A6FA5' },
+          { label: '#4 KARNATAKA', value: 26.9, color: '#4A6FA5' },
+          { label: '#5 GUJARAT', value: 26.2, color: '#4A6FA5' }
+        ],
+        t0: 0.1,
+        dur: 1.6
+      });
+    }
+  },
+
+  drawEnv(envId, g, lt, gt, cam, heroFn) {
+    if (this.ENVS[envId]) {
+      this.ENVS[envId](g, lt, gt, cam, heroFn);
+    }
+  },
+
+  drawInfo(infoId, g, lt, gt) {
+    if (this.INFO[infoId]) {
+      this.INFO[infoId](g, lt, gt);
+    }
+  }
+};
+window.THEME = THEME;
+
+// ============================================================================
+// SHOTS 131 TO 140 (07:22.1 – 07:58.3 | 442.1s – 478.3s)
+// ============================================================================
+const SHOTS = [
+  // --------------------------------------------------------------------------
+  // SHOT 131 · [07:22.1 - 07:26.9] (442.1s – 446.9s · Duration: 4.8s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 131,
+    start: 442.1,
+    end: 446.9,
+    duration: 4.8,
+    title: 'FORT ST. GEORGE · 15 AUGUST 1947 INDEPENDENCE',
+    vo_line: '1997-ல இந்தியாவுக்கு சுதந்திரம் கிடைக்குது, தமிழ்நாடும் தன்னோட காயங்களை எல்லாம் குணப்படுத்த ஆரம்பிக்குது.',
+    env_id: 'ENV_FORT_ST_GEORGE',
+    chars: 'SATYAMURTI (pulling flagpole halyard), KAMARAJAR (marching)',
+    on_screen_text: '*15 AUGUST 1947 · INDIAN INDEPENDENCE',
+    camera_sfx: 'cam pan [-30..30], zoom [1.00..1.09] · ancientHarbor, marchSteps, conchShell, templeBell',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -30], [4.8, 30]], DK.ease.inOutSine),
+        y: DK.key(lt, [[0.0, 0], [4.8, -15]], DK.ease.outCubic),
+        z: DK.key(lt, [[0.0, 1.00], [2.40, 1.05], [4.8, 1.09]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FORT_ST_GEORGE', g, lt, gt, cam, (g) => {
+        // Mid-Shot Micro-Beat (lt = 2.40s): Golden burst of godRays as the Tricolour reaches the top
+        if (lt >= 2.2) {
+          const rayAlpha = DK.clamp((lt - 2.2) / 0.5, 0, 1);
+          g.save();
+          g.globalAlpha = rayAlpha;
+          FX.godRays(g, 950, 260, { count: 14, r: 620, color: 'rgba(255, 213, 79, 0.35)' });
+          g.restore();
+        }
+
+        // Fort St. George Teakwood Flagpole Pedestal & Mast at x = 950
+        g.save();
+        // Stepped granite pedestal
+        g.fillStyle = '#CBD5E1';
+        g.strokeStyle = '#475569';
+        g.lineWidth = 3;
+        g.fillRect(885, 805, 130, 35);
+        g.strokeRect(885, 805, 130, 35);
+        g.fillStyle = '#E2E8F0';
+        g.fillRect(908, 775, 84, 30);
+        g.strokeRect(908, 775, 84, 30);
+
+        // Tall Flagpole Mast
+        g.fillStyle = '#F8FAFC';
+        g.strokeStyle = '#64748B';
+        g.lineWidth = 2.5;
+        g.fillRect(944, 235, 12, 540);
+        g.strokeRect(944, 235, 12, 540);
+
+        // Golden Finial Orb at top of mast
+        g.fillStyle = '#F7B928';
+        g.beginPath();
+        g.arc(950, 230, 11, 0, Math.PI * 2);
+        g.fill();
+
+        // Rising Indian Tricolour Flag (hoisted from y=510 to y=250 by lt=2.40s)
+        const hoistY = DK.key(lt, [[0.0, 490], [2.40, 248], [4.8, 248]], DK.ease.outCubic);
+        const flagW = 195;
+        const flagH = 126;
+        g.save();
+        g.translate(956, hoistY);
+        // Waving Tricolour bands
+        const wave = Math.sin(gt * 5.2) * 6;
+        // Saffron Band
+        g.fillStyle = '#FF9933';
+        g.beginPath();
+        g.moveTo(0, 0);
+        g.quadraticCurveTo(flagW * 0.5, wave, flagW, -wave * 0.6);
+        g.lineTo(flagW, flagH / 3 - wave * 0.6);
+        g.quadraticCurveTo(flagW * 0.5, flagH / 3 + wave, 0, flagH / 3);
+        g.closePath();
+        g.fill();
+
+        // White Band
+        g.fillStyle = '#FFFFFF';
+        g.beginPath();
+        g.moveTo(0, flagH / 3);
+        g.quadraticCurveTo(flagW * 0.5, flagH / 3 + wave, flagW, flagH / 3 - wave * 0.6);
+        g.lineTo(flagW, (flagH * 2) / 3 - wave * 0.6);
+        g.quadraticCurveTo(flagW * 0.5, (flagH * 2) / 3 + wave, 0, (flagH * 2) / 3);
+        g.closePath();
+        g.fill();
+
+        // Green Band
+        g.fillStyle = '#138808';
+        g.beginPath();
+        g.moveTo(0, (flagH * 2) / 3);
+        g.quadraticCurveTo(flagW * 0.5, (flagH * 2) / 3 + wave, flagW, (flagH * 2) / 3 - wave * 0.6);
+        g.lineTo(flagW, flagH - wave * 0.6);
+        g.quadraticCurveTo(flagW * 0.5, flagH + wave, 0, flagH);
+        g.closePath();
+        g.fill();
+
+        // Navy Blue 24-Spoke Ashoka Chakra in Center
+        const cx = flagW * 0.5;
+        const cy = flagH * 0.5 + wave * 0.35;
+        g.strokeStyle = '#000080';
+        g.lineWidth = 2.2;
+        g.beginPath();
+        g.arc(cx, cy, 16, 0, Math.PI * 2);
+        g.stroke();
+        for (let s = 0; s < 12; s++) {
+          const ang = (s * Math.PI) / 6 + gt * 0.5;
+          g.beginPath();
+          g.moveTo(cx + Math.cos(ang) * -15, cy + Math.sin(ang) * -15);
+          g.lineTo(cx + Math.cos(ang) * 15, cy + Math.sin(ang) * 15);
+          g.stroke();
+        }
+        g.restore();
+        g.restore();
+
+        // Target Prop: Rope Halyard Physics Simulation at x = 950
+        PHY.ropeSim(g, lt, {
+          id: 'tricolour_hoist',
+          anchor: [950, 260],
+          length: 320,
+          segments: 12,
+          cutTime: 99,
+          payload: { kind: 'lantern', r: 36, color: '#FF851B' },
+          wind: 0.35,
+          floorY: 840
+        });
+
+        // Cheering Citizens on Right Side
+        THEME.spawnChar(g, 'KEELADI_WEAVER', {
+          moveX: [1520, 1240, lt, 4.8],
+          y: 840,
+          s: 0.94,
+          flipX: true,
+          prop: 'flag',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+
+        // Hero 2 (KAMARAJAR marching alongside)
+        THEME.spawnChar(g, 'KAMARAJAR', {
+          moveX: [260, 740, lt, 4.8],
+          y: 840,
+          pose: { preset: 'march', speed: 1.15 },
+          t: gt
+        });
+
+        // Hero 1 (SATYAMURTI pulling the flagpole halyard at 860 + 90 = 950px)
+        THEME.spawnChar(g, 'SATYAMURTI', {
+          moveX: [380, 860, lt, 4.8],
+          y: 840,
+          pose: { preset: 'pull', speed: 1.2 },
+          t: gt
+        });
+
+        // Forward-flying Peace Doves across the sky
+        THEME.spawnAnimal(g, 'PEACE_DOVE', {
+          moveX: [420, 1380, lt, 4.8],
+          y: 340,
+          t: gt
+        });
+      });
+
+      // Non-destructive Floating HUD Era Chapter Dial (Rule 5 compliant)
+      THEME.drawFloatingEraDial(g, lt, {
+        era: 'INDIAN INDEPENDENCE',
+        year: '*15 AUGUST 1947',
+        accent: '#F7B928'
+      });
+
+      UI.citation(g, 'Indian Independence Act (15 August 1947) · Fort St. George, Madras', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('ancientHarbor', bt0 + 0.0, bt0 + 4.8, { gain: 0.22 });
+      k.play('marchSteps', bt0 + 0.35, { gain: 0.42 });
+      k.play('conchShell', bt0 + 2.40, { gain: 0.58 });
+      k.play('templeBell', bt0 + 2.45, { gain: 0.55 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 132 · [07:26.9 - 07:29.8] (446.9s – 449.8s · Duration: 2.9s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 132,
+    start: 446.9,
+    end: 449.8,
+    duration: 2.9,
+    title: 'KARMAVEERAR KAMARAJAR · RURAL SCHOOL OPENING',
+    vo_line: 'கர்மவீரர் காமராஜர் முதல் முதலமைச்சரா நம்மளுக்காக வராரு.',
+    env_id: 'ENV_IRON_VILLAGE',
+    chars: 'KAMARAJAR (opening rural school gate at x: 930)',
+    on_screen_text: 'KARMAVEERAR K. KAMARAJAR · ARCHITECT OF MODERN EDUCATION (1954–1963)',
+    camera_sfx: 'cam pan [-25..25], zoom [1.00..1.08] · forestMorning, footstep, templeBell, pillBadge',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -25], [2.9, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.45, 1.05], [2.9, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_IRON_VILLAGE', g, lt, gt, cam, (g) => {
+        // Target Prop: Village School Entrance Gate & Brick Pillars at x: 930, y: 840
+        FX.interactiveProp(g, {
+          kind: 'brickWallBuild',
+          x: 930,
+          y: 840,
+          cutTime: 1.45,
+          lt,
+          gt
+        });
+
+        // Custom School Entrance Arch & Ringing Brass School Bell at x = 930
+        g.save();
+        g.fillStyle = '#F8FAFC';
+        g.strokeStyle = '#64748B';
+        g.lineWidth = 3;
+        g.fillRect(885, 620, 18, 220);
+        g.strokeRect(885, 620, 18, 220);
+        g.fillRect(1025, 620, 18, 220);
+        g.strokeRect(1025, 620, 18, 220);
+
+        // Arch beam
+        g.fillStyle = '#1E3A8A';
+        g.fillRect(875, 595, 178, 30);
+
+        // Swinging Brass School Bell at x = 964, y = 635
+        const bellSwing = lt >= 1.40 ? Math.sin((lt - 1.40) * 18) * 0.35 : 0;
+        g.save();
+        g.translate(964, 625);
+        g.rotate(bellSwing);
+        g.fillStyle = '#F7B928';
+        g.strokeStyle = '#B45309';
+        g.lineWidth = 2.5;
+        g.beginPath();
+        g.moveTo(-16, 28);
+        g.lineTo(16, 28);
+        g.lineTo(10, 0);
+        g.lineTo(-10, 0);
+        g.closePath();
+        g.fill();
+        g.stroke();
+        g.restore();
+
+        // Sound rings on Mid-Shot Micro-Beat (lt >= 1.45s)
+        if (lt >= 1.45) {
+          const ringP = DK.clamp((lt - 1.45) / 0.9, 0, 1);
+          g.strokeStyle = `rgba(247, 185, 40, ${1 - ringP})`;
+          g.lineWidth = 3;
+          g.beginPath();
+          g.arc(964, 645, 22 + ringP * 65, 0, Math.PI * 2);
+          g.stroke();
+        }
+        g.restore();
+
+        // Welcoming Rural Schoolchildren walking toward the gate from right
+        THEME.spawnChar(g, 'KEELADI_WEAVER', {
+          moveX: [1340, 1080, lt, 2.9],
+          y: 840,
+          s: 0.76,
+          flipX: true,
+          prop: 'palmLeaf',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+
+        // Hero 1 (KAMARAJAR walking from 320 to 840; 840 + 90 = 930px opening school gate)
+        THEME.spawnChar(g, 'KAMARAJAR', {
+          moveX: [320, 840, lt, 2.9],
+          y: 840,
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'KARMAVEERAR K. KAMARAJAR · ARCHITECT OF MODERN EDUCATION (1954–1963)',
+        x: 960,
+        y: 120,
+        accent: '#38C878'
+      });
+
+      UI.citation(g, 'K. Kamaraj, Chief Minister of Madras State (13 April 1954 – 2 Oct 1963)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('forestMorning', bt0 + 0.0, bt0 + 2.9, { gain: 0.22 });
+      k.play('footstep', bt0 + 0.30, { gain: 0.38 });
+      k.play('templeBell', bt0 + 1.45, { gain: 0.52 });
+      k.play('pillBadge', bt0 + 1.45, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 133 · [07:29.8 - 07:33.2] (449.8s – 453.2s · Duration: 3.4s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 133,
+    start: 449.8,
+    end: 453.2,
+    duration: 3.4,
+    title: 'TODAY: FREE CYCLES, LAPTOPS & SMART SCHOOLS',
+    vo_line: 'இன்னைக்கு government school குழந்தைகளுக்கு laptop, cycle-னு free-ஆ கொடுக்குறாங்க.',
+    env_id: 'ENV_FREEDOM_STREET',
+    chars: 'MODERN_ENG (Student), HOST_PROTAG (Student)',
+    on_screen_text: 'TODAY: FREE CYCLES, LAPTOPS & SMART SCHOOLS',
+    camera_sfx: 'cam pan [-30..30], zoom [1.00..1.08] · templeCourtyard, footstep, ding, pillBadge',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -30], [3.4, 30]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.70, 1.05], [3.4, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FREEDOM_STREET', g, lt, gt, cam, (g) => {
+        // Row of Free Student Bicycles parked on the right campus rack (x = 1220..1460)
+        for (let bx = 1230; bx <= 1450; bx += 110) {
+          g.save();
+          g.translate(bx, 840);
+          // Wheels
+          g.strokeStyle = '#1E293B';
+          g.lineWidth = 4;
+          g.beginPath();
+          g.arc(-32, -28, 26, 0, Math.PI * 2);
+          g.arc(32, -28, 26, 0, Math.PI * 2);
+          g.stroke();
+          // Frame
+          g.strokeStyle = '#0284C7';
+          g.lineWidth = 4;
+          g.beginPath();
+          g.moveTo(-32, -28);
+          g.lineTo(-4, -62);
+          g.lineTo(28, -62);
+          g.lineTo(0, -28);
+          g.closePath();
+          g.moveTo(28, -62);
+          g.lineTo(32, -28);
+          g.moveTo(24, -62);
+          g.lineTo(20, -78);
+          g.stroke();
+          g.restore();
+        }
+
+        // Target Prop: Student Laptop & Welfare Distribution Desk at x: 1010, y: 840
+        FX.prop3D(g, 1010, 840, 1.0, {
+          kind: 'dualMonitorDesk',
+          color: '#38BDF8',
+          state: 'active',
+          t: gt
+        });
+
+        // Hero 2 (HOST_PROTAG as Student walking alongside)
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          moveX: [250, 810, lt, 3.4],
+          y: 840,
+          wardrobe: 'shirtTie',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+
+        // Hero 1 (MODERN_ENG as Government School Student walking to 920; 920 + 90 = 1010px receiving laptop)
+        THEME.spawnChar(g, 'MODERN_ENG', {
+          moveX: [360, 920, lt, 3.4],
+          y: 840,
+          wardrobe: 'shirtTie',
+          prop: 'none',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt >= 1.70s): Floating Welfare Tags above Laptop Desk & Cycles
+        if (lt >= 1.70) {
+          const pop = DK.pop(lt, 1.70, 0.35);
+          g.save();
+          g.translate(1010, 650);
+          g.scale(pop, pop);
+          g.fillStyle = '#0F172A';
+          g.strokeStyle = '#5CE1FF';
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.roundRect(-115, -22, 230, 44, 22);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FFFFFF';
+          g.textAlign = 'center';
+          g.font = '800 15px "Nunito", sans-serif';
+          g.fillText('FREE STUDENT LAPTOP', 0, 5);
+          g.restore();
+
+          g.save();
+          g.translate(1340, 690);
+          g.scale(pop, pop);
+          g.fillStyle = '#0F172A';
+          g.strokeStyle = '#38C878';
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.roundRect(-110, -22, 220, 44, 22);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FFFFFF';
+          g.textAlign = 'center';
+          g.font = '800 15px "Nunito", sans-serif';
+          g.fillText('FREE BICYCLE SCHEME', 0, 5);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'TODAY: FREE CYCLES, LAPTOPS & SMART SCHOOLS',
+        x: 960,
+        y: 120,
+        accent: '#5CE1FF'
+      });
+
+      UI.citation(g, 'Tamil Nadu School Education Welfare Schemes (2001–2026)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.4, { gain: 0.18 });
+      k.play('footstep', bt0 + 0.30, { gain: 0.38 });
+      k.play('ding', bt0 + 1.70, { gain: 0.50 });
+      k.play('pillBadge', bt0 + 1.70, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 134 · [07:33.2 - 07:37.2] (453.2s – 457.2s · Duration: 4.0s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 134,
+    start: 453.2,
+    end: 457.2,
+    duration: 4.0,
+    title: 'MID-DAY MEAL SCHEME (1956) · ETTAYAPURAM LAUNCH',
+    vo_line: 'ஆனா அன்னைக்கு பசியில வாடுன குழந்தைகளுக்கு மதிய உணவு திட்டத்தை கொடுக்குறாரு காமராஜர்.',
+    env_id: 'ENV_IRON_VILLAGE',
+    chars: 'KAMARAJAR (serving meals at x: 620), KEELADI_WEAVER (Rural Schoolchild arriving)',
+    on_screen_text: 'MID-DAY MEAL SCHEME (1956) · Kamarajar & N.D. Sundaravadivelu',
+    camera_sfx: 'cam pan [-25..25], zoom [1.00..1.09] · forestMorning, footstep, starShimmer, pillBadge',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -25], [4.0, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [2.00, 1.05], [4.0, 1.09]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_IRON_VILLAGE', g, lt, gt, cam, (g) => {
+        // Target Prop: Mid-Day Meal Dining Table at x: 710, y: 840
+        FX.interactiveProp(g, {
+          kind: 'scholarDesk',
+          x: 710,
+          y: 840,
+          lt,
+          gt
+        });
+
+        // Fresh Green Banana Leaf (வாழை இலை) & Steaming Brass Rice Vessel on the Table (x: 710, y: 752)
+        g.save();
+        g.translate(710, 756);
+        // Brass serving vessel
+        g.fillStyle = '#D97706';
+        g.strokeStyle = '#78350F';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(-28, -14, 18, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+
+        // Banana leaf & hot white rice mound
+        g.fillStyle = '#16A34A';
+        g.beginPath();
+        g.ellipse(22, -6, 26, 10, 0, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#F8FAFC';
+        g.beginPath();
+        g.arc(22, -10, 10, Math.PI, 0);
+        g.fill();
+
+        // Rising warm steam wisps
+        g.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+        g.lineWidth = 2;
+        for (let s = 0; s < 3; s++) {
+          const sx = -28 + s * 22;
+          const sy = -32 - ((gt * 28 + s * 12) % 26);
+          g.beginPath();
+          g.moveTo(sx, sy);
+          g.quadraticCurveTo(sx + 6, sy - 10, sx - 2, sy - 20);
+          g.stroke();
+        }
+        g.restore();
+
+        // Hero 1 (KAMARAJAR at x: 620 serving hot meals at 620 + 90 = 710px)
+        THEME.spawnChar(g, 'KAMARAJAR', {
+          x: 620,
+          y: 840,
+          eyeMode: 'happyArch',
+          mouth: 'smile',
+          pose: { preset: 'trade', speed: 1.15 },
+          t: gt
+        });
+
+        // Hero 2 (KEELADI_WEAVER as Rural Schoolchild arriving eagerly from 1320 to 800; 800 - 90 = 710px)
+        THEME.spawnChar(g, 'KEELADI_WEAVER', {
+          moveX: [1320, 800, lt, 4.0],
+          y: 840,
+          s: 0.78,
+          flipX: true,
+          prop: 'palmLeaf',
+          pose: { preset: 'walk', speed: 1.2 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 2.00s): Technical Callout Leader Line
+        UI.techCallout(g, lt, {
+          from: [710, 720],
+          elbow: [960, 560],
+          to: [1400, 560],
+          title: 'MID-DAY MEAL SCHEME (1956)',
+          spec: 'Kamarajar & N.D. Sundaravadivelu · Ettayapuram Launch',
+          accent: '#F7B928',
+          t0: 1.7
+        });
+      });
+
+      UI.citation(g, 'Madras Free Mid-Day Meal Scheme (1956) · Expanded by M.G.R. (1982)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('forestMorning', bt0 + 0.0, bt0 + 4.0, { gain: 0.22 });
+      k.play('footstep', bt0 + 0.35, { gain: 0.38 });
+      k.play('starShimmer', bt0 + 2.00, { gain: 0.48 });
+      k.play('pillBadge', bt0 + 2.00, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 135 · [07:37.2 - 07:40.0] (457.2s – 460.0s · Duration: 2.8s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 135,
+    start: 457.2,
+    end: 460.0,
+    duration: 2.8,
+    title: 'DAMS, IRRIGATION & RURAL DEVELOPMENT',
+    vo_line: 'இந்த மாதிரி பல நலத்திட்டங்கள் மூலியமா தமிழ்நாட்டை மேல கொண்டு வராரு,',
+    env_id: 'ENV_FARM_CLEARING',
+    chars: 'KAMARAJAR (opening sluice wheel at x: 930), HOST_SCIENTIST (Civil Engineer)',
+    on_screen_text: 'DAMS, IRRIGATION, RURAL ELECTRIFICATION & INDUSTRIAL ESTATES',
+    camera_sfx: 'cam pan [-25..25], zoom [1.00..1.08] · fountainWater, footstep, waterSplash, pillBadge',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -25], [2.8, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.40, 1.05], [2.8, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FARM_CLEARING', g, lt, gt, cam, (g) => {
+        // Water Canal on the Right Half of the Stage
+        FX.waterBody(g, gt, {
+          x: 960,
+          y: 780,
+          w: 960,
+          h: 90,
+          color: '#2B7AC9',
+          waves: true
+        });
+
+        // Target Prop: Dam Sluice Wheel Pedestal at x: 930, y: 840
+        FX.interactiveProp(g, {
+          kind: 'forgeAnvil',
+          x: 930,
+          y: 840,
+          cutTime: 1.40,
+          lt,
+          gt
+        });
+
+        // Custom Rotating Cast-Iron Dam Sluice Valve Wheel on Pedestal at x = 930, y = 735
+        g.save();
+        g.translate(930, 735);
+        const wheelAngle = lt >= 1.2 ? (lt - 1.2) * 3.8 : 0;
+        g.rotate(wheelAngle);
+        g.strokeStyle = '#EF4444';
+        g.lineWidth = 6;
+        g.beginPath();
+        g.arc(0, 0, 32, 0, Math.PI * 2);
+        g.stroke();
+        for (let i = 0; i < 6; i++) {
+          const a = (i * Math.PI) / 3;
+          g.beginPath();
+          g.moveTo(0, 0);
+          g.lineTo(Math.cos(a) * 32, Math.sin(a) * 32);
+          g.stroke();
+        }
+        g.fillStyle = '#F7B928';
+        g.beginPath();
+        g.arc(0, 0, 8, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+
+        // Mid-Shot Micro-Beat (lt >= 1.40s): Foaming Water Surge into Canal
+        if (lt >= 1.40) {
+          const surgeP = DK.clamp((lt - 1.40) / 0.8, 0, 1);
+          g.save();
+          g.fillStyle = 'rgba(224, 242, 254, 0.82)';
+          for (let i = 0; i < 8; i++) {
+            const wx = 965 + i * 55 * surgeP;
+            const wy = 795 + Math.sin(gt * 8 + i) * 10;
+            g.beginPath();
+            g.arc(wx, wy, 14 - i * 1.1, 0, Math.PI * 2);
+            g.fill();
+          }
+          g.restore();
+        }
+
+        // Hero 2 (HOST_SCIENTIST — Civil Engineer walking with blueprints)
+        THEME.spawnChar(g, 'HOST_SCIENTIST', {
+          moveX: [260, 720, lt, 2.8],
+          y: 840,
+          prop: 'scroll',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+
+        // Hero 1 (KAMARAJAR walking from 380 to 840; 840 + 90 = 930px opening sluice wheel)
+        THEME.spawnChar(g, 'KAMARAJAR', {
+          moveX: [380, 840, lt, 2.8],
+          y: 840,
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'DAMS, IRRIGATION, RURAL ELECTRIFICATION & INDUSTRIAL ESTATES',
+        x: 960,
+        y: 120,
+        accent: '#38C878'
+      });
+
+      UI.citation(g, 'Second & Third Five-Year Plans in Madras State (1954–1963)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('fountainWater', bt0 + 0.0, bt0 + 2.8, { gain: 0.22 });
+      k.play('footstep', bt0 + 0.30, { gain: 0.38 });
+      k.play('waterSplash', bt0 + 1.40, { gain: 0.52 });
+      k.play('pillBadge', bt0 + 1.40, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 136 · [07:40.0 - 07:42.8] (460.0s – 462.8s · Duration: 2.8s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 136,
+    start: 460.0,
+    end: 462.8,
+    duration: 2.8,
+    title: 'TAMIL NADU LITERACY & HIGHER ED SURGE CHART',
+    vo_line: 'அதுமட்டுமில்லாம தமிழ்நாட்டோட கல்வியறிவை பன்மடங்கு உயர்த்துறாரு.',
+    env_id: 'ENV_FREEDOM_STREET',
+    chars: 'HOST_PROTAG (Graduate with scholarCap & scroll)',
+    on_screen_text: '12,000+ SCHOOLS OPENED · #1 HIGHER EDUCATION ENROLLMENT',
+    camera_sfx: 'cam [0, 0], zoom [1.00..1.08] · scienceLab, counterTick, powerUp, pillBadge',
+    draw(g, lt, gt, u) {
+      // Rule 3 Compliant: cam.x = 0, cam.y = 0 on 3D chart shots
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.40, 1.05], [2.8, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FREEDOM_STREET', g, lt, gt, cam, (g) => {
+        // 3D Line Chart (CHART_LITERACY_SURGE) rendered unobstructed on Hero Plane
+        THEME.drawInfo('CHART_LITERACY_SURGE', g, lt, gt);
+
+        // Target Prop (Graduation Podium at x: 970, y: 850)
+        FX.interactiveProp(g, {
+          kind: 'scholarDesk',
+          x: 970,
+          y: 850,
+          lt,
+          gt
+        });
+
+        // Hero 1 (HOST_PROTAG as Graduate walking to 880; 880 + 90 = 970px touching podium)
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          moveX: [360, 880, lt, 2.8],
+          y: 850,
+          headwear: 'scholarCap',
+          prop: 'scroll',
+          pose: { preset: 'walk', speed: 1.2 },
+          t: gt
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: '12,000+ SCHOOLS OPENED · #1 HIGHER EDUCATION ENROLLMENT',
+        x: 960,
+        y: 115,
+        accent: '#38C878'
+      });
+
+      UI.citation(g, 'Census of India & AISHE Report (Ministry of Education)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('scienceLab', bt0 + 0.0, bt0 + 2.8, { gain: 0.18 });
+      k.play('counterTick', bt0 + 0.35, { gain: 0.42 });
+      k.play('powerUp', bt0 + 1.40, { gain: 0.52 });
+      k.play('pillBadge', bt0 + 1.40, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 137 · [07:42.8 - 07:47.1] (462.8s – 467.1s · Duration: 4.3s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 137,
+    start: 462.8,
+    end: 467.1,
+    duration: 4.3,
+    title: 'DRAVIDIAN GOVERNANCE · SIPCOT INDUSTRIAL CORRIDOR',
+    vo_line: 'அதுக்கப்புறமா வந்த திராவிட அரசுகள் விவசாயத்துல இருந்து தமிழ்நாட்டை ஒரு industrial hub-ஆ மாத்துறாங்க.',
+    env_id: 'ENV_MODERN_CHENNAI',
+    chars: 'MODERN_ENG (activating robotic manufacturing unit at x: 1055)',
+    on_screen_text: 'DRAVIDIAN GOVERNANCE (1967–2026) · #1 IN FACTORIES IN INDIA',
+    camera_sfx: 'cam pan [-35..35], zoom [1.00..1.08] · serverRoom, footstep, powerUp, pillBadge',
+    draw(g, lt, gt, u) {
+      // Rule 3 Compliant: cam.x clamped within -35..+35
+      const cam = {
+        x: DK.key(lt, [[0.0, -35], [4.3, 35]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [2.15, 1.05], [4.3, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_MODERN_CHENNAI', g, lt, gt, cam, (g) => {
+        // SIPCOT & TIDCO Industrial Estate Archway & Robotic Assembly Gantry in Midground
+        g.save();
+        g.fillStyle = '#1E293B';
+        g.strokeStyle = '#38BDF8';
+        g.lineWidth = 3;
+        g.fillRect(880, 520, 480, 320);
+        g.strokeRect(880, 520, 480, 320);
+
+        g.fillStyle = '#0F172A';
+        g.fillRect(900, 535, 440, 42);
+        g.fillStyle = '#FF851B';
+        g.textAlign = 'center';
+        g.font = '900 17px "Space Mono", monospace';
+        g.fillText('SIPCOT · TIDCO INDUSTRIAL CORRIDOR', 1120, 562);
+
+        // Secondary Server & Control Rack
+        FX.prop3D(g, 1260, 840, 0.95, {
+          kind: 'serverRack',
+          color: '#FF851B',
+          state: 'active',
+          t: gt
+        });
+        g.restore();
+
+        // Target Prop: Automated Robotic Manufacturing Unit at x: 1055, y: 840
+        FX.prop3D(g, 1055, 840, 1.05, {
+          kind: '3dPrinter',
+          color: '#38BDF8',
+          state: 'active',
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt >= 2.15s): Glowing Status Telemetry Ring
+        if (lt >= 2.15) {
+          const p = DK.pop(lt, 2.15, 0.4);
+          g.save();
+          g.translate(1055, 635);
+          g.scale(p, p);
+          g.fillStyle = '#0F172A';
+          g.strokeStyle = '#38C878';
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.roundRect(-135, -22, 270, 44, 22);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#38C878';
+          g.textAlign = 'center';
+          g.font = '800 14px "Space Mono", monospace';
+          g.fillText('40,000+ FACTORIES ACTIVE', 0, 5);
+          g.restore();
+        }
+
+        // Hero 1 (MODERN_ENG walking from 380 to 960; 960 + 95 = 1055px activating console)
+        THEME.spawnChar(g, 'MODERN_ENG', {
+          moveX: [380, 960, lt, 4.3],
+          y: 840,
+          prop: 'wrench',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'DRAVIDIAN GOVERNANCE (1967–2026) · #1 IN FACTORIES IN INDIA',
+        x: 960,
+        y: 120,
+        accent: '#FF851B'
+      });
+
+      UI.citation(g, 'Annual Survey of Industries (ASI), Govt. of India: #1 in Operational Factories', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('serverRoom', bt0 + 0.0, bt0 + 4.3, { gain: 0.20 });
+      k.play('footstep', bt0 + 0.40, { gain: 0.38 });
+      k.play('powerUp', bt0 + 2.15, { gain: 0.52 });
+      k.play('pillBadge', bt0 + 2.15, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 138 · [07:47.1 - 07:49.6] (467.1s – 469.6s · Duration: 2.5s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 138,
+    start: 467.1,
+    end: 469.6,
+    duration: 2.5,
+    title: 'CHENNAI: "DETROIT OF ASIA" AUTO HUB',
+    vo_line: 'இவ்வளவு ஏன், Detroit of Asia-ன்னு நம்ம சென்னையைதான் சொல்றாங்க.',
+    env_id: 'ENV_MODERN_CHENNAI',
+    chars: 'HOST_PROTAG (bolting SUV chassis at x: 720), MODERN_ENG (inspecting SUV)',
+    on_screen_text: 'CHENNAI: "DETROIT OF ASIA" · 30%+ of India’s Auto & EV Manufacturing Output',
+    camera_sfx: 'cam pan [-20..20], zoom [1.00..1.08] · scienceLab, electricSpark, carHorn, pillBadge',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -20], [2.5, 20]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.25, 1.05], [2.5, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_MODERN_CHENNAI', g, lt, gt, cam, (g) => {
+        // Automated Assembly Line Platform Deck under SUV at x = 820, y = 840
+        g.save();
+        g.fillStyle = '#1E293B';
+        g.strokeStyle = '#38BDF8';
+        g.lineWidth = 3;
+        g.fillRect(620, 818, 400, 24);
+        g.strokeRect(620, 818, 400, 24);
+        g.restore();
+
+        // Target Prop: 3D SUV on Assembly Line at x: 820, y: 840
+        FX.prop3D(g, 820, 840, 1.15, {
+          kind: 'suvCar',
+          color: '#38BDF8',
+          state: 'active',
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt >= 1.25s): SUV Headlights Flash On
+        if (lt >= 1.25) {
+          const beamAlpha = DK.clamp((lt - 1.25) / 0.3, 0, 0.65);
+          g.save();
+          g.fillStyle = `rgba(254, 240, 138, ${beamAlpha})`;
+          g.beginPath();
+          g.moveTo(940, 745);
+          g.lineTo(1260, 680);
+          g.lineTo(1260, 810);
+          g.closePath();
+          g.fill();
+          g.restore();
+        }
+
+        // Hero 1 (HOST_PROTAG at x: 720; 720 + 100 = 820px bolting SUV chassis)
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          x: 720,
+          y: 840,
+          prop: 'wrench',
+          pose: { preset: 'build', speed: 1.3 },
+          t: gt
+        });
+
+        // Hero 2 (MODERN_ENG walking from 1360 to 920; 920 - 100 = 820px inspecting SUV)
+        THEME.spawnChar(g, 'MODERN_ENG', {
+          moveX: [1360, 920, lt, 2.5],
+          y: 840,
+          flipX: true,
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+
+        // Orthogonal Technical Callout
+        UI.techCallout(g, lt, {
+          from: [820, 700],
+          elbow: [1060, 520],
+          to: [1480, 520],
+          title: 'CHENNAI: "DETROIT OF ASIA"',
+          spec: '30%+ of India’s Auto & EV Manufacturing Output',
+          accent: '#5CE1FF',
+          t0: 0.9
+        });
+      });
+
+      UI.citation(g, 'Guidance Tamil Nadu & SIAM Automotive Production Data', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('scienceLab', bt0 + 0.0, bt0 + 2.5, { gain: 0.20 });
+      k.play('electricSpark', bt0 + 0.35, { gain: 0.45 });
+      k.play('carHorn', bt0 + 1.25, { gain: 0.50 });
+      k.play('pillBadge', bt0 + 1.25, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 139 · [07:49.6 - 07:53.4] (469.6s – 473.4s · Duration: 3.8s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 139,
+    start: 469.6,
+    end: 473.4,
+    duration: 3.8,
+    title: '3-SECTOR HUB: IT CORRIDOR, AUTO & HEALTH CAPITAL',
+    vo_line: 'IT கம்பெனிகள், automobile factory-கள், உலகத்தரம் வாய்ந்த மருத்துவமனைகள்னு,',
+    env_id: 'ENV_MODERN_CHENNAI',
+    chars: 'HOST_SWEATER (coding at IT desk x: 420), MODERN_ENG (checking medical monitor at x: 1140)',
+    on_screen_text: 'IT CORRIDOR · AUTOMOBILE HUB · HEALTH CAPITAL OF INDIA',
+    camera_sfx: 'cam pan [-35..35], zoom [1.00..1.07] · serverRoom, dataStream, alarmBeep, pillBadge',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -35], [3.8, 35]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.90, 1.04], [3.8, 1.07]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_MODERN_CHENNAI', g, lt, gt, cam, (g) => {
+        // 3-Sector Pavilion Backdrops (Left: OMR IT Park, Center: Auto Hub, Right: Medical Capital)
+        g.save();
+        // Left IT Zone Header
+        g.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        g.strokeStyle = '#38BDF8';
+        g.lineWidth = 2.5;
+        g.beginPath();
+        g.roundRect(250, 520, 360, 42, 10);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#38BDF8';
+        g.textAlign = 'center';
+        g.font = '800 15px "Space Mono", monospace';
+        g.fillText('OMR · TIDEL IT CORRIDOR', 430, 546);
+
+        // Center Auto Zone Header & Display SUV
+        g.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        g.strokeStyle = '#FF851B';
+        g.beginPath();
+        g.roundRect(650, 520, 300, 42, 10);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#FF851B';
+        g.fillText('AUTOMOBILE & EV HUB', 800, 546);
+
+        // Right Medical Zone Header
+        g.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        g.strokeStyle = '#38C878';
+        g.beginPath();
+        g.roundRect(990, 520, 420, 42, 10);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#38C878';
+        g.fillText('WORLD-CLASS MEDICAL CAPITAL', 1200, 546);
+        g.restore();
+
+        // Center Auto Hub Vehicle
+        FX.prop3D(g, 800, 835, 0.92, {
+          kind: 'suvCar',
+          color: '#FF851B',
+          state: 'active',
+          t: gt
+        });
+
+        // Left IT Hub Props (serverRack + dualMonitorDesk) & Character (HOST_SWEATER at x: 420)
+        FX.prop3D(g, 340, 840, 1.0, {
+          kind: 'serverRack',
+          color: '#38BDF8',
+          state: 'active',
+          t: gt
+        });
+        FX.prop3D(g, 505, 840, 1.0, {
+          kind: 'dualMonitorDesk',
+          color: '#38BDF8',
+          state: 'active',
+          t: gt
+        });
+        THEME.spawnChar(g, 'HOST_SWEATER', {
+          x: 420,
+          y: 840,
+          pose: { preset: 'write', speed: 1.3 },
+          t: gt
+        });
+
+        // Right Medical Hub Props (hospitalBed + ecgMonitor at x: 1050) & Character (MODERN_ENG)
+        FX.prop3D(g, 1250, 840, 0.95, {
+          kind: 'hospitalBed',
+          color: '#38C878',
+          state: 'active',
+          t: gt
+        });
+        FX.prop3D(g, 1050, 840, 1.0, {
+          kind: 'ecgMonitor',
+          color: '#38C878',
+          state: 'active',
+          t: gt
+        });
+        THEME.spawnChar(g, 'MODERN_ENG', {
+          moveX: [1480, 1140, lt, 3.8],
+          y: 840,
+          flipX: true,
+          topColor: '#F8FAFC',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'IT CORRIDOR · AUTOMOBILE HUB · HEALTH CAPITAL OF INDIA',
+        x: 960,
+        y: 120,
+        accent: '#38C878'
+      });
+
+      UI.citation(g, 'NASSCOM, SIAM & Ministry of Tourism Medical Hub Reports', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('serverRoom', bt0 + 0.0, bt0 + 3.8, { gain: 0.20 });
+      k.play('dataStream', bt0 + 0.35, { gain: 0.42 });
+      k.play('alarmBeep', bt0 + 1.90, { gain: 0.42 });
+      k.play('pillBadge', bt0 + 1.90, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 140 · [07:53.4 - 07:58.3] (473.4s – 478.3s · Duration: 4.9s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 140,
+    start: 473.4,
+    end: 478.3,
+    duration: 4.9,
+    title: '#2 LARGEST STATE ECONOMY IN INDIA (GSDP)',
+    vo_line: 'பொருளாதாரத்துல இந்தியாவிலேயே இரண்டாவது மிகப்பெரிய மாநிலமா நம்ம தமிழ்நாடு அரசு வளர்ச்சி பெற்றிருக்கு.',
+    env_id: 'ENV_MODERN_CHENNAI',
+    chars: 'HOST_PROTAG (touching #2 TAMIL NADU 3D bar pedestal at x: 835)',
+    on_screen_text: '#2 LARGEST STATE ECONOMY IN INDIA (GSDP) · ₹31.5+ Lakh Crore',
+    camera_sfx: 'cam [0, 0], zoom [1.00..1.09] · serverRoom, counterTick, powerUp, pillBadge',
+    draw(g, lt, gt, u) {
+      // Rule 3 Compliant: cam.x = 0, cam.y = 0 on 3D chart shots
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [2.45, 1.05], [4.9, 1.09]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_MODERN_CHENNAI', g, lt, gt, cam, (g) => {
+        // 3D Extruded Bar Chart (CHART_GDP_RANK) rendered unobstructed on Hero Plane
+        THEME.drawInfo('CHART_GDP_RANK', g, lt, gt);
+
+        // Target Prop: Gold Trophy Pedestal at x: 835, y: 850
+        FX.interactiveProp(g, {
+          kind: 'scholarDesk',
+          x: 835,
+          y: 850,
+          lt,
+          gt
+        });
+
+        // Mid-Shot Micro-Beat (lt >= 2.45s): Golden #2 TAMIL NADU Trophy Crest on Pedestal
+        if (lt >= 2.45) {
+          const pop = DK.pop(lt, 2.45, 0.4);
+          g.save();
+          g.translate(835, 735);
+          g.scale(pop, pop);
+          g.fillStyle = '#F7B928';
+          g.strokeStyle = '#FEF08A';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.arc(0, 0, 26, 0, Math.PI * 2);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#0F172A';
+          g.textAlign = 'center';
+          g.font = '900 18px "Fredoka", sans-serif';
+          g.fillText('#2', 0, 6);
+          g.restore();
+        }
+
+        // Hero 1 (HOST_PROTAG walking from 320 to 740; 740 + 95 = 835px touching #2 TAMIL NADU pedestal)
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          moveX: [320, 740, lt, 4.9],
+          y: 850,
+          eyeMode: 'happyArch',
+          mouth: 'smile',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: '#2 LARGEST STATE ECONOMY IN INDIA (GSDP)',
+        x: 960,
+        y: 115,
+        accent: '#F7B928'
+      });
+
+      UI.citation(g, 'Reserve Bank of India (RBI) Handbook of Statistics on Indian States (2025–2026)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('serverRoom', bt0 + 0.0, bt0 + 4.9, { gain: 0.18 });
+      k.play('counterTick', bt0 + 0.45, { gain: 0.45 });
+      k.play('counterTick', bt0 + 1.25, { gain: 0.48 });
+      k.play('powerUp', bt0 + 2.45, { gain: 0.58 });
+      k.play('pillBadge', bt0 + 2.45, { gain: 0.48 });
+    }
+  }
+];
+
+if (window.DK && DK.linkShotTransitions) DK.linkShotTransitions(SHOTS, window.THEME);
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const BATCH_START = SHOTS[0].start;
+const BATCH_END = SHOTS[SHOTS.length - 1].end;
+const DURATION = BATCH_END - BATCH_START;
+
+// Auto-runs each shot's attached sfx(k, bt0) if scoreSound(k) is not defined separately
+if (typeof window.scoreSound !== 'function') {
+  window.scoreSound = function scoreSound(k) {
+    SHOTS.forEach((s) => {
+      if (typeof s.sfx === 'function') s.sfx(k, s.start - BATCH_START);
+    });
+  };
+}
+const scoreSound = window.scoreSound;
+
+window.BATCH_START = BATCH_START;
+window.BATCH_END = BATCH_END;
+window.DURATION = DURATION;
+window.SHOTS = SHOTS;
+window.scoreSound = scoreSound;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, activeShotFilter = 'all', voAudio = null;
+
+function findShotAtGlobal(gt) {
+  for (let i = 0; i < SHOTS.length; i++) {
+    if (gt >= SHOTS[i].start && gt <= SHOTS[i].end) return SHOTS[i];
+  }
+  return gt < SHOTS[0].start ? SHOTS[0] : SHOTS[SHOTS.length - 1];
+}
+
+function renderAtLocal(localT) {
+  currentT = DK.clamp(localT, 0, DURATION);
+  const gt = BATCH_START + currentT;
+  const s = findShotAtGlobal(gt);
+  const lt = DK.clamp(gt - s.start, 0, s.duration);
+  const u = s.duration > 0 ? lt / s.duration : 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1920, 1080);
+  ctx.save();
+  if (window.DK && DK.drawShot) DK.drawShot(ctx, s, lt, gt, u);
+  else s.draw(ctx, lt, gt, u);
+  ctx.restore();
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = gt.toFixed(2) + 's (' + currentT.toFixed(2) + 's) · Shot ' + s.shot_number;
+}
+
+window.seek = function (t, opts) {
+  if (playing) pause();
+  const localT = opts && opts.global ? t - BATCH_START : t;
+  renderAtLocal(localT);
+};
+
+function startAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('mixSelect').value;
+  if (mixMode !== 'mute' && window.SOUND) stopSound = SOUND.live(scoreSound, currentT, { mixMode: 'sfxOnly' });
+  if (voAudio) { voAudio.currentTime = BATCH_START + currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (activeShotFilter !== 'all') {
+      const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+      if (s) {
+        const sLocal0 = s.start - BATCH_START, sLocal1 = s.end - BATCH_START;
+        if (nextT >= sLocal1) { nextT = sLocal0; currentT = nextT; startAudio(); }
+      }
+    } else if (nextT >= DURATION) {
+      nextT = 0; currentT = 0; startAudio();
+    }
+    renderAtLocal(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+const shotSelect = document.getElementById('shotSelect');
+SHOTS.forEach((s) => {
+  const opt = document.createElement('option');
+  opt.value = String(s.shot_number);
+  opt.textContent = 'Shot ' + s.shot_number + ': ' + s.title + ' (' + s.start.toFixed(1) + 's-' + s.end.toFixed(1) + 's)';
+  shotSelect.appendChild(opt);
+});
+
+shotSelect.addEventListener('change', () => {
+  activeShotFilter = shotSelect.value;
+  if (activeShotFilter !== 'all') {
+    const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+    if (s) { renderAtLocal(s.start - BATCH_START); if (playing) startAudio(); }
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  renderAtLocal(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('mixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('wavBtn').addEventListener('click', async () => {
+  const res = await SOUND.renderOffline(scoreSound, DURATION, 48000, { mixMode: 'sfxOnly' });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'batch_sfx_' + SHOTS[0].shot_number + '_' + SHOTS[SHOTS.length - 1].shot_number + '.wav';
+  a.click();
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  if (window.MAP && MAP.preloadAll) await MAP.preloadAll(SHOTS);
+  renderAtLocal(0);
+});
+</script>
+</body>
+</html>

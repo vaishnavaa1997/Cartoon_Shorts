@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lumina 2.5D Storybook Studio (16:9) — Shots 61 to 70 (shots_61_70.html)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #05070d; color: #e2e8f0; font-family: 'Nunito', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#stage-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; overflow: hidden; }
+canvas { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; box-shadow: 0 16px 48px rgba(0,0,0,0.75); background: #070b16; }
+#controls { height: 58px; background: #101522; border-top: 1px solid #222b42; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 13px; }
+button, select, label.btn { background: #1c2539; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+button:hover, select:hover, label.btn:hover { background: #283552; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 12px; color: #ffb074; min-width: 230px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><canvas id="stage" width="1920" height="1080"></canvas></div>
+<div id="controls">
+  <button id="playBtn">Play</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.0s / 00.0s · Shot 61</div>
+  <select id="shotSelect"><option value="all">All Shots in Batch (61–70)</option></select>
+  <select id="mixSelect">
+    <option value="sfxOnly" selected>SFX + Ambient Only (No BGM)</option>
+    <option value="mute">Mute</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="wavBtn">Export Batch SFX (.wav)</button>
+</div>
+<script src="../../engine.js"></script>
+<script>
+const THEME = {
+  CHARS: {
+    PERUNTHACHAN: {
+      skin: '#C88C68',
+      hairStyle: 'scholarBun',
+      hairColor: '#788092',
+      wardrobe: 'ancientTamil',
+      topColor: '#D98238',
+      bottomColor: '#F4EFE6',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      beard: false,
+      mustache: false,
+      s: 1.0
+    },
+    RAJARAJA_CHOLA: {
+      skin: '#C88C68',
+      hairStyle: 'royalBun',
+      hairColor: '#1A1615',
+      wardrobe: 'ancientTamil',
+      topColor: '#F7B928',
+      bottomColor: '#B8332A',
+      headwear: 'crown',
+      foreheadMark: 'tilak',
+      beard: false,
+      mustache: false,
+      s: 1.06
+    },
+    RAJENDRA_CHOLA: {
+      skin: '#C88C68',
+      hairStyle: 'warriorKnot',
+      hairColor: '#1A1615',
+      wardrobe: 'ancientTamil',
+      topColor: '#E63946',
+      bottomColor: '#F7B928',
+      headwear: 'crown',
+      foreheadMark: 'vibhuti',
+      beard: false,
+      mustache: false,
+      s: 1.06
+    },
+    KEELADI_MASON: {
+      skin: '#7A4E38',
+      hairStyle: 'warriorKnot',
+      hairColor: '#1A1615',
+      wardrobe: 'ancientTamil',
+      topColor: '#C87D55',
+      bottomColor: '#E8DFD1',
+      headwear: 'none',
+      foreheadMark: 'vibhuti',
+      beard: false,
+      mustache: false,
+      s: 1.0
+    },
+    TAMIL_FARMER: {
+      skin: '#7A4E38',
+      hairStyle: 'shortCrop',
+      hairColor: '#261C1A',
+      wardrobe: 'ancientTamil',
+      topColor: '#5A8F68',
+      bottomColor: '#F4EFE6',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      beard: false,
+      mustache: false,
+      s: 0.98
+    },
+    HOST_SWEATER: {
+      skin: '#D69A72',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      wardrobe: 'sweater',
+      topColor: '#FF851B',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      beard: false,
+      mustache: false,
+      s: 1.0
+    },
+    HOST_SCIENTIST: {
+      skin: '#D69A72',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      wardrobe: 'scientist',
+      topColor: '#F8FAFC',
+      bottomColor: '#334155',
+      headwear: 'none',
+      foreheadMark: null,
+      beard: false,
+      mustache: false,
+      s: 1.0
+    }
+  },
+
+  ANIMALS: {
+    WORK_ELEPHANT: {
+      kind: 'elephant',
+      s: 1.15,
+      royal: true,
+      expr: 'neutral'
+    }
+  },
+
+  drawChar(id, g, opts = {}) {
+    const base = this.CHARS[id] || this.CHARS.HOST_SWEATER;
+    DK.char(g, Object.assign({}, base, opts, { beard: false, mustache: false }));
+  },
+
+  drawAnimal(id, g, opts = {}) {
+    const base = this.ANIMALS[id] || this.ANIMALS.WORK_ELEPHANT;
+    DK.animal(g, Object.assign({}, base, opts));
+  },
+
+  drawFloatingEraDial(g, lt, opts = {}) {
+    const era = opts.era || 'CHOLA EMPIRE';
+    const year = opts.year || '1014 – 1044 CE';
+    const x = opts.x || 960;
+    const y = opts.y || 128;
+    const pop = DK.pop(lt, opts.t0 || 0.15, 0.45);
+    g.save();
+    g.translate(x, y);
+    g.scale(pop, pop);
+
+    g.fillStyle = 'rgba(12, 18, 34, 0.92)';
+    g.strokeStyle = '#F7B928';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.roundRect(-330, -44, 660, 88, 44);
+    g.fill();
+    g.stroke();
+
+    g.strokeStyle = 'rgba(247, 185, 40, 0.35)';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.roundRect(-318, -34, 636, 68, 34);
+    g.stroke();
+
+    // Rotating golden sun-wheel emblem on left
+    g.save();
+    g.translate(-265, 0);
+    g.rotate(lt * 0.8);
+    g.strokeStyle = '#F7B928';
+    g.lineWidth = 2.5;
+    g.beginPath();
+    g.arc(0, 0, 22, 0, Math.PI * 2);
+    g.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      g.beginPath();
+      g.moveTo(Math.cos(a) * 10, Math.sin(a) * 10);
+      g.lineTo(Math.cos(a) * 26, Math.sin(a) * 26);
+      g.stroke();
+    }
+    g.restore();
+
+    g.textAlign = 'center';
+    g.fillStyle = '#FFD54F';
+    g.font = '800 15px "Space Mono", monospace';
+    g.fillText('ERA CHRONICLE // ' + year, 25, -8);
+
+    g.fillStyle = '#FFFFFF';
+    g.font = '900 24px "Fredoka", sans-serif';
+    g.fillText(era, 25, 22);
+    g.restore();
+  },
+
+  ENVS: {
+    ENV_THANJAVUR_VIMANA(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('clearDay')(g);
+          FX.sun(g, 1540, 190, 62);
+          FX.godRays(g, 1540, 190, { count: 7, a: 0.16 });
+          FX.clouds(g, { seed: 61, count: 6, y: 140, h: 130, color: '#FFFFFF', a: 0.88, t: gt, speed: 10 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'ancientTamil', y: 760, seed: 61 });
+          FX.tree(g, 210, 760, 0.85, '#3E7A4E', 'palm');
+          FX.tree(g, 1710, 760, 0.9, '#3E7A4E', 'palm');
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'templeCourtyard', y: 840, seed: 61 });
+          FX.structure3D(g, 230, 840, 210, 220, { kind: 'mandapam', color: '#C89B6E', t: gt });
+          FX.structure3D(g, 1690, 840, 210, 220, { kind: 'mandapam', color: '#C89B6E', t: gt });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#B68F68', grassCol: '#4A8C4A' });
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: 'rgba(255, 215, 130, 0.16)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_GRANITE_HAUL_ROAD(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('clearDay')(g);
+          FX.sun(g, 1480, 195, 58);
+          FX.clouds(g, { seed: 62, count: 7, y: 145, h: 135, color: '#FFFFFF', a: 0.9, t: gt, speed: 12 });
+        },
+        bgFar: (g) => {
+          // Flat alluvial Kaveri delta horizon with zero granite hills
+          g.fillStyle = '#7BB668';
+          g.fillRect(0, 710, 1920, 130);
+          FX.waterBody(g, gt, { x: 0, y: 742, w: 1920, h: 42, color: '#3898EC', waves: true });
+          FX.tree(g, 180, 740, 0.75, '#3E7A4E', 'palm');
+          FX.tree(g, 520, 740, 0.7, '#3E7A4E', 'palm');
+          FX.tree(g, 1390, 740, 0.75, '#3E7A4E', 'palm');
+          FX.tree(g, 1730, 740, 0.8, '#3E7A4E', 'palm');
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'farmClearing', y: 840, seed: 62 });
+          FX.tree(g, 280, 840, 0.95, '#3D7A47', 'palm');
+          FX.tree(g, 1650, 840, 1.0, '#3D7A47', 'banyan');
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'earthPath', baseCol: '#8C6747', grassCol: '#4E944F' });
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 8, color: 'rgba(255, 235, 175, 0.14)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_CREATOR_STUDIO(g, lt, gt, cam, heroFn) {
+      FX.infographicEnv(g, gt, {
+        preset: 'techStudio',
+        cam: cam,
+        y: 840,
+        seed: 67,
+        hero: heroFn
+      });
+    },
+
+    ENV_ANCIENT_HARBOR(g, lt, gt, cam, heroFn) {
+      FX.infographicEnv(g, gt, {
+        preset: 'ancientHarbor',
+        cam: cam,
+        y: 840,
+        seed: 70,
+        hero: (g) => {
+          FX.waterBody(g, gt, { x: 0, y: 760, w: 1920, h: 90, color: '#1E6BA8', waves: true });
+          FX.structure3D(g, 340, 790, 260, 220, { kind: 'cholaShip', color: '#8C5230', t: gt });
+          FX.structure3D(g, 1480, 795, 280, 235, { kind: 'cholaShip', color: '#7A4628', t: gt });
+          if (heroFn) heroFn(g);
+        }
+      });
+    }
+  },
+
+  INFO: {
+    SCALE_BIG_TEMPLE(g, lt, gt) {
+      // Render monumental Brihadeeswarar Vimana (66m) at x: 960, y: 840
+      FX.structure3D(g, 960, 840, 320, 560, { kind: 'gopuram', color: '#C87A42', t: gt });
+
+      // Octagonal 80-tonne Sikharam dome & golden Kalasam finial
+      g.save();
+      g.fillStyle = '#B86830';
+      g.strokeStyle = '#5A2E14';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.roundRect(890, 260, 140, 44, 16);
+      g.fill();
+      g.stroke();
+
+      // Golden Kalasam spire
+      g.fillStyle = '#F7B928';
+      g.beginPath();
+      g.moveTo(960, 212);
+      g.lineTo(976, 260);
+      g.lineTo(944, 260);
+      g.closePath();
+      g.fill();
+      g.restore();
+
+      // Scale comparison items on left platform
+      if (UI.scaleComparison) {
+        g.save();
+        g.translate(-340, 0);
+        UI.scaleComparison(g, lt, {
+          x: 680,
+          y: 840,
+          camZoom: 1.0,
+          grid: false,
+          items: [
+            { label: 'HUMAN (1.75m)', heightM: 1.75, kind: 'char', color: '#5CE1FF' },
+            { label: 'ELEPHANT (3.2m)', heightM: 3.2, kind: 'elephant', color: '#F7B928' },
+            { label: 'VIMANA (66m)', heightM: 66, kind: 'gopuram', color: '#FF851B' }
+          ],
+          t: gt
+        });
+        g.restore();
+      }
+    },
+
+    TEARDOWN_CHOLA_INTERLOCK(g, lt, gt, opts = {}) {
+      const explode = opts.explode !== undefined ? opts.explode : 0.5;
+      // Subtle architectural blueprint backdrop card so the courtyard stays visible around it
+      g.save();
+      g.fillStyle = 'rgba(11, 18, 34, 0.84)';
+      g.strokeStyle = 'rgba(92, 225, 255, 0.45)';
+      g.lineWidth = 2.5;
+      g.beginPath();
+      g.roundRect(410, 210, 1100, 560, 22);
+      g.fill();
+      g.stroke();
+      g.restore();
+
+      UI.explodedAssembly(g, lt, {
+        x: 960,
+        y: 520,
+        s: 1.08,
+        explode: explode,
+        isolateIdx: null,
+        layers: [
+          {
+            id: 'base_plinth',
+            label: 'UPAPITHA GRANITE BASE',
+            subText: 'Precision Mortise Grooves · 0.0mm Mortar',
+            w: 420,
+            d: 250,
+            h: 48,
+            color: '#8E765E',
+            detail: 'grid'
+          },
+          {
+            id: 'middle_course',
+            label: 'ADHISHTHANA INTERLOCK COURSE',
+            subText: 'Dovetail & Tenon Stone Keying',
+            w: 390,
+            d: 230,
+            h: 46,
+            color: '#AD9174',
+            detail: 'grid'
+          },
+          {
+            id: 'upper_vimana',
+            label: 'HOLLOW-CORE VIMANA COURSE',
+            subText: 'Pure Gravity Axial Load Lock',
+            w: 360,
+            d: 210,
+            h: 44,
+            color: '#C9AD8E',
+            detail: 'grid'
+          }
+        ]
+      });
+
+      // Draw visible dovetail/tenon stone interlock teeth between the layers
+      const gap = explode * 95;
+      g.save();
+      for (let i = -1; i <= 1; i++) {
+        const tx = 960 + i * 95;
+        // Tenon pegs protruding from upper/middle courses
+        g.fillStyle = '#D9B99B';
+        g.strokeStyle = '#4A3B2C';
+        g.lineWidth = 2;
+        g.fillRect(tx - 18, 500 - gap * 0.45, 36, 18);
+        g.strokeRect(tx - 18, 500 - gap * 0.45, 36, 18);
+        g.fillRect(tx - 18, 565 + gap * 0.45, 36, 18);
+        g.strokeRect(tx - 18, 565 + gap * 0.45, 36, 18);
+      }
+      g.restore();
+    }
+  },
+
+  drawInfo(id, g, lt, gt, opts = {}) {
+    if (this.INFO[id]) this.INFO[id](g, lt, gt, opts);
+  }
+};
+window.THEME = THEME;
+
+const SHOTS = [
+  // =========================================================================
+  // BATCH 13: SHOTS 061 TO 065 (204.8s – 219.9s)
+  // =========================================================================
+  {
+    shot_number: 61,
+    title: 'Scale Arena: Thanjavur Brihadeeswarar Temple (66m / 216 ft)',
+    start: 204.8,
+    end: 207.3,
+    duration: 2.5,
+    vo_line: 'தஞ்சை பெரிய கோயிலும் ராஜராஜ சோழன் கட்டுனதுதான்.',
+    env_id: 'ENV_THANJAVUR_VIMANA + SCALE_BIG_TEMPLE',
+    chars: 'PERUNTHACHAN (walk [420->865]), RAJARAJA_CHOLA (admire at 1055)',
+    on_screen_text: 'BRIHADEESWARAR TEMPLE (தஞ்சை பெரிய கோயில் · 1010 CE) · 66 METERS (216 FT)',
+    camera_sfx: 'cam.y [+12 -> -12], z: 1.04 · templeBell, ding, conchShell',
+    transition_out: 'CAMERA_PULL_TO_FLAT_PLAINS',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: DK.key(lt, [[0, 12], [2.5, -12]], DK.ease.outCubic),
+        z: 1.04
+      };
+
+      THEME.ENVS.ENV_THANJAVUR_VIMANA(g, lt, gt, cam, (g) => {
+        // Monumental Brihadeeswarar Vimana & Scale Comparison
+        THEME.drawInfo('SCALE_BIG_TEMPLE', g, lt, gt);
+
+        // Chief Architect Kunjaramallan Rajaraja Perunthachan walking up to the temple plinth (charX + 95px at arrival)
+        THEME.drawChar('PERUNTHACHAN', g, {
+          moveX: [420, 865, lt, 2.5],
+          y: 840,
+          pose: { preset: 'walk', speed: 1.15 },
+          prop: 'scroll',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          t: gt,
+          seed: 61
+        });
+
+        // Emperor Rajaraja Chola I admiring the Vimana on the right of the plinth (charX - 95px from plinth)
+        THEME.drawChar('RAJARAJA_CHOLA', g, {
+          x: 1055,
+          y: 840,
+          flipX: true,
+          pose: { preset: 'admire', speed: 1.0 },
+          prop: 'vel',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          t: gt,
+          seed: 62
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.25s): Vertical laser dimension line locks at 66 METERS (216 FT)
+        const dimP = DK.prog(lt, 0.3, 1.25);
+        const topY = DK.lerp(840, 215, DK.ease.outCubic(dimP));
+        g.save();
+        g.strokeStyle = lt >= 1.25 ? '#FF851B' : '#5CE1FF';
+        g.lineWidth = 3.5;
+        g.setLineDash([8, 6]);
+        g.beginPath();
+        g.moveTo(1185, 840);
+        g.lineTo(1185, topY);
+        g.stroke();
+        g.setLineDash([]);
+
+        // Horizontal ticks
+        g.beginPath();
+        g.moveTo(1165, 840);
+        g.lineTo(1205, 840);
+        g.moveTo(1165, topY);
+        g.lineTo(1205, topY);
+        g.stroke();
+
+        if (lt >= 1.25) {
+          const pop = DK.pop(lt, 1.25, 0.35);
+          g.translate(1420, 420);
+          g.scale(pop, pop);
+          g.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          g.strokeStyle = '#FF851B';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.roundRect(-210, -42, 420, 84, 14);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FFD54F';
+          g.font = '800 15px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.fillText('SRIVIMANA HEIGHT LOCK', 0, -10);
+          g.fillStyle = '#FFFFFF';
+          g.font = '900 21px "Nunito", sans-serif';
+          g.fillText('66 METERS (216 FT) · 1010 CE', 0, 20);
+        }
+        g.restore();
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'BRIHADEESWARAR TEMPLE (தஞ்சை பெரிய கோயில் · 1010 CE)',
+        x: 960,
+        y: 115,
+        accent: '#FF851B',
+        t0: 0.2
+      });
+      UI.citation(g, 'UNESCO Great Living Chola Temples · Built 1003–1010 CE', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 2.5, { gain: 0.22 });
+      k.play('templeBell', bt0 + 0.20, { gain: 0.58 });
+      k.play('ding', bt0 + 1.25, { gain: 0.52 });
+      k.play('conchShell', bt0 + 1.50, { gain: 0.50 });
+    }
+  },
+
+  {
+    shot_number: 62,
+    title: 'Zero Mountains or Granite Quarries Around Thanjavur',
+    start: 207.3,
+    end: 209.8,
+    duration: 2.5,
+    vo_line: 'அந்த time-ல தஞ்சாவூரை சுத்தி எந்த மலையும் பாறையும் கிடையாது.',
+    env_id: 'ENV_GRANITE_HAUL_ROAD',
+    chars: 'PERUNTHACHAN (walk [520->880], prop: telescope, survey post at 970)',
+    on_screen_text: 'ALLUVIAL KAVERI DELTA · ZERO LOCAL GRANITE QUARRIES · 0 GRANITE HILLS WITHIN 50 KM',
+    camera_sfx: 'cam.x [-28 -> +28], z: 1.02 · footstep, submarineSonar, whoosh',
+    transition_out: 'WHIP_PAN_TO_QUARRY_ROAD',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0, -28], [2.5, 28]], DK.ease.inOutSine),
+        y: 0,
+        z: 1.02
+      };
+
+      THEME.ENVS.ENV_GRANITE_HAUL_ROAD(g, lt, gt, cam, (g) => {
+        // Survey post / table at x: 970 (charX + 90px at arrival)
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 970, y: 840, lt, gt });
+
+        // Chief Architect Perunthachan walking up and scanning the flat delta horizon
+        THEME.drawChar('PERUNTHACHAN', g, {
+          moveX: [520, 880, lt, 2.5],
+          y: 840,
+          pose: { preset: 'walk', speed: 1.15 },
+          prop: 'telescope',
+          brows: lt >= 1.25 ? 'raised' : 'neutral',
+          mouth: lt >= 1.25 ? 'o' : 'neutral',
+          t: gt,
+          seed: 62
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.25s): Radar scan sweeps across flat delta & flashes '0 GRANITE HILLS WITHIN 50 KM'
+        if (lt >= 1.0) {
+          const scanP = DK.prog(lt, 1.0, 2.2);
+          const radius = DK.lerp(40, 680, scanP);
+          g.save();
+          g.strokeStyle = 'rgba(255, 77, 106, ' + (1 - scanP * 0.65).toFixed(2) + ')';
+          g.lineWidth = 4;
+          g.beginPath();
+          g.ellipse(970, 790, radius, radius * 0.22, 0, 0, Math.PI * 2);
+          g.stroke();
+
+          if (lt >= 1.25) {
+            const pop = DK.pop(lt, 1.25, 0.35);
+            g.translate(970, 490);
+            g.scale(pop, pop);
+            g.fillStyle = 'rgba(24, 12, 22, 0.92)';
+            g.strokeStyle = '#FF4D6A';
+            g.lineWidth = 3;
+            g.beginPath();
+            g.roundRect(-250, -42, 500, 84, 14);
+            g.fill();
+            g.stroke();
+
+            g.fillStyle = '#FF4D6A';
+            g.font = '800 15px "Space Mono", monospace';
+            g.textAlign = 'center';
+            g.fillText('GEOLOGICAL SURVEY SCAN // FLAT ALLUVIAL SOIL', 0, -10);
+            g.fillStyle = '#FFFFFF';
+            g.font = '900 22px "Nunito", sans-serif';
+            g.fillText('0 GRANITE HILLS WITHIN 50 KM', 0, 20);
+          }
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'ALLUVIAL KAVERI DELTA · ZERO LOCAL GRANITE QUARRIES',
+        x: 960,
+        y: 120,
+        accent: '#FF4D6A',
+        t0: 0.2
+      });
+      UI.citation(g, 'Geological Survey of India: Cauvery Alluvial Basin', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('forestMorning', bt0 + 0.0, bt0 + 2.5, { gain: 0.20 });
+      k.play('footstep', bt0 + 0.50, { gain: 0.35 });
+      k.play('submarineSonar', bt0 + 1.25, { gain: 0.48 });
+      k.play('whoosh', bt0 + 2.20, { gain: 0.45 });
+    }
+  },
+
+  {
+    shot_number: 63,
+    title: 'Hauling 130,000 Tonnes of Granite Over 50 Kilometers',
+    start: 209.8,
+    end: 213.2,
+    duration: 3.4,
+    vo_line: 'ஆனா 1,30,000 டன் எடையுள்ள granite-களை 50 கிலோமீட்டருக்கும் அங்கிட்டு இருந்து',
+    env_id: 'ENV_GRANITE_HAUL_ROAD',
+    chars: 'KEELADI_MASON (push [240->1080]), TAMIL_FARMER (push [150->990]), WORK_ELEPHANT ([450->1290])',
+    on_screen_text: '130,000 TONNES OF GRANITE · Quarried from Narthamalai / Pudukkottai (>50 km Away)',
+    camera_sfx: 'cam.x [-32 -> +32], z: 1.04 · thud, elephantTrumpet, pillBadge',
+    transition_out: 'CONTINUOUS_RAMP_PUSH',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0, -32], [3.4, 32]], DK.ease.linear),
+        y: 0,
+        z: 1.04
+      };
+
+      THEME.ENVS.ENV_GRANITE_HAUL_ROAD(g, lt, gt, cam, (g) => {
+        const blockX = DK.lerp(330, 1170, lt / 3.4);
+
+        // Target interactive prop at charX + 90px exact hand contact
+        FX.interactiveProp(g, {
+          kind: 'brickWallBuild',
+          x: blockX,
+          y: 840,
+          cutTime: 99,
+          lt,
+          gt
+        });
+
+        // Monumental dressed granite monolith on heavy timber rollers
+        g.save();
+        g.translate(blockX, 840);
+        // Timber log rollers rotating
+        for (let r = -75; r <= 75; r += 50) {
+          g.save();
+          g.translate(r, -16);
+          g.rotate(lt * 4.5);
+          g.fillStyle = '#5C3A21';
+          g.strokeStyle = '#2B180A';
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.arc(0, 0, 16, 0, Math.PI * 2);
+          g.fill();
+          g.stroke();
+          g.restore();
+        }
+        // Granite monolith block
+        g.fillStyle = '#9E9589';
+        g.strokeStyle = '#4A433B';
+        g.lineWidth = 3.5;
+        g.beginPath();
+        g.roundRect(-95, -145, 190, 115, 8);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#B8AFA3';
+        g.fillRect(-85, -135, 170, 24);
+        g.fillStyle = '#2B2622';
+        g.font = '800 15px "Space Mono", monospace';
+        g.textAlign = 'center';
+        g.fillText('GRANITE MONOLITH', 0, -80);
+        g.fillText('130,000 TONNES', 0, -56);
+
+        // Heavy hemp haul ropes connecting monolith to Work Elephant ahead
+        g.strokeStyle = '#C89D66';
+        g.lineWidth = 5;
+        g.beginPath();
+        g.moveTo(95, -75);
+        g.lineTo(210, -85);
+        g.stroke();
+        g.restore();
+
+        // KEELADI_MASON pushing directly against the granite block (charX + 90px = blockX)
+        THEME.drawChar('KEELADI_MASON', g, {
+          moveX: [240, 1080, lt, 3.4],
+          y: 840,
+          pose: { preset: 'push', speed: 1.25 },
+          brows: 'furrowed',
+          mouth: 'frown',
+          t: gt,
+          seed: 63
+        });
+
+        // TAMIL_FARMER pushing behind mason
+        THEME.drawChar('TAMIL_FARMER', g, {
+          moveX: [150, 990, lt, 3.4],
+          y: 840,
+          pose: { preset: 'push', speed: 1.25 },
+          brows: 'furrowed',
+          mouth: 'o',
+          t: gt,
+          seed: 64
+        });
+
+        // WORK_ELEPHANT pulling at the front of the granite sled
+        THEME.drawAnimal('WORK_ELEPHANT', g, {
+          moveX: [450, 1290, lt, 3.4],
+          y: 840,
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.70s): Distance milestone marker & callout highlight
+        if (lt >= 1.3) {
+          UI.techCallout(g, lt, {
+            from: [blockX, 720],
+            elbow: [blockX + 140, 520],
+            to: [blockX + 460, 520],
+            title: '130,000 TONNES OF GRANITE',
+            spec: 'Quarried from Narthamalai / Pudukkottai (>50 km Away)',
+            accent: '#FF851B',
+            t0: 1.3
+          });
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'OVERLAND MEGA-LOGISTICS · >50 KM GRANITE HAUL',
+        x: 960,
+        y: 115,
+        accent: '#FF851B',
+        t0: 0.2
+      });
+      UI.citation(g, 'ASI Engineering Assessment of Brihadeeswarar Temple', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('forestMorning', bt0 + 0.0, bt0 + 3.4, { gain: 0.20 });
+      k.play('thud', bt0 + 0.35, { gain: 0.52 });
+      k.play('elephantTrumpet', bt0 + 1.10, { gain: 0.50 });
+      k.play('pillBadge', bt0 + 1.30, { gain: 0.42 });
+      k.play('thud', bt0 + 1.70, { gain: 0.55 });
+    }
+  },
+
+  {
+    shot_number: 64,
+    title: 'Pushing the 80-Tonne Capstone Up the Earthen Ramp',
+    start: 213.2,
+    end: 216.6,
+    duration: 3.4,
+    vo_line: 'தள்ளி இங்க கொண்டு வந்து இந்த கோயில்களை கட்டிருக்காங்க.',
+    env_id: 'ENV_THANJAVUR_VIMANA',
+    chars: 'KEELADI_MASON (push [380->870]), PERUNTHACHAN (experiment at 1050), WORK_ELEPHANT',
+    on_screen_text: '6-KM INCLINED EARTHEN RAMP · 80-TONNE CAPSTONE',
+    camera_sfx: 'cam.y [+12 -> -12], z: 1.05 · marchSteps, impact (1.70s), conchShell',
+    transition_out: 'SPLIT_MODERN_VS_CHOLA',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: DK.key(lt, [[0, 12], [3.4, -12]], DK.ease.outCubic),
+        z: 1.05
+      };
+
+      THEME.ENVS.ENV_THANJAVUR_VIMANA(g, lt, gt, cam, (g) => {
+        // 6-km inclined earthen ramp geometry leading from left up to the temple plinth at x: 960
+        g.save();
+        g.fillStyle = '#8C6747';
+        g.strokeStyle = '#5C4028';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(120, 840);
+        g.lineTo(960, 740);
+        g.lineTo(960, 840);
+        g.closePath();
+        g.fill();
+        g.stroke();
+        g.restore();
+
+        // Brihadeeswarar Vimana crown receiving the 80-tonne capstone at x: 960, y: 840
+        FX.structure3D(g, 960, 840, 290, 480, { kind: 'gopuram', color: '#C87A42', t: gt });
+        FX.interactiveProp(g, {
+          kind: 'brickWallBuild',
+          x: 960,
+          y: 840,
+          cutTime: 1.70,
+          lt,
+          gt
+        });
+
+        // KEELADI_MASON pushing the 80-tonne capstone block into the temple plinth (charX + 90px at arrival)
+        THEME.drawChar('KEELADI_MASON', g, {
+          moveX: [380, 870, lt, 3.4],
+          y: 840,
+          pose: { preset: 'push', speed: 1.2 },
+          brows: 'furrowed',
+          mouth: lt >= 1.7 ? 'smile' : 'frown',
+          t: gt,
+          seed: 64
+        });
+
+        // Supporting WORK_ELEPHANT on the ramp flank
+        THEME.drawAnimal('WORK_ELEPHANT', g, {
+          moveX: [210, 660, lt, 3.4],
+          y: 840,
+          t: gt
+        });
+
+        // Chief Architect PERUNTHACHAN guiding the lock on the right (x: 1050, charX - 90px from plinth)
+        THEME.drawChar('PERUNTHACHAN', g, {
+          x: 1050,
+          y: 840,
+          flipX: true,
+          pose: { preset: 'experiment', speed: 1.1 },
+          prop: 'scroll',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          t: gt,
+          seed: 61
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.70s): Golden shockwave as 80-tonne capstone locks into the Vimana crown
+        if (lt >= 1.70) {
+          const shockP = DK.prog(lt, 1.70, 2.70);
+          const r = DK.lerp(30, 320, shockP);
+          g.save();
+          g.strokeStyle = 'rgba(247, 185, 40, ' + (1 - shockP).toFixed(2) + ')';
+          g.lineWidth = 6 * (1 - shockP);
+          g.beginPath();
+          g.arc(960, 380, r, 0, Math.PI * 2);
+          g.stroke();
+
+          const pop = DK.pop(lt, 1.70, 0.35);
+          g.translate(1380, 420);
+          g.scale(pop, pop);
+          g.fillStyle = 'rgba(15, 28, 24, 0.94)';
+          g.strokeStyle = '#38C878';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.roundRect(-210, -40, 420, 80, 14);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#38C878';
+          g.font = '800 15px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.fillText('SIKHARAM CROWN LOCKED', 0, -8);
+          g.fillStyle = '#FFFFFF';
+          g.font = '900 20px "Nunito", sans-serif';
+          g.fillText('80-TONNE CAPSTONE AT 66M', 0, 20);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: '6-KM INCLINED EARTHEN RAMP · 80-TONNE CAPSTONE',
+        x: 960,
+        y: 120,
+        accent: '#38C878',
+        t0: 0.25
+      });
+      UI.citation(g, 'Sarabhoji II Inscription & ASI Structural Studies', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.4, { gain: 0.20 });
+      k.play('marchSteps', bt0 + 0.50, { gain: 0.42 });
+      k.play('impact', bt0 + 1.70, { gain: 0.65 });
+      k.play('conchShell', bt0 + 1.95, { gain: 0.52 });
+    }
+  },
+
+  {
+    shot_number: 65,
+    title: 'Modern Cement Mortar vs. Chola Dry-Stone Masonry',
+    start: 216.6,
+    end: 219.9,
+    duration: 3.3,
+    vo_line: 'அதுமட்டுமில்ல, இன்னைக்கு நம்ம building கட்ட சிமெண்ட் use பண்றோம். ஆனா தஞ்சை பெரிய கோயில் கட்டுறதுக்கு',
+    env_id: 'ENV_THANJAVUR_VIMANA',
+    chars: 'HOST_SWEATER (build at 460, brickWallBuild at 545), PERUNTHACHAN (walk [1420->1140], granite pedestal at 1050)',
+    on_screen_text: 'MODERN CEMENT vs. CHOLA DRY-STONE ENGINEERING · [NO CEMENT]',
+    camera_sfx: 'cam.x = 0, cam.y = 0, z: [1.0 -> 1.06] · hammerHit, ding, footstep',
+    transition_out: 'ISOMETRIC_ZOOM_JOINT',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [3.3, 1.06]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_THANJAVUR_VIMANA(g, lt, gt, cam, (g) => {
+        // Center comparison divider line
+        g.save();
+        g.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        g.lineWidth = 3;
+        g.setLineDash([10, 8]);
+        g.beginPath();
+        g.moveTo(960, 200);
+        g.lineTo(960, 840);
+        g.stroke();
+        g.restore();
+
+        // LEFT: Modern Builder (HOST_SWEATER at x: 460) + Brick Wall with grey cement mortar at x: 545 (charX + 85px)
+        FX.interactiveProp(g, {
+          kind: 'brickWallBuild',
+          x: 545,
+          y: 840,
+          cutTime: 1.65,
+          lt,
+          gt
+        });
+        THEME.drawChar('HOST_SWEATER', g, {
+          x: 460,
+          y: 840,
+          pose: { preset: 'build', speed: 1.2 },
+          prop: 'hammer',
+          eyeMode: 'warm',
+          mouth: 'neutral',
+          t: gt,
+          seed: 65
+        });
+
+        // Label for left side
+        g.save();
+        g.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        g.strokeStyle = '#5CE1FF';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.roundRect(350, 230, 380, 54, 12);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#5CE1FF';
+        g.font = '900 18px "Nunito", sans-serif';
+        g.textAlign = 'center';
+        g.fillText('MODERN: PORTLAND CEMENT MORTAR', 540, 264);
+        g.restore();
+
+        // RIGHT: Chola Precision Granite Pedestal at x: 1050 + PERUNTHACHAN walking [1420 -> 1140] (charX - 90px at arrival)
+        FX.interactiveProp(g, {
+          kind: 'scholarDesk',
+          x: 1050,
+          y: 840,
+          lt,
+          gt
+        });
+        // Dressed interlocking granite block on pedestal
+        g.save();
+        g.fillStyle = '#B89B7D';
+        g.strokeStyle = '#4A3B2C';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.roundRect(995, 710, 110, 75, 6);
+        g.fill();
+        g.stroke();
+        g.restore();
+
+        THEME.drawChar('PERUNTHACHAN', g, {
+          moveX: [1420, 1140, lt, 3.3],
+          y: 840,
+          flipX: true,
+          pose: { preset: 'walk', speed: 1.1 },
+          prop: 'scroll',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          t: gt,
+          seed: 61
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.65s): Red [NO CEMENT] stamp slams onto the right granite pedestal
+        if (lt >= 1.65) {
+          const pop = DK.pop(lt, 1.65, 0.35);
+          g.save();
+          g.translate(1160, 490);
+          g.rotate(-0.08);
+          g.scale(pop, pop);
+          g.fillStyle = 'rgba(36, 10, 18, 0.94)';
+          g.strokeStyle = '#FF4D6A';
+          g.lineWidth = 4;
+          g.beginPath();
+          g.roundRect(-170, -42, 340, 84, 12);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FF4D6A';
+          g.font = '900 26px "Fredoka", sans-serif';
+          g.textAlign = 'center';
+          g.fillText('ZERO CEMENT USED!', 0, 8);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'MODERN CEMENT vs. CHOLA DRY-STONE ENGINEERING',
+        x: 960,
+        y: 120,
+        accent: '#5CE1FF',
+        t0: 0.25
+      });
+      UI.citation(g, 'ASI Conservation Reports on Brihadeeswarar Vimana', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.3, { gain: 0.18 });
+      k.play('hammerHit', bt0 + 0.55, { gain: 0.45 });
+      k.play('ding', bt0 + 1.65, { gain: 0.50 });
+      k.play('footstep', bt0 + 2.20, { gain: 0.35 });
+    }
+  },
+
+  // =========================================================================
+  // BATCH 14: SHOTS 066 TO 070 (219.9s – 236.1s)
+  // =========================================================================
+  {
+    shot_number: 66,
+    title: 'Zero Drops of Cement or Binding Paste',
+    start: 219.9,
+    end: 223.2,
+    duration: 3.3,
+    vo_line: 'ஒரு கல்லுக்கும் இன்னொரு கல்லுக்கும் நடுவுல எந்த ஒரு சொட்டு சிமெண்ட்டோ, பசையோ கிடையாது.',
+    env_id: 'ENV_THANJAVUR_VIMANA + TEARDOWN_CHOLA_INTERLOCK',
+    chars: 'DK.hand pointing between mortar-free granite courses at (1240, 540)',
+    on_screen_text: 'ZERO MORTAR / ZERO ADHESIVE · Pure Gravity + Precision Interlocking Granite',
+    camera_sfx: 'cam.x = 0, cam.y = 0, z: [1.0 -> 1.08] · whoosh, pillBadge, ding',
+    transition_out: 'MORPH_TO_LEGO_BLOCKS',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [3.3, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_THANJAVUR_VIMANA(g, lt, gt, cam, (g) => {
+        // Exploded dry-stone granite assembly opening from 0.20 to 0.75
+        const explodeVal = DK.key(lt, [[0, 0.2], [1.65, 0.75]], DK.ease.outCubic);
+        THEME.drawInfo('TEARDOWN_CHOLA_INTERLOCK', g, lt, gt, { explode: explodeVal });
+
+        // Pointer hand (DK.hand) pointing between the mortar-free granite courses
+        DK.hand(g, {
+          x: 1240,
+          y: 540,
+          s: 1.0,
+          skin: '#D69A72',
+          sleeveColor: '#FF851B',
+          pose: 'point',
+          rot: -0.15,
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.65s): Technical spec callout locks in
+        UI.techCallout(g, lt, {
+          from: [960, 540],
+          elbow: [1200, 390],
+          to: [1520, 390],
+          title: 'ZERO MORTAR / ZERO ADHESIVE',
+          spec: '0.0 mm Binding Paste · Pure Gravity + Interlocking Granite',
+          accent: '#FF4D6A',
+          t0: 1.3
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'DRY-STONE GRANITE ARCHITECTURE · 0% BINDING PASTE',
+        x: 960,
+        y: 115,
+        accent: '#FF4D6A',
+        t0: 0.2
+      });
+      UI.citation(g, 'Structural Analysis of Dry-Masonry Chola Vimana (ASI)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.3, { gain: 0.18 });
+      k.play('whoosh', bt0 + 0.25, { gain: 0.45 });
+      k.play('pillBadge', bt0 + 1.30, { gain: 0.42 });
+      k.play('ding', bt0 + 1.65, { gain: 0.50 });
+    }
+  },
+
+  {
+    shot_number: 67,
+    title: 'Everyday Analogy: Locking LEGO Bricks Together',
+    start: 223.2,
+    end: 226.0,
+    duration: 2.8,
+    vo_line: 'இந்த Lego toys எல்லாம் எப்படி ஒண்ணு மேல ஒண்ணு lock பண்ணுவோமோ,',
+    env_id: 'ENV_CREATOR_STUDIO',
+    chars: 'HOST_SWEATER (moveX [380->660], build pose at studio desk x: 750)',
+    on_screen_text: 'ANALOGY: PRECISION LEGO INTERLOCKING · [CLICK!]',
+    camera_sfx: 'cam.x = 0, cam.y = 0, z: [1.0 -> 1.06] · footstep, seatbeltClick (1.40s), pop',
+    transition_out: 'MATCH_CUT_LEGO_TO_GRANITE',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [2.8, 1.06]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_CREATOR_STUDIO(g, lt, gt, cam, (g) => {
+        // Interactive studio worktable at x: 750 (charX + 90px at arrival)
+        FX.interactiveProp(g, {
+          kind: 'scholarDesk',
+          x: 750,
+          y: 840,
+          lt,
+          gt
+        });
+
+        // Host (HOST_SWEATER) walking in and snapping giant 3D LEGO bricks together
+        THEME.drawChar('HOST_SWEATER', g, {
+          moveX: [380, 660, lt, 2.8],
+          y: 840,
+          pose: { preset: 'build', speed: 1.25 },
+          eyeMode: 'warm',
+          mouth: lt >= 1.40 ? 'smile' : 'neutral',
+          t: gt,
+          seed: 67
+        });
+
+        // Giant 3D LEGO-style interlocking blocks on the display pedestal (x: 1020)
+        const snapP = DK.prog(lt, 0.5, 1.40);
+        const topBrickY = DK.lerp(520, 618, DK.ease.outBounce ? DK.ease.outBounce(snapP) : DK.ease.outCubic(snapP));
+
+        g.save();
+        // Bottom LEGO Brick (Blue)
+        g.fillStyle = '#2563EB';
+        g.strokeStyle = '#1E3A8A';
+        g.lineWidth = 3.5;
+        g.beginPath();
+        g.roundRect(880, 670, 280, 82, 8);
+        g.fill();
+        g.stroke();
+        // Bottom Brick Studs
+        for (let s = 0; s < 4; s++) {
+          const sx = 910 + s * 65;
+          g.fillStyle = '#3B82F6';
+          g.fillRect(sx, 650, 42, 20);
+          g.strokeRect(sx, 650, 42, 20);
+        }
+
+        // Top LEGO Brick (Amber/Orange) snapping down onto the bottom studs at lt = 1.40s
+        g.fillStyle = '#F59E0B';
+        g.strokeStyle = '#92400E';
+        g.beginPath();
+        g.roundRect(880, topBrickY, 280, 82, 8);
+        g.fill();
+        g.stroke();
+        for (let s = 0; s < 4; s++) {
+          const sx = 910 + s * 65;
+          g.fillStyle = '#FBBF24';
+          g.fillRect(sx, topBrickY - 20, 42, 20);
+          g.strokeRect(sx, topBrickY - 20, 42, 20);
+        }
+
+        // Mid-Shot Micro-Beat (lt = 1.40s): Crisp [CLICK!] badge pops on lock
+        if (lt >= 1.40) {
+          const pop = DK.pop(lt, 1.40, 0.32);
+          g.translate(1280, 610);
+          g.scale(pop, pop);
+          g.fillStyle = '#38C878';
+          g.strokeStyle = '#FFFFFF';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.roundRect(-95, -32, 190, 64, 16);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#0B0E17';
+          g.font = '900 24px "Fredoka", sans-serif';
+          g.textAlign = 'center';
+          g.fillText('CLICK! LOCKED', 0, 8);
+        }
+        g.restore();
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'ANALOGY: PRECISION LEGO INTERLOCKING',
+        x: 960,
+        y: 120,
+        accent: '#F7B928',
+        t0: 0.25
+      });
+      UI.citation(g, 'Mortise-and-Tenon / Dovetail Stone Joinery Principle', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('cabinHum', bt0 + 0.0, bt0 + 2.8, { gain: 0.16 });
+      k.play('footstep', bt0 + 0.50, { gain: 0.35 });
+      k.play('seatbeltClick', bt0 + 1.40, { gain: 0.58 });
+      k.play('pop', bt0 + 1.45, { gain: 0.48 });
+    }
+  },
+
+  {
+    shot_number: 68,
+    title: 'Granite Interlocking System Compressing Shut',
+    start: 226.0,
+    end: 228.9,
+    duration: 2.9,
+    vo_line: 'அதே மாதிரி கற்களை வெட்டி interlocking system மூலியமா இதை இணைச்சிருக்காங்க.',
+    env_id: 'ENV_THANJAVUR_VIMANA + TEARDOWN_CHOLA_INTERLOCK',
+    chars: 'Isometric Compression Lock (explode 0.85 -> 0.00) + UI.stressLines',
+    on_screen_text: 'GRANITE INTERLOCKING SYSTEM · Hollow-Core Vimana + Dovetail Stone Joints',
+    camera_sfx: 'cam.x = 0, cam.y = 0, z: [1.06 -> 1.0 -> 1.04] · thud, impact (1.45s), templeBell',
+    transition_out: 'CAMERA_PULL_TO_FULL_TEMPLE',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.06], [1.45, 1.0], [2.9, 1.04]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_THANJAVUR_VIMANA(g, lt, gt, cam, (g) => {
+        // Exploded granite assembly compressing from 0.85 down to 0.00 locked state at lt = 1.45s
+        const explodeVal = DK.key(lt, [[0, 0.85], [1.45, 0.0]], DK.ease.inOutCubic);
+        THEME.drawInfo('TEARDOWN_CHOLA_INTERLOCK', g, lt, gt, { explode: explodeVal });
+
+        // Balanced load distribution stress lines once locked
+        if (lt >= 1.35) {
+          UI.stressLines(g, gt, { x: 960, y: 520, r: 230, color: '#38C878' });
+        }
+
+        // Mid-Shot Micro-Beat (lt = 1.45s): Technical Callout + Compression Lock Badge
+        UI.techCallout(g, lt, {
+          from: [960, 520],
+          elbow: [1220, 380],
+          to: [1540, 380],
+          title: 'GRANITE INTERLOCKING SYSTEM',
+          spec: 'Hollow-Core Vimana + Dovetail Stone Joints',
+          accent: '#38C878',
+          t0: 1.2
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'INTERLOCKING STONE JOINERY · AXIAL GRAVITY LOCK',
+        x: 960,
+        y: 115,
+        accent: '#38C878',
+        t0: 0.2
+      });
+      UI.citation(g, 'ASI Structural Engineering Study of Brihadeeswarar Vimana', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 2.9, { gain: 0.20 });
+      k.play('thud', bt0 + 0.60, { gain: 0.50 });
+      k.play('thud', bt0 + 1.05, { gain: 0.55 });
+      k.play('impact', bt0 + 1.45, { gain: 0.68 });
+      k.play('templeBell', bt0 + 1.55, { gain: 0.50 });
+    }
+  },
+
+  {
+    shot_number: 69,
+    title: 'Surviving 6 Major Earthquakes Unshaken',
+    start: 228.9,
+    end: 233.5,
+    duration: 4.6,
+    vo_line: 'இது எவ்வளவு effective-ஆ work ஆயிருக்குன்னா, ஆறு பெரிய நிலநடுக்கங்கள் வந்தும் இந்த கோயில் கொஞ்சம் கூட ஒண்ணும் ஆகல.',
+    env_id: 'ENV_THANJAVUR_VIMANA',
+    chars: 'HOST_SCIENTIST (walk [380->740], seismic monitor at 830)',
+    on_screen_text: '6 EARTHQUAKES SURVIVED · 1,015+ YEARS ZERO TILT',
+    camera_sfx: 'cam.x shake (<2.3s), z: [1.0 -> 1.06] · earthquakeSub, templeBell (2.30s), starShimmer',
+    transition_out: 'WHIP_PAN_TO_HARBOR',
+    draw(g, lt, gt, u) {
+      const shk = lt < 2.3 ? DK.shake(lt, 6, 16, 69) : { x: 0, y: 0 };
+      const cam = {
+        x: DK.clamp(shk.x, -25, 25),
+        y: DK.clamp(shk.y * 0.5, -10, 10),
+        z: DK.key(lt, [[0, 1.0], [4.6, 1.06]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_THANJAVUR_VIMANA(g, lt, gt, cam, (g) => {
+        // Monumental Brihadeeswarar Gopuram standing at 0.0° tilt
+        FX.structure3D(g, 1140, 840, 310, 540, { kind: 'gopuram', color: '#C87A42', t: gt });
+
+        // Seismic ground wave rings during lt < 2.3s
+        if (lt < 2.3) {
+          for (let w = 0; w < 3; w++) {
+            const wp = (lt * 1.4 + w * 0.33) % 1;
+            g.save();
+            g.strokeStyle = 'rgba(255, 133, 27, ' + (1 - wp).toFixed(2) + ')';
+            g.lineWidth = 4;
+            g.beginPath();
+            g.ellipse(1140, 840, 120 + wp * 340, 22 + wp * 48, 0, 0, Math.PI * 2);
+            g.stroke();
+            g.restore();
+          }
+        }
+
+        // Seismic monitor console at x: 830 (charX + 90px at arrival)
+        FX.prop3D(g, 830, 840, 1.0, {
+          kind: 'ecgMonitor',
+          color: '#38C878',
+          state: 'active',
+          t: gt
+        });
+
+        // Structural Analyst (HOST_SCIENTIST) walking up to seismic console
+        THEME.drawChar('HOST_SCIENTIST', g, {
+          moveX: [380, 740, lt, 4.6],
+          y: 840,
+          pose: { preset: 'walk', speed: 1.1 },
+          prop: 'telescope',
+          eyeMode: 'warm',
+          mouth: lt >= 2.3 ? 'smile' : 'o',
+          t: gt,
+          seed: 69
+        });
+
+        // Mid-Shot Micro-Beat (lt = 2.30s): Seismic tremor subsides & plumb-line locks at 0.0° TILT
+        if (lt >= 2.30) {
+          const pop = DK.pop(lt, 2.30, 0.38);
+          g.save();
+          g.translate(1480, 450);
+          g.scale(pop, pop);
+          g.fillStyle = 'rgba(12, 26, 24, 0.94)';
+          g.strokeStyle = '#38C878';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.roundRect(-220, -52, 440, 104, 16);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#38C878';
+          g.font = '800 16px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.fillText('PLUMB-LINE LASER VERIFIED', 0, -14);
+          g.fillStyle = '#FFFFFF';
+          g.font = '900 22px "Nunito", sans-serif';
+          g.fillText('0.00° TILT · 6 QUAKES SURVIVED', 0, 22);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: '6 EARTHQUAKES SURVIVED · 1,015+ YEARS ZERO TILT',
+        x: 960,
+        y: 120,
+        accent: '#38C878',
+        t0: 0.3
+      });
+      UI.citation(g, 'Seismic Resilience of Chola Interlocking Masonry · ASI', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 4.6, { gain: 0.22 });
+      k.play('earthquakeSub', bt0 + 0.25, { gain: 0.65 });
+      k.play('templeBell', bt0 + 2.30, { gain: 0.58 });
+      k.play('starShimmer', bt0 + 2.60, { gain: 0.48 });
+    }
+  },
+
+  {
+    shot_number: 70,
+    title: 'Rajendra Chola I Ascends (1014–1044 CE)',
+    start: 233.5,
+    end: 236.1,
+    duration: 2.6,
+    vo_line: 'ராஜராஜ சோழனுக்கு அப்புறம் வந்த ராஜேந்திர சோழன்',
+    env_id: 'ENV_ANCIENT_HARBOR',
+    chars: 'RAJENDRA_CHOLA (march [360->860], prop: sword, naval podium at 950)',
+    on_screen_text: 'RAJENDRA CHOLA I · 1014 – 1044 CE',
+    camera_sfx: 'cam.x = 0, cam.y = 0, z: [1.0 -> 1.06] · conchShell, marchSteps, timerChime (1.30s)',
+    transition_out: 'CAMERA_PAN_TO_ARMADA',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [2.6, 1.06]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_ANCIENT_HARBOR(g, lt, gt, cam, (g) => {
+        // Royal naval command podium at x: 950 (charX + 90px at arrival)
+        FX.interactiveProp(g, {
+          kind: 'scholarDesk',
+          x: 950,
+          y: 840,
+          lt,
+          gt
+        });
+
+        // Chola Tiger Flag standard beside naval podium
+        g.save();
+        g.strokeStyle = '#D99B26';
+        g.lineWidth = 5;
+        g.beginPath();
+        g.moveTo(1030, 840);
+        g.lineTo(1030, 560);
+        g.stroke();
+        g.fillStyle = '#B8332A';
+        g.beginPath();
+        g.moveTo(1030, 565);
+        g.lineTo(1160, 595 + Math.sin(gt * 4) * 8);
+        g.lineTo(1030, 635);
+        g.closePath();
+        g.fill();
+        g.restore();
+
+        // Emperor Rajendra Chola I marching along the stone pier to the podium
+        THEME.drawChar('RAJENDRA_CHOLA', g, {
+          moveX: [360, 860, lt, 2.6],
+          y: 840,
+          pose: { preset: 'march', speed: 1.2 },
+          prop: 'sword',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          t: gt,
+          seed: 70
+        });
+      });
+
+      // Non-destructive floating HUD chapter banner at y = 128 (obeys Rule 5!)
+      THEME.drawFloatingEraDial(g, lt, {
+        era: 'RAJENDRA CHOLA I',
+        year: '1014 – 1044 CE',
+        x: 960,
+        y: 128,
+        t0: 0.15
+      });
+
+      if (lt >= 1.30) {
+        UI.pillBadge(g, lt, {
+          text: 'GANGAIKONDA CHOLA · SUPREME NAVAL COMMANDER',
+          x: 960,
+          y: 205,
+          accent: '#F7B928',
+          t0: 1.30
+        });
+      }
+
+      UI.citation(g, 'Tiruvalangadu Plates & Thanjavur Prasasti of Rajendra Chola I', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('ancientHarbor', bt0 + 0.0, bt0 + 2.6, { gain: 0.22 });
+      k.play('conchShell', bt0 + 0.20, { gain: 0.55 });
+      k.play('marchSteps', bt0 + 0.75, { gain: 0.42 });
+      k.play('timerChime', bt0 + 1.30, { gain: 0.52 });
+    }
+  }
+];
+
+if (window.DK && DK.linkShotTransitions) DK.linkShotTransitions(SHOTS, window.THEME);
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const BATCH_START = SHOTS[0].start;
+const BATCH_END = SHOTS[SHOTS.length - 1].end;
+const DURATION = BATCH_END - BATCH_START;
+
+// Auto-runs each shot's attached sfx(k, bt0) if scoreSound(k) is not defined separately
+if (typeof window.scoreSound !== 'function') {
+  window.scoreSound = function scoreSound(k) {
+    SHOTS.forEach((s) => {
+      if (typeof s.sfx === 'function') s.sfx(k, s.start - BATCH_START);
+    });
+  };
+}
+const scoreSound = window.scoreSound;
+
+window.BATCH_START = BATCH_START;
+window.BATCH_END = BATCH_END;
+window.DURATION = DURATION;
+window.SHOTS = SHOTS;
+window.scoreSound = scoreSound;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, activeShotFilter = 'all', voAudio = null;
+
+function findShotAtGlobal(gt) {
+  for (let i = 0; i < SHOTS.length; i++) {
+    if (gt >= SHOTS[i].start && gt <= SHOTS[i].end) return SHOTS[i];
+  }
+  return gt < SHOTS[0].start ? SHOTS[0] : SHOTS[SHOTS.length - 1];
+}
+
+function renderAtLocal(localT) {
+  currentT = DK.clamp(localT, 0, DURATION);
+  const gt = BATCH_START + currentT;
+  const s = findShotAtGlobal(gt);
+  const lt = DK.clamp(gt - s.start, 0, s.duration);
+  const u = s.duration > 0 ? lt / s.duration : 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1920, 1080);
+  ctx.save();
+  if (window.DK && DK.drawShot) DK.drawShot(ctx, s, lt, gt, u);
+  else s.draw(ctx, lt, gt, u);
+  ctx.restore();
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = gt.toFixed(2) + 's (' + currentT.toFixed(2) + 's) · Shot ' + s.shot_number;
+}
+
+window.seek = function (t, opts) {
+  if (playing) pause();
+  const localT = opts && opts.global ? t - BATCH_START : t;
+  renderAtLocal(localT);
+};
+
+function startAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('mixSelect').value;
+  if (mixMode !== 'mute' && window.SOUND) stopSound = SOUND.live(scoreSound, currentT, { mixMode: 'sfxOnly' });
+  if (voAudio) { voAudio.currentTime = BATCH_START + currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (activeShotFilter !== 'all') {
+      const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+      if (s) {
+        const sLocal0 = s.start - BATCH_START, sLocal1 = s.end - BATCH_START;
+        if (nextT >= sLocal1) { nextT = sLocal0; currentT = nextT; startAudio(); }
+      }
+    } else if (nextT >= DURATION) {
+      nextT = 0; currentT = 0; startAudio();
+    }
+    renderAtLocal(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+const shotSelect = document.getElementById('shotSelect');
+SHOTS.forEach((s) => {
+  const opt = document.createElement('option');
+  opt.value = String(s.shot_number);
+  opt.textContent = 'Shot ' + s.shot_number + ': ' + s.title + ' (' + s.start.toFixed(1) + 's-' + s.end.toFixed(1) + 's)';
+  shotSelect.appendChild(opt);
+});
+
+shotSelect.addEventListener('change', () => {
+  activeShotFilter = shotSelect.value;
+  if (activeShotFilter !== 'all') {
+    const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+    if (s) { renderAtLocal(s.start - BATCH_START); if (playing) startAudio(); }
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  renderAtLocal(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('mixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('wavBtn').addEventListener('click', async () => {
+  const res = await SOUND.renderOffline(scoreSound, DURATION, 48000, { mixMode: 'sfxOnly' });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'batch_sfx_' + SHOTS[0].shot_number + '_' + SHOTS[SHOTS.length - 1].shot_number + '.wav';
+  a.click();
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  if (window.MAP && MAP.preloadAll) await MAP.preloadAll(SHOTS);
+  renderAtLocal(0);
+});
+</script>
+</body>
+</html>

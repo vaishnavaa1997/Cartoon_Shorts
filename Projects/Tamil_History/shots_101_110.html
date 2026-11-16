@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lumina 2.5D Storybook Studio (16:9) — Studio Player (Shots 101–110)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #05070d; color: #e2e8f0; font-family: 'Nunito', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#stage-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; overflow: hidden; }
+canvas { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; box-shadow: 0 16px 48px rgba(0,0,0,0.75); background: #070b16; }
+#controls { height: 58px; background: #101522; border-top: 1px solid #222b42; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 13px; }
+button, select, label.btn { background: #1c2539; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+button:hover, select:hover, label.btn:hover { background: #283552; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 12px; color: #ffb074; min-width: 230px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><canvas id="stage" width="1920" height="1080"></canvas></div>
+<div id="controls">
+  <button id="playBtn">Play</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.0s / 00.0s · Shot 101</div>
+  <select id="shotSelect"><option value="all">All Shots in Batch (101–110)</option></select>
+  <select id="mixSelect">
+    <option value="sfxOnly" selected>SFX + Ambient Only (No BGM)</option>
+    <option value="mute">Mute</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="wavBtn">Export Batch SFX (.wav)</button>
+</div>
+<script src="../../engine.js"></script>
+<script>
+const THEME = {
+  CHARS: {
+    BRITISH_OFFICER: {
+      skin: '#F2B892',
+      hairStyle: 'sidePart',
+      hairColor: '#4A2E20',
+      beard: false,
+      mustache: false,
+      wardrobe: 'victorian',
+      topColor: '#C82838',
+      bottomColor: '#F4EFE6',
+      headwear: 'topHat',
+      foreheadMark: null,
+      eyeMode: 'warm',
+      brows: 'furrowed',
+      mouth: 'neutral',
+      s: 1.0,
+      seed: 101
+    },
+    PALAIYAKKARAR: {
+      skin: '#C88C68',
+      hairStyle: 'royalBun',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#D97724',
+      bottomColor: '#F4EFE6',
+      headwear: 'crown',
+      foreheadMark: 'vibhuti',
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'neutral',
+      s: 1.0,
+      seed: 102
+    },
+    PULI_THEVAR: {
+      skin: '#B87A56',
+      hairStyle: 'warriorKnot',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#B8332A',
+      bottomColor: '#F4EFE6',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      eyeMode: 'warm',
+      brows: 'furrowed',
+      mouth: 'scream',
+      s: 1.04,
+      seed: 103
+    },
+    VELU_NACHIYAR: {
+      skin: '#D69A72',
+      hairStyle: 'braidedCrown',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#9B1B30',
+      bottomColor: '#F59E0B',
+      headwear: 'crown',
+      foreheadMark: 'tilak',
+      eyeMode: 'warm',
+      brows: 'furrowed',
+      mouth: 'neutral',
+      s: 1.02,
+      seed: 104
+    },
+    KEELADI_WEAVER: {
+      skin: '#B87A56',
+      hairStyle: 'royalBun',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#D9534F',
+      bottomColor: '#FBBF24',
+      headwear: 'none',
+      foreheadMark: 'tilak',
+      eyeMode: 'warm',
+      brows: 'furrowed',
+      mouth: 'scream',
+      s: 0.98,
+      seed: 106
+    },
+    KATTABOMMAN: {
+      skin: '#C07C56',
+      hairStyle: 'warriorKnot',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#DC2626',
+      bottomColor: '#FDE68A',
+      headwear: 'crown',
+      foreheadMark: 'vibhuti',
+      eyeMode: 'warm',
+      brows: 'furrowed',
+      mouth: 'scream',
+      s: 1.05,
+      seed: 107
+    },
+    MARUDHU_BRO: {
+      skin: '#B87A56',
+      hairStyle: 'wavyLocks',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#EA580C',
+      bottomColor: '#F4EFE6',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      eyeMode: 'warm',
+      brows: 'furrowed',
+      mouth: 'neutral',
+      s: 1.03,
+      seed: 108
+    },
+    CHINNAMALAI: {
+      skin: '#C88C68',
+      hairStyle: 'warriorKnot',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#16A34A',
+      bottomColor: '#FDE68A',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      eyeMode: 'warm',
+      brows: 'furrowed',
+      mouth: 'scream',
+      s: 1.03,
+      seed: 109
+    }
+  },
+
+  ANIMALS: {
+    WAR_HORSE: {
+      kind: 'horse',
+      royal: true,
+      s: 1.05,
+      expr: 'neutral'
+    }
+  },
+
+  spawnChar(g, id, overrides = {}) {
+    const base = this.CHARS[id] || this.CHARS.PALAIYAKKARAR;
+    const opts = Object.assign({}, base, overrides, { beard: false, mustache: false });
+    if (base.pose || overrides.pose) {
+      opts.pose = Object.assign({}, base.pose || {}, overrides.pose || {});
+    }
+    DK.char(g, opts);
+  },
+
+  spawnAnimal(g, id, overrides = {}) {
+    const base = this.ANIMALS[id] || this.ANIMALS.WAR_HORSE;
+    const opts = Object.assign({}, base, overrides);
+    DK.animal(g, opts);
+  },
+
+  ENVS: {
+    ENV_FORT_ST_GEORGE(g, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'coastalDay');
+          FX.sun(g, 1520, 210, 62);
+          FX.clouds(g, { seed: 21, count: 6, y: 155, h: 130, color: '#FFFFFF', a: 0.88, t: gt, speed: 10 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'fortress', y: 760, seed: 31 });
+          FX.waterBody(g, gt, { x: 0, y: 740, w: 1920, h: 100, color: '#2868A8', waves: true });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'fortRamparts', y: 840, seed: 41 });
+          FX.structure3D(g, 310, 840, 290, 260, { kind: 'colonialHall', color: '#E2D9C8', t: gt });
+          FX.structure3D(g, 1580, 840, 310, 280, { kind: 'stoneFort', color: '#8C7A6B', t: gt });
+          FX.storybookGround(g, 840, { style: 'cobblestone', baseCol: '#645D56', grassCol: '#4B6B4C' });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: 'rgba(255,220,160,0.16)', seed: 51 });
+        },
+        fgBokehDepth: 1.4,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_PALACE_DURBAR(g, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'ancientInterior');
+          FX.godRays(g, 960, 120, { count: 6, a: 0.16, color: '#FFD580' });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'ancientTamil', y: 760, seed: 12 });
+        },
+        bgFarDepth: 0.32,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'palaceInterior', y: 840, seed: 22 });
+          FX.structure3D(g, 360, 840, 260, 320, { kind: 'mandapam', color: '#B85D3B', t: gt });
+          FX.structure3D(g, 1560, 840, 260, 320, { kind: 'mandapam', color: '#B85D3B', t: gt });
+          FX.storybookGround(g, 840, { style: 'marbleFloor', baseCol: '#8A6F5A', grassCol: '#6E523C' });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 12, color: 'rgba(255,195,110,0.20)', seed: 62 });
+        },
+        fgBokehDepth: 1.42,
+        fgBokehBlur: 9
+      });
+    },
+
+    ENV_BATTLEFIELD_STORM(g, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'storm');
+          FX.clouds(g, { seed: 73, count: 8, y: 150, h: 170, color: '#475569', a: 0.85, t: gt, speed: 24 });
+        },
+        bgFar: (g) => {
+          FX.hills(g, { seed: 74, y: 750, amp: 115, color: '#334155' });
+          FX.storybookHorizon(g, { style: 'fortress', y: 760, seed: 75 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 2,
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'battlefield', y: 840, seed: 76 });
+          FX.structure3D(g, 280, 840, 260, 250, { kind: 'stoneFort', color: '#645850', t: gt });
+          FX.structure3D(g, 1660, 840, 260, 250, { kind: 'stoneFort', color: '#645850', t: gt });
+          FX.storybookGround(g, 840, { style: 'earthPath', baseCol: '#5C4433', grassCol: '#3F4E38' });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 16, color: 'rgba(255,120,50,0.25)', seed: 77 });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 9
+      });
+    },
+
+    ENV_TEMPLE_NIGHT(g, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'nightSky');
+          FX.stars(g, gt, { count: 90, seed: 81 });
+          FX.moon(g, 1520, 200, 52);
+          FX.clouds(g, { seed: 82, count: 6, y: 170, h: 130, color: '#1E293B', a: 0.72, t: gt, speed: 14 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'ancientTamil', y: 760, seed: 83 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'templeCourtyard', y: 840, seed: 84 });
+          FX.structure3D(g, 1340, 840, 280, 420, { kind: 'gopuram', color: '#8A4B38', t: gt });
+          FX.structure3D(g, 420, 840, 250, 270, { kind: 'mandapam', color: '#6E473B', t: gt });
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#473C38', grassCol: '#2B3B2C' });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 12, color: 'rgba(255,160,70,0.22)', seed: 85 });
+        },
+        fgBokehDepth: 1.42,
+        fgBokehBlur: 8
+      });
+    }
+  },
+
+  INFO: {
+    MAP_MADRAS_PRESIDENCY: {
+      draw(g, lt, gt) {
+        const annexAlpha = lt > 1.35 ? 0.62 : DK.lerp(0.24, 0.55, DK.prog(lt, 0, 1.35));
+        UI.strategicMap(g, lt, {
+          region: 'Tamil Nadu',
+          center: [78.65, 11.05],
+          zoom: 6.8,
+          bbox: [76.2, 8.0, 80.6, 13.6],
+          style: 'terrainHistorical',
+          title: 'EAST INDIA COMPANY · CARNATIC ANNEXATION',
+          subTitle: lt > 1.35 ? '85% TERRITORIES ANNEXED UNDER EIC CONTROL' : 'EXPANDING BRITISH GARRISONS (1755–1801 CE)',
+          reading: lt > 1.35 ? 'STATUS: 85% ANNEXED' : 'EIC EXPANSION',
+          territories: [
+            {
+              place: 'Tamil Nadu',
+              color: `rgba(225, 29, 72, ${annexAlpha.toFixed(2)})`,
+              border: '#FF4D6A',
+              label: lt > 1.35 ? 'MADRAS PRESIDENCY (85% ANNEXED)' : 'EIC ANNEXATION ZONE',
+              t0: 0.05
+            }
+          ],
+          routes: [
+            { from: [80.27, 13.08], to: [79.32, 12.90], t0: 0.15, dur: 0.9, color: '#FF4D6A' },
+            { from: [79.32, 12.90], to: [78.70, 10.79], t0: 0.35, dur: 1.0, color: '#FF4D6A' },
+            { from: [78.70, 10.79], to: [78.12, 9.92], t0: 0.55, dur: 1.0, color: '#FF4D6A' }
+          ],
+          pins: [
+            { lonLat: [80.27, 13.08], label: 'FORT ST. GEORGE (MADRAS)', diorama: 'stoneFort', t0: 0.10 },
+            { lonLat: [79.32, 12.90], label: 'ARCOT', diorama: 'pin', t0: 0.25 },
+            { lonLat: [78.70, 10.79], label: 'TIRUCHIRAPPALLI', diorama: 'gopuram', t0: 0.45 },
+            { lonLat: [78.12, 9.92], label: 'MADURAI', diorama: 'gopuram', t0: 0.65 }
+          ]
+        });
+      }
+    },
+
+    PHY_DIVIDE_DOMINO: {
+      opts: {
+        id: 'domino_divide_103',
+        mode: 'standard',
+        x0: 320,
+        x1: 1120,
+        y: 840,
+        count: 8,
+        triggerTime: 0.2,
+        stepDelay: 0.19,
+        material: 'gold',
+        color: '#E11D48',
+        labels: ['DIVIDE', 'ALLY', 'DEBT', 'TAX', 'TREATY', 'BETRAY', 'SEIZE', 'ANNEX'],
+        showBadge: true
+      },
+      draw(g, lt, gt) {
+        PHY.dominoChain(g, lt, this.opts);
+      }
+    },
+
+    PHY_SIVAGANGA_AMMO: {
+      opts: {
+        id: 'shatter_sivaganga_106',
+        x: 1180,
+        y: 840,
+        w: 300,
+        h: 360,
+        impactTime: 1.6,
+        impactPoint: [1180, 660],
+        force: 1050,
+        cols: 6,
+        rows: 7,
+        material: 'brick',
+        floorY: 840,
+        seed: 106
+      },
+      draw(g, lt, gt) {
+        PHY.shatterWall(g, lt, this.opts);
+      }
+    },
+
+    DIFF_BRITISH_WEAPONS: {
+      draw(g, lt, gt) {
+        UI.upgradeDiff(g, lt, {
+          x: 640,
+          y: 520,
+          s: 0.94,
+          oldTitle: 'PALAIYAKKARAR ARSENAL',
+          newTitle: 'BRITISH EIC ARTILLERY',
+          metrics: [
+            { label: '18-Pdr Siege Howitzer', oldVal: '1.0x', newVal: '5.0x', pct: '+400%', gain: false },
+            { label: 'Flintlock Musket Volley', oldVal: '1.0x', newVal: '3.5x', pct: '+250%', gain: false },
+            { label: 'Supply & Naval Support', oldVal: 'Local', newVal: 'Global', pct: '+300%', gain: false }
+          ],
+          t0: 0.2
+        });
+      }
+    },
+
+    MAP_NAYAK_72_PALAIYAMS: {
+      draw(g, lt, gt) {
+        UI.strategicMap(g, lt, {
+          region: 'Tamil Nadu',
+          center: [78.25, 10.15],
+          zoom: 7.0,
+          bbox: [76.5, 8.0, 80.4, 12.6],
+          style: 'terrainHistorical',
+          title: '72 PALAIYAMS (பாளையங்கள்) · FRAGMENTED FRONT',
+          subTitle: lt > 1.45 ? 'ISOLATED FORTS · LACK OF UNIFIED CONFEDERACY' : 'SCATTERED CHIEFTAINS ACROSS TAMIL NADU',
+          reading: lt > 1.45 ? 'CHAIN BROKEN // ISOLATED' : '72 PALAIYAMS',
+          territories: [
+            {
+              place: 'Tamil Nadu',
+              color: 'rgba(245, 158, 11, 0.25)',
+              border: '#F59E0B',
+              label: 'DIVIDED PALAIYAM ZONES',
+              t0: 0.05
+            }
+          ],
+          pins: [
+            { lonLat: [77.45, 9.15], label: 'NERKATTUMSEVAL', diorama: 'stoneFort', t0: 0.10 },
+            { lonLat: [78.48, 9.84], label: 'SIVAGANGA', diorama: 'stoneFort', t0: 0.20 },
+            { lonLat: [78.02, 8.93], label: 'PANCHALANKURICHI', diorama: 'stoneFort', t0: 0.30 },
+            { lonLat: [77.60, 11.12], label: 'ODANILAI', diorama: 'stoneFort', t0: 0.40 },
+            { lonLat: [78.82, 10.38], label: 'PUDUKKOTTAI (EIC ALLY)', diorama: 'pin', t0: 0.50 }
+          ]
+        });
+      }
+    }
+  },
+
+  drawInfo(id, g, lt, gt) {
+    if (this.INFO[id] && typeof this.INFO[id].draw === 'function') {
+      this.INFO[id].draw(g, lt, gt);
+    }
+  }
+};
+
+// Helper for drawing a low foreground command terrace on map shots so the map remains 100% unobstructed
+function drawForegroundMapTerrace(g, yFloor) {
+  g.save();
+  const grad = g.createLinearGradient(0, yFloor - 28, 0, 1080);
+  grad.addColorStop(0, 'rgba(30, 27, 24, 0.92)');
+  grad.addColorStop(0.2, '#2B241E');
+  grad.addColorStop(1, '#14110F');
+  g.fillStyle = grad;
+  g.fillRect(0, yFloor - 18, 1920, 1080 - (yFloor - 18));
+  g.strokeStyle = '#D97724';
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(0, yFloor - 18);
+  g.lineTo(1920, yFloor - 18);
+  g.stroke();
+  g.restore();
+}
+
+// Helper for drawing crisp broken chain / spark / banner effects on Mid-Shot Micro-Beats
+function drawShockwaveRing(g, x, y, prog, color) {
+  if (prog <= 0 || prog >= 1) return;
+  g.save();
+  g.strokeStyle = color || '#F7B928';
+  g.lineWidth = (1 - prog) * 8;
+  g.globalAlpha = 1 - prog;
+  g.beginPath();
+  g.arc(x, y, 25 + prog * 160, 0, Math.PI * 2);
+  g.stroke();
+  g.restore();
+}
+
+function drawBrokenChainBadge(g, x, y, popScale) {
+  if (popScale <= 0) return;
+  g.save();
+  g.translate(x, y);
+  g.scale(popScale, popScale);
+  g.fillStyle = 'rgba(15, 23, 42, 0.92)';
+  g.strokeStyle = '#FF4D6A';
+  g.lineWidth = 2.5;
+  g.beginPath();
+  g.roundRect(-88, -22, 176, 44, 10);
+  g.fill();
+  g.stroke();
+  g.fillStyle = '#FFB84D';
+  g.font = '800 13px "Space Mono", monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('⛓ BROKEN ALLIANCE', 0, 0);
+  g.restore();
+}
+
+const SHOTS = [
+  // =========================================================================
+  // SHOT 101 · [05:39.4 - 05:42.1] (339.4s – 342.1s · Duration: 2.7s)
+  // =========================================================================
+  {
+    shot_number: 101,
+    start: 339.4,
+    end: 342.1,
+    duration: 2.7,
+    title: 'EIC Annexation across the Carnatic',
+    vo_line: 'இந்த மாதிரி தேவையான அளவு ஊர்களை வென்றதுக்கு அப்புறம்,',
+    env_id: 'MAP_MADRAS_PRESIDENCY + ENV_FORT_ST_GEORGE',
+    chars: 'BRITISH_OFFICER marching [420 -> 880]',
+    on_screen_text: 'MAJORITY OF TERRITORIES ANNEXED',
+    camera_sfx: 'Pan 0 -> 35, Zoom 1.00 -> 1.09 · marchSteps, thud, pillBadge',
+    transition_id: 'CUT_TO_BETRAYAL',
+    map: { region: 'Tamil Nadu', center: [78.65, 11.05], zoom: 6.8, bbox: [76.2, 8.0, 80.6, 13.6], style: 'terrainHistorical' },
+    draw(g, lt, gt, u) {
+      // Unobstructed Strategic Map across canvas (Rule 4 compliance)
+      THEME.drawInfo('MAP_MADRAS_PRESIDENCY', g, lt, gt);
+
+      // Low foreground war-room terrace so hero & fort table sit cleanly without blocking map pins
+      const camX = DK.key(lt, [[0.0, 0], [2.7, 35]], DK.ease.inOutSine);
+      const camZ = DK.key(lt, [[0.0, 1.00], [1.35, 1.05], [2.7, 1.09]], DK.ease.outCubic);
+      g.save();
+      g.translate(960 - camX * 0.6, 540);
+      g.scale(camZ, camZ);
+      g.translate(-960, -540);
+
+      drawForegroundMapTerrace(g, 850);
+
+      // Target Prop (Conquered Fort Table at x: 970, y: 850)
+      FX.interactiveProp(g, { kind: 'scholarDesk', x: 970, y: 850, lt, gt });
+
+      // Hero 1 (BRITISH_OFFICER marching 420 -> 880, charX + 90px = 970px exact contact)
+      THEME.spawnChar(g, 'BRITISH_OFFICER', {
+        moveX: [420, 880, lt, 2.7],
+        y: 850,
+        prop: 'flag',
+        pose: { preset: 'march', speed: 1.25 },
+        t: gt
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.35s): Crimson colonial territory stamp & shockwave on desk
+      if (lt >= 1.35) {
+        const popS = DK.pop(lt, 1.35, 0.35);
+        drawShockwaveRing(g, 970, 790, DK.prog(lt, 1.35, 2.05), '#FF4D6A');
+        g.save();
+        g.translate(1140, 785);
+        g.scale(popS, popS);
+        g.fillStyle = 'rgba(225, 29, 72, 0.94)';
+        g.strokeStyle = '#FFD54F';
+        g.lineWidth = 2.5;
+        g.beginPath();
+        g.roundRect(-110, -24, 220, 48, 8);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#FFFFFF';
+        g.font = '900 15px "Space Mono", monospace';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('85% CARNATIC ANNEXED', 0, 0);
+        g.restore();
+      }
+      g.restore();
+
+      // HUD & Citation
+      UI.pillBadge(g, lt, { text: 'MAJORITY OF TERRITORIES ANNEXED', x: 960, y: 120, accent: '#FF4D6A' });
+      UI.citation(g, 'East India Company Territorial Expansion in the Carnatic', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('ancientHarbor', bt0 + 0.0, bt0 + 2.7, { gain: 0.20 });
+      k.play('marchSteps', bt0 + 0.15, { gain: 0.42 });
+      k.play('thud', bt0 + 0.70, { gain: 0.45 });
+      k.play('thud', bt0 + 1.35, { gain: 0.52 });
+      k.play('pillBadge', bt0 + 1.35, { gain: 0.45 });
+      k.play('swish', bt0 + 2.45, { gain: 0.38 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 102 · [05:42.1 - 05:44.8] (342.1s – 344.8s · Duration: 2.7s)
+  // =========================================================================
+  {
+    shot_number: 102,
+    start: 342.1,
+    end: 344.8,
+    duration: 2.7,
+    title: 'Subsidiary Alliance Betrayal of Former Allies',
+    vo_line: 'அவங்க எல்லாத்தையும் ஒண்ணு சேர்த்துக்கிட்டு யாரு support பண்ணாங்களோ அவங்க மேலயே மறுபடியும் ஆதிக்கம் செலுத்துறது.',
+    env_id: 'ENV_PALACE_DURBAR',
+    chars: 'BRITISH_OFFICER [480 -> 780], PALAIYAKKARAR [x: 960]',
+    on_screen_text: 'SUBSIDIARY ALLIANCE TRAP · ALLIES SUBJUGATED',
+    camera_sfx: 'Pan -25 -> 25, Zoom 1.02 -> 1.12 · footstep, paperTear, jailCellSlam',
+    transition_id: 'STAMP_DIVIDE_AND_RULE',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -25], [2.7, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.02], [1.35, 1.08], [2.7, 1.12]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_PALACE_DURBAR(g, gt, cam, (g) => {
+        // Target Prop (Royal Charter & Throne Pedestal at x: 870, y: 840)
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 870, y: 840, lt, gt });
+
+        // Hero 1 (BRITISH_OFFICER walking 480 -> 780, charX + 90px = 870px exact contact)
+        THEME.spawnChar(g, 'BRITISH_OFFICER', {
+          moveX: [480, 780, lt, 2.7],
+          y: 840,
+          prop: 'scroll',
+          pose: { preset: 'walk', speed: 1.2 },
+          t: gt
+        });
+
+        // Hero 2 (PALAIYAKKARAR — Former Ally at x: 960, charX - 90px = 870px exact contact)
+        THEME.spawnChar(g, 'PALAIYAKKARAR', {
+          x: 960,
+          y: 840,
+          flipX: true,
+          headwear: lt > 1.35 ? 'none' : 'crown',
+          eyeMode: lt > 1.35 ? 'panic' : 'warm',
+          mouth: lt > 1.35 ? 'gasp' : 'smile',
+          pose: { preset: 'trade', speed: 1.15 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.35s): EIC Tax & Subjugation Decree slapped onto desk
+        if (lt >= 1.35) {
+          const popS = DK.pop(lt, 1.35, 0.32);
+          drawShockwaveRing(g, 870, 770, DK.prog(lt, 1.35, 1.95), '#FF4D6A');
+          g.save();
+          g.translate(870, 690);
+          g.scale(popS, popS);
+          g.fillStyle = '#1E1B18';
+          g.strokeStyle = '#FF4D6A';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.roundRect(-130, -26, 260, 52, 8);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FF4D6A';
+          g.font = '900 14px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillText('EIC TAX DECREE · SOVEREIGNTY LOST', 0, 0);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, { text: 'SUBSIDIARY ALLIANCE TRAP · ALLIES SUBJUGATED', x: 960, y: 120, accent: '#FF4D6A' });
+      UI.citation(g, 'Carnatic Treaty of 1801 · Subjugation of Former Allies', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.28, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 2.7, { gain: 0.18 });
+      k.play('footstep', bt0 + 0.25, { gain: 0.40 });
+      k.play('paperTear', bt0 + 1.10, { gain: 0.45 });
+      k.play('jailCellSlam', bt0 + 1.35, { gain: 0.60 });
+      k.play('pillBadge', bt0 + 1.35, { gain: 0.45 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 103 · [05:44.8 - 05:48.3] (344.8s – 348.3s · Duration: 3.5s)
+  // =========================================================================
+  {
+    shot_number: 103,
+    start: 344.8,
+    end: 348.3,
+    duration: 3.5,
+    title: 'Divide and Rule Dominoes Halted by Puli Thevar',
+    vo_line: 'அதாவது Divide and Rule, பிரித்தாளும் சூழ்ச்சி. ஆனா இவங்களை எதிர்த்து...',
+    env_id: 'ENV_FORT_ST_GEORGE + PHY_DIVIDE_DOMINO',
+    chars: 'PULI_THEVAR running [1520 -> 1210]',
+    on_screen_text: 'DIVIDE AND RULE (பிரித்தாளும் சூழ்ச்சி) vs. TAMIL RESISTANCE',
+    camera_sfx: 'Pan -35 -> 35, Shake at 1.75s · dominoClick, shieldBash, swordClash',
+    transition_id: 'WHIP_PAN_TO_REBELS',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -35], [1.75, 15], [3.5, 35]], DK.ease.inOutCubic),
+        y: DK.shake(lt > 1.70 && lt < 2.20 ? lt : 0, 5, 16, 103),
+        z: DK.key(lt, [[0.0, 1.00], [1.75, 1.06], [3.5, 1.10]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_FORT_ST_GEORGE(g, gt, cam, (g) => {
+        // Physics Domino Chain (x0: 320, x1: 1120, y: 840)
+        THEME.drawInfo('PHY_DIVIDE_DOMINO', g, lt, gt);
+
+        // Hero 1 (PULI_THEVAR — Rebel Defender running 1520 -> 1210, charX - 90px = 1120px contact)
+        THEME.spawnChar(g, 'PULI_THEVAR', {
+          moveX: [1520, 1210, lt, 3.5],
+          y: 840,
+          flipX: true,
+          prop: 'sword',
+          pose: { preset: 'run', speed: 1.35 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.75s): Golden shield shockwave halting the final domino at x: 1120
+        if (lt >= 1.75) {
+          drawShockwaveRing(g, 1120, 760, DK.prog(lt, 1.75, 2.45), '#F7B928');
+          const popS = DK.pop(lt, 1.75, 0.35);
+          g.save();
+          g.translate(1120, 650);
+          g.scale(popS, popS);
+          g.fillStyle = 'rgba(20, 83, 45, 0.95)';
+          g.strokeStyle = '#F7B928';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.roundRect(-125, -24, 250, 48, 10);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FDE68A';
+          g.font = '900 14px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillText('🛡 REBEL SHIELD · CHAIN HALTED!', 0, 0);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, { text: 'DIVIDE AND RULE (பிரித்தாளும் சூழ்ச்சி) vs. TAMIL RESISTANCE', x: 960, y: 120, accent: '#FF851B' });
+      UI.citation(g, 'Early Anti-Colonial Resistance in Tamil Nadu (1755–1806)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.28, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 3.5, { gain: 0.20 });
+      if (window.PHY && PHY.scheduleImpacts) {
+        PHY.scheduleImpacts(k, 'domino', THEME.INFO.PHY_DIVIDE_DOMINO.opts, 344.8, BATCH_START);
+      }
+      k.play('dominoClick', bt0 + 0.30, { gain: 0.45 });
+      k.play('dominoClick', bt0 + 0.85, { gain: 0.48 });
+      k.play('shieldBash', bt0 + 1.75, { gain: 0.70 });
+      k.play('swordClash', bt0 + 1.78, { gain: 0.58 });
+      k.play('whoosh', bt0 + 3.25, { gain: 0.42 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 104 · [05:48.3 - 05:51.9] (348.3s – 351.9s · Duration: 3.6s)
+  // =========================================================================
+  {
+    shot_number: 104,
+    start: 348.3,
+    end: 351.9,
+    duration: 3.6,
+    title: 'Puli Thevar & Rani Velu Nachiyar Rise in Battle',
+    vo_line: '...பூலித்தேவன், வேலுநாச்சியார் இந்த மாதிரி வீரர்கள் எல்லாம் குரல் எழுப்பி சண்டையும் போடுறாங்க.',
+    env_id: 'ENV_BATTLEFIELD_STORM',
+    chars: 'PULI_THEVAR vs BRITISH_OFFICER, VELU_NACHIYAR + WAR_HORSE [1420 -> 1020]',
+    on_screen_text: 'PULI THEVAR (1755) & RANI VELU NACHIYAR (1780)',
+    camera_sfx: 'Pan -30 -> 30, Zoom 1.00 -> 1.08 · swordClash, horseGallop, warHorn',
+    transition_id: 'CUT_TO_KALAIYARKOIL',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -30], [3.6, 30]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.80, 1.05], [3.6, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_BATTLEFIELD_STORM(g, gt, cam, (g) => {
+        // Left Combat Pair (560 + 115 = 675px exact weapon contact)
+        THEME.spawnChar(g, 'PULI_THEVAR', {
+          x: 560,
+          y: 840,
+          prop: 'sword',
+          pose: { preset: 'swordFight', speed: 1.35 },
+          t: gt
+        });
+        THEME.spawnChar(g, 'BRITISH_OFFICER', {
+          x: 675,
+          y: 840,
+          flipX: true,
+          prop: 'sword',
+          pose: { preset: 'swordFight', speed: 1.35 },
+          t: gt
+        });
+
+        // Right Charge Target Prop (British Barricade at x: 930, cutTime: 1.80)
+        FX.interactiveProp(g, { kind: 'brickWallBuild', x: 930, y: 840, cutTime: 1.80, lt, gt });
+
+        // War Horse accompanying Rani Velu Nachiyar (1540 -> 1140)
+        THEME.spawnAnimal(g, 'WAR_HORSE', {
+          moveX: [1540, 1140, lt, 3.6],
+          y: 840,
+          flipX: true,
+          t: gt
+        });
+
+        // Hero 2 (VELU_NACHIYAR marching 1420 -> 1020, charX - 90px = 930px exact contact)
+        THEME.spawnChar(g, 'VELU_NACHIYAR', {
+          moveX: [1420, 1020, lt, 3.6],
+          y: 840,
+          flipX: true,
+          prop: 'vel',
+          pose: { preset: 'march', speed: 1.25 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.80s): Dual Hero Callout Badges & Clash Sparks
+        if (lt >= 1.80) {
+          drawShockwaveRing(g, 618, 760, DK.prog(lt, 1.80, 2.40), '#F7B928');
+          drawShockwaveRing(g, 930, 770, DK.prog(lt, 1.80, 2.40), '#FF4D6A');
+          const popS = DK.pop(lt, 1.80, 0.35);
+
+          g.save();
+          g.translate(560, 645);
+          g.scale(popS, popS);
+          g.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          g.strokeStyle = '#F7B928';
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.roundRect(-115, -22, 230, 44, 8);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FDE68A';
+          g.font = '800 13px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillText('PULI THEVAR · KALAKADU 1755', 0, 0);
+          g.restore();
+
+          g.save();
+          g.translate(1080, 645);
+          g.scale(popS, popS);
+          g.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          g.strokeStyle = '#F7B928';
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.roundRect(-125, -22, 250, 44, 8);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FDE68A';
+          g.font = '800 13px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillText('VELU NACHIYAR · SIVAGANGA 1780', 0, 0);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, { text: 'PULI THEVAR (1755) & RANI VELU NACHIYAR (1780)', x: 960, y: 120, accent: '#F7B928' });
+      UI.citation(g, 'Battle of Kalakadu (1755) & Recapture of Sivaganga (1780)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.30, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 3.6, { gain: 0.22 });
+      k.play('swordClash', bt0 + 0.45, { gain: 0.58 });
+      k.play('horseGallop', bt0 + 0.80, { gain: 0.45 });
+      k.play('swordClash', bt0 + 1.80, { gain: 0.62 });
+      k.play('warHorn', bt0 + 1.85, { gain: 0.50 });
+      k.play('pillBadge', bt0 + 1.80, { gain: 0.45 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 105 · [05:51.9 - 05:55.0] (351.9s – 355.0s · Duration: 3.1s)
+  // =========================================================================
+  {
+    shot_number: 105,
+    start: 351.9,
+    end: 355.0,
+    duration: 3.1,
+    title: 'Kalaiyarkoil 1772: Solemn Oath of Rani Velu Nachiyar',
+    vo_line: 'அதுவும் வேலுநாச்சியார்லாம் அவங்களோட கணவனை பிரிட்டிஷ்காரங்க கொன்னுட்டாங்கன்னு சொல்லிட்டு,',
+    env_id: 'ENV_TEMPLE_NIGHT',
+    chars: 'VELU_NACHIYAR walking [460 -> 820] to Memorial Stone [x: 910]',
+    on_screen_text: '1772 CE · KALAIYARKOIL · VOW OF RANI VELU NACHIYAR',
+    camera_sfx: 'Pan -20 -> 20, Zoom 1.00 -> 1.10 · footstep, swordDraw, thunder',
+    transition_id: 'WHIP_PAN_TO_CAVALRY_CHARGE',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -20], [3.1, 20]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.55, 1.06], [3.1, 1.10]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_TEMPLE_NIGHT(g, gt, cam, (g) => {
+        // Lightning flash in sky at Micro-Beat lt = 1.55s
+        if (lt >= 1.55 && lt <= 1.85) {
+          const flashA = (1 - (lt - 1.55) / 0.30) * 0.35;
+          g.save();
+          g.fillStyle = `rgba(220, 238, 255, ${flashA.toFixed(2)})`;
+          g.fillRect(0, 0, 1920, 1080);
+          g.restore();
+        }
+
+        // Target Prop (Royal Memorial Stone at Kalaiyarkoil at x: 910, y: 840)
+        FX.interactiveProp(g, { kind: 'crumblingPillar', x: 910, y: 840, cutTime: 99, lt, gt });
+
+        // Hero 1 (VELU_NACHIYAR walking 460 -> 820, charX + 90px = 910px exact contact)
+        THEME.spawnChar(g, 'VELU_NACHIYAR', {
+          moveX: [460, 820, lt, 3.1],
+          y: 840,
+          brows: 'furrowed',
+          mouth: lt > 1.55 ? 'scream' : 'frown',
+          prop: 'sword',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.55s): Unsheathed Sword Oath Aura & Inscription
+        if (lt >= 1.55) {
+          drawShockwaveRing(g, 910, 740, DK.prog(lt, 1.55, 2.25), '#F7B928');
+          const popS = DK.pop(lt, 1.55, 0.35);
+          g.save();
+          g.translate(910, 640);
+          g.scale(popS, popS);
+          g.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          g.strokeStyle = '#FF4D6A';
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.roundRect(-140, -24, 280, 48, 8);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FFD54F';
+          g.font = '800 13.5px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillText('⚔ OATH TO RECLAIM SIVAGANGA', 0, 0);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, { text: '1772 CE · KALAIYARKOIL · VOW OF RANI VELU NACHIYAR', x: 960, y: 120, accent: '#FF4D6A' });
+      UI.citation(g, 'Martyrdom of Muthuvaduganatha Thevar at Kalaiyarkoil (25 June 1772)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.34, grain: 0.028 });
+    },
+    sfx(k, bt0) {
+      k.bed('nightCrickets', bt0 + 0.0, bt0 + 3.1, { gain: 0.20 });
+      k.play('footstep', bt0 + 0.30, { gain: 0.38 });
+      k.play('swordDraw', bt0 + 1.55, { gain: 0.62 });
+      k.play('thunder', bt0 + 1.60, { gain: 0.55 });
+      k.play('pillBadge', bt0 + 1.55, { gain: 0.42 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 106 · [05:55.0 - 05:58.2] (355.0s – 358.2s · Duration: 3.2s)
+  // =========================================================================
+  {
+    shot_number: 106,
+    start: 355.0,
+    end: 358.2,
+    duration: 3.2,
+    title: '1780 Recapture of Sivaganga & Kuyili’s Strike on EIC Ammo Depot',
+    vo_line: 'எட்டு வருஷம் படைகளை திரட்டி பிரிட்டிஷ்காரங்களை எதிர்த்து சண்டைக்கு போறாங்க.',
+    env_id: 'ENV_BATTLEFIELD_STORM + PHY_SIVAGANGA_AMMO',
+    chars: 'VELU_NACHIYAR [240 -> 980], KEELADI_WEAVER (Kuyili) [340 -> 1080], WAR_HORSE',
+    on_screen_text: '1780 CE: RECAPTURE OF SIVAGANGA',
+    camera_sfx: 'Pan -35 -> 35, Shake at 1.60s · horseGallop, fireIgnite, explosion',
+    transition_id: 'CAMERA_PAN_TO_POLYGAR_HEROES',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -35], [1.60, 15], [3.2, 35]], DK.ease.outCubic),
+        y: DK.shake(lt > 1.55 && lt < 2.35 ? lt : 0, 8, 20, 106),
+        z: DK.key(lt, [[0.0, 1.00], [1.60, 1.07], [3.2, 1.10]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_BATTLEFIELD_STORM(g, gt, cam, (g) => {
+        // Physics Target (PHY_SIVAGANGA_AMMO — British Ammunition Depot at x: 1180)
+        THEME.drawInfo('PHY_SIVAGANGA_AMMO', g, lt, gt);
+
+        // Animal (WAR_HORSE charging 180 -> 920)
+        THEME.spawnAnimal(g, 'WAR_HORSE', {
+          moveX: [180, 920, lt, 3.2],
+          y: 840,
+          t: gt
+        });
+
+        // Hero 1 (VELU_NACHIYAR marching 240 -> 980)
+        THEME.spawnChar(g, 'VELU_NACHIYAR', {
+          moveX: [240, 980, lt, 3.2],
+          y: 840,
+          prop: 'sword',
+          pose: { preset: 'march', speed: 1.35 },
+          t: gt
+        });
+
+        // Hero 2 (KEELADI_WEAVER as Commander Kuyili running 340 -> 1080, charX + 100px = 1180px contact)
+        THEME.spawnChar(g, 'KEELADI_WEAVER', {
+          moveX: [340, 1080, lt, 3.2],
+          y: 840,
+          prop: 'lantern',
+          pose: { preset: 'run', speed: 1.40 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.60s): Fiery blast shockwave on EIC Ammo Depot
+        if (lt >= 1.60) {
+          drawShockwaveRing(g, 1180, 680, DK.prog(lt, 1.60, 2.35), '#FF851B');
+          drawShockwaveRing(g, 1180, 680, DK.prog(lt, 1.68, 2.50), '#FF4D6A');
+        }
+      });
+
+      // Technical Leader-Line Callout at lt >= 1.4s
+      UI.techCallout(g, lt, {
+        from: [1180, 620],
+        elbow: [1340, 460],
+        to: [1640, 460],
+        title: '1780 CE: RECAPTURE OF SIVAGANGA',
+        spec: '8-Year Alliance + Kuyili’s Sacrifice · 1st Queen to Defeat EIC',
+        accent: '#38C878',
+        t0: 1.4
+      });
+      UI.citation(g, 'K. Rajayyan, South Indian Rebellion: The First War of Independence (1800–1801)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.28, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 3.2, { gain: 0.22 });
+      if (window.PHY && PHY.scheduleImpacts) {
+        PHY.scheduleImpacts(k, 'shatter', THEME.INFO.PHY_SIVAGANGA_AMMO.opts, 355.0, BATCH_START);
+      }
+      k.play('horseGallop', bt0 + 0.20, { gain: 0.45 });
+      k.play('fireIgnite', bt0 + 1.40, { gain: 0.48 });
+      k.play('explosion', bt0 + 1.60, { gain: 0.72 });
+      k.play('pillBadge', bt0 + 1.65, { gain: 0.45 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 107 · [05:58.2 - 06:02.0] (358.2s – 362.0s · Duration: 3.8s)
+  // =========================================================================
+  {
+    shot_number: 107,
+    start: 358.2,
+    end: 362.0,
+    duration: 3.8,
+    title: 'Three Titans: Kattabomman, Marudhu Brothers & Dheeran Chinnamalai',
+    vo_line: 'அதுமட்டுமில்லாம வீரபாண்டிய கட்டபொம்மன், மருது சகோதரர்கள், தீரன் சின்னமலை அப்படின்னு சொல்லிட்டு',
+    env_id: 'ENV_FORT_ST_GEORGE',
+    chars: 'KATTABOMMAN [x: 340], MARUDHU_BRO [x: 920], CHINNAMALAI [1680 -> 1460]',
+    on_screen_text: 'KATTABOMMAN · MARUDHU BROTHERS · DHEERAN CHINNAMALAI',
+    camera_sfx: 'Pan -35 -> 35, Zoom 1.00 -> 1.07 · swordClash, hammerHit, horseGallop, warHorn',
+    transition_id: 'MERGE_TO_BATTLEFIELD',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -35], [3.8, 35]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.90, 1.04], [3.8, 1.07]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_FORT_ST_GEORGE(g, gt, cam, (g) => {
+        // Left Hero: KATTABOMMAN + Tax Table at charX + 85px (340 + 85 = 425px)
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 425, y: 840, lt, gt });
+        THEME.spawnChar(g, 'KATTABOMMAN', {
+          x: 340,
+          y: 840,
+          prop: 'sword',
+          pose: { preset: 'fight', speed: 1.3 },
+          t: gt
+        });
+
+        // Center Hero: MARUDHU_BRO + Tiruchirappalli Proclamation Wall at charX + 85px (920 + 85 = 1005px)
+        FX.interactiveProp(g, { kind: 'brickWallBuild', x: 1005, y: 840, cutTime: 1.90, lt, gt });
+        THEME.spawnChar(g, 'MARUDHU_BRO', {
+          x: 920,
+          y: 840,
+          prop: 'vel',
+          pose: { preset: 'build', speed: 1.25 },
+          t: gt
+        });
+
+        // Right Hero: CHINNAMALAI + WAR_HORSE + Fort Post at x: 1370 (1460 - 90 = 1370px)
+        FX.interactiveProp(g, { kind: 'crumblingPillar', x: 1370, y: 840, cutTime: 99, lt, gt });
+        THEME.spawnAnimal(g, 'WAR_HORSE', {
+          moveX: [1640, 1420, lt, 3.8],
+          y: 840,
+          flipX: true,
+          t: gt
+        });
+        THEME.spawnChar(g, 'CHINNAMALAI', {
+          moveX: [1680, 1460, lt, 3.8],
+          y: 840,
+          flipX: true,
+          prop: 'sword',
+          pose: { preset: 'march', speed: 1.3 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.90s): Three Golden Heroic Resistance Banners Flare
+        if (lt >= 1.90) {
+          const popS = DK.pop(lt, 1.90, 0.35);
+          const banners = [
+            { x: 380, text: 'KATTABOMMAN · 1799' },
+            { x: 960, text: 'MARUDHU BROTHERS · 1801' },
+            { x: 1460, text: 'CHINNAMALAI · 1801–05' }
+          ];
+          banners.forEach((b) => {
+            g.save();
+            g.translate(b.x, 635);
+            g.scale(popS, popS);
+            g.fillStyle = 'rgba(15, 23, 42, 0.94)';
+            g.strokeStyle = '#F7B928';
+            g.lineWidth = 3;
+            g.beginPath();
+            g.roundRect(-125, -22, 250, 44, 8);
+            g.fill();
+            g.stroke();
+            g.fillStyle = '#FDE68A';
+            g.font = '900 13px "Space Mono", monospace';
+            g.textAlign = 'center';
+            g.textBaseline = 'middle';
+            g.fillText(b.text, 0, 0);
+            g.restore();
+          });
+        }
+      });
+
+      UI.pillBadge(g, lt, { text: 'KATTABOMMAN · MARUDHU BROTHERS · DHEERAN CHINNAMALAI', x: 960, y: 115, accent: '#F7B928' });
+      UI.citation(g, 'Panchalankurichi War (1799) & Tiruchirappalli Proclamation (June 1801)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 3.8, { gain: 0.20 });
+      k.play('swordClash', bt0 + 0.45, { gain: 0.55 });
+      k.play('hammerHit', bt0 + 1.25, { gain: 0.55 });
+      k.play('horseGallop', bt0 + 1.90, { gain: 0.50 });
+      k.play('warHorn', bt0 + 1.95, { gain: 0.52 });
+      k.play('pillBadge', bt0 + 1.90, { gain: 0.45 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 108 · [06:02.0 - 06:05.8] (362.0s – 365.8s · Duration: 3.8s)
+  // =========================================================================
+  {
+    shot_number: 108,
+    start: 362.0,
+    end: 365.8,
+    duration: 3.8,
+    title: 'The Polygar Wars Across Tamil Nadu (1799–1805)',
+    vo_line: 'எல்லாருமே சண்டைக்கு போக, தமிழ்நாடு முழுக்க ஒரு ரத்த ஆறு ஓடிட்டு இருந்துச்சு.',
+    env_id: 'ENV_BATTLEFIELD_STORM',
+    chars: 'KATTABOMMAN vs BRITISH_OFFICER, CHINNAMALAI + WAR_HORSE [220 -> 960]',
+    on_screen_text: 'THE POLYGAR WARS & SOUTH INDIAN REBELLION (1799–1805)',
+    camera_sfx: 'Pan -35 -> 35, Zoom 1.00 -> 1.09 · swordClash, cannonFire, horseGallop',
+    transition_id: 'ISOMETRIC_WEAPON_DIFF_CUT',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -35], [3.8, 35]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.90, 1.05], [3.8, 1.09]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_BATTLEFIELD_STORM(g, gt, cam, (g) => {
+        // Left Combat Pair (560 + 115 = 675px exact sword contact)
+        THEME.spawnChar(g, 'KATTABOMMAN', {
+          x: 560,
+          y: 840,
+          prop: 'sword',
+          pose: { preset: 'swordFight', speed: 1.4 },
+          t: gt
+        });
+        THEME.spawnChar(g, 'BRITISH_OFFICER', {
+          x: 675,
+          y: 840,
+          flipX: true,
+          prop: 'sword',
+          pose: { preset: 'swordFight', speed: 1.4 },
+          t: gt
+        });
+
+        // Center Target Artillery Piece at x: 1050
+        FX.prop3D(g, 1050, 840, 1.0, { kind: 'tank', color: '#64748B', state: 'active', t: gt });
+
+        // Cavalry Charge (CHINNAMALAI 220 -> 960, charX + 90px = 1050px exact contact + WAR_HORSE)
+        THEME.spawnAnimal(g, 'WAR_HORSE', {
+          moveX: [310, 1050, lt, 3.8],
+          y: 840,
+          t: gt
+        });
+        THEME.spawnChar(g, 'CHINNAMALAI', {
+          moveX: [220, 960, lt, 3.8],
+          y: 840,
+          prop: 'sword',
+          pose: { preset: 'march', speed: 1.35 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.90s): Cannon smoke & crimson battlefield flash
+        if (lt >= 1.90) {
+          drawShockwaveRing(g, 1050, 760, DK.prog(lt, 1.90, 2.60), '#FF4D6A');
+          FX.clouds(g, { seed: 108, count: 4, y: 660, h: 110, color: 'rgba(225,29,72,0.22)', a: 0.45, t: gt, speed: 32 });
+        }
+      });
+
+      UI.pillBadge(g, lt, { text: 'THE POLYGAR WARS & SOUTH INDIAN REBELLION (1799–1805)', x: 960, y: 120, accent: '#FF4D6A' });
+      UI.citation(g, 'Military Consultations, Fort St. George Records (1799–1805)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.32, grain: 0.028 });
+    },
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 3.8, { gain: 0.24 });
+      k.play('swordClash', bt0 + 0.40, { gain: 0.60 });
+      k.play('cannonFire', bt0 + 1.20, { gain: 0.65 });
+      k.play('swordClash', bt0 + 1.90, { gain: 0.62 });
+      k.play('horseGallop', bt0 + 2.40, { gain: 0.48 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 109 · [06:05.8 - 06:08.5] (365.8s – 368.5s · Duration: 2.7s)
+  // =========================================================================
+  {
+    shot_number: 109,
+    start: 365.8,
+    end: 368.5,
+    duration: 2.7,
+    title: 'British Industrial Artillery & Firepower Advantage',
+    vo_line: 'ஆனா பிரிட்டிஷ்காரங்களோட ஆயுதங்கள் எல்லாம் நவீன முறையில advanced-ஆ இருந்ததுனாலயும்,',
+    env_id: 'ENV_FORT_ST_GEORGE + DIFF_BRITISH_WEAPONS',
+    chars: 'BRITISH_OFFICER [x: 1380] operating Howitzer at [x: 1285]',
+    on_screen_text: 'INDUSTRIAL ARTILLERY & FIREPOWER ADVANTAGE',
+    camera_sfx: 'Pan 0 -> 25, Zoom 1.00 -> 1.08 · counterTick, cannonFire, pillBadge',
+    transition_id: 'CUT_TO_DIVIDED_FORTS',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, 0], [2.7, 25]], DK.ease.outCubic),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.35, 1.05], [2.7, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_FORT_ST_GEORGE(g, gt, cam, (g) => {
+        // Target Prop (British 18-Pdr Howitzer Cannon at x: 1285, y: 840)
+        FX.prop3D(g, 1285, 840, 1.05, { kind: 'tank', color: '#475569', state: 'active', t: gt });
+
+        // Hero 1 (BRITISH_OFFICER at x: 1380, 1380 - 95 = 1285px exact contact)
+        THEME.spawnChar(g, 'BRITISH_OFFICER', {
+          x: 1380,
+          y: 840,
+          flipX: true,
+          prop: 'wrench',
+          pose: { preset: 'build', speed: 1.3 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.35s): Cannon muzzle blast wave & firepower alert
+        if (lt >= 1.35) {
+          drawShockwaveRing(g, 1220, 760, DK.prog(lt, 1.35, 2.00), '#FF4D6A');
+          const popS = DK.pop(lt, 1.35, 0.32);
+          g.save();
+          g.translate(1330, 640);
+          g.scale(popS, popS);
+          g.fillStyle = 'rgba(225, 29, 72, 0.95)';
+          g.strokeStyle = '#FFD54F';
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.roundRect(-125, -22, 250, 44, 8);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FFFFFF';
+          g.font = '900 13.5px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillText('18-PDR HOWITZER · +400% RANGE', 0, 0);
+          g.restore();
+        }
+      });
+
+      // Hardware Upgrade Diff Card on left/center stage (x: 640, y: 520)
+      THEME.drawInfo('DIFF_BRITISH_WEAPONS', g, lt, gt);
+
+      UI.pillBadge(g, lt, { text: 'INDUSTRIAL ARTILLERY & FIREPOWER ADVANTAGE', x: 960, y: 115, accent: '#FF4D6A' });
+      UI.citation(g, 'Colonel Welsh, Military Reminiscences (Siege of Panchalankurichi & Kalaiyarkoil)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 2.7, { gain: 0.20 });
+      k.play('counterTick', bt0 + 0.35, { gain: 0.42 });
+      k.play('cannonFire', bt0 + 1.35, { gain: 0.68 });
+      k.play('pillBadge', bt0 + 1.35, { gain: 0.45 });
+    }
+  },
+
+  // =========================================================================
+  // SHOT 110 · [06:08.5 - 06:11.4] (368.5s – 371.4s · Duration: 2.9s)
+  // =========================================================================
+  {
+    shot_number: 110,
+    start: 368.5,
+    end: 371.4,
+    duration: 2.9,
+    title: 'Fragmented Palaiyams & Lack of a Unified Front',
+    vo_line: 'தமிழ்நாடு நிறைய பிரிஞ்சு தேவையான ஆளுங்க ஒண்ணா சேர்ந்து சண்டை போடாததுனாலயும்,',
+    env_id: 'MAP_NAYAK_72_PALAIYAMS + ENV_BATTLEFIELD_STORM',
+    chars: 'KATTABOMMAN [x: 620], PALAIYAKKARAR walking away [1180 -> 1480]',
+    on_screen_text: 'FRAGMENTED RESISTANCE · LACK OF UNIFIED FRONT',
+    camera_sfx: 'Pan -25 -> 25, Zoom 1.00 -> 1.07 · swordClash, ropeSnap, pillBadge',
+    transition_id: 'MAP_FILL_CRIMSON',
+    map: { region: 'Tamil Nadu', center: [78.25, 10.15], zoom: 7.0, bbox: [76.5, 8.0, 80.4, 12.6], style: 'terrainHistorical' },
+    draw(g, lt, gt, u) {
+      // Unobstructed Strategic Map across canvas (Rule 4 compliance)
+      THEME.drawInfo('MAP_NAYAK_72_PALAIYAMS', g, lt, gt);
+
+      const camX = DK.key(lt, [[0.0, -25], [2.9, 25]], DK.ease.inOutSine);
+      const camZ = DK.key(lt, [[0.0, 1.00], [1.45, 1.04], [2.9, 1.07]], DK.ease.outCubic);
+      g.save();
+      g.translate(960 - camX * 0.6, 540);
+      g.scale(camZ, camZ);
+      g.translate(-960, -540);
+
+      // Low foreground parapet at y: 850 so map pins remain 100% visible above
+      drawForegroundMapTerrace(g, 850);
+
+      // Left Isolated Defender: KATTABOMMAN (x: 620) + Fort Bastion at x: 710 (620 + 90 = 710px)
+      FX.interactiveProp(g, { kind: 'brickWallBuild', x: 710, y: 850, cutTime: 1.45, lt, gt });
+      THEME.spawnChar(g, 'KATTABOMMAN', {
+        x: 620,
+        y: 850,
+        prop: 'sword',
+        pose: { preset: 'fight', speed: 1.3 },
+        t: gt
+      });
+
+      // Right Divided Chieftain: PALAIYAKKARAR walking away [1180 -> 1480] to Separate Post at x: 1570
+      FX.interactiveProp(g, { kind: 'crumblingPillar', x: 1570, y: 850, cutTime: 99, lt, gt });
+      THEME.spawnChar(g, 'PALAIYAKKARAR', {
+        moveX: [1180, 1480, lt, 2.9],
+        y: 850,
+        pose: { preset: 'walk', speed: 1.15 },
+        t: gt
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.45s): Broken chain icons flash across the stage & map pins
+      if (lt >= 1.45) {
+        const popS = DK.pop(lt, 1.45, 0.35);
+        drawShockwaveRing(g, 960, 740, DK.prog(lt, 1.45, 2.15), '#FFB84D');
+        drawBrokenChainBadge(g, 960, 720, popS);
+        drawBrokenChainBadge(g, 760, 470, popS * 0.9);
+        drawBrokenChainBadge(g, 1140, 520, popS * 0.9);
+      }
+      g.restore();
+
+      UI.pillBadge(g, lt, { text: 'FRAGMENTED RESISTANCE · LACK OF UNIFIED FRONT', x: 960, y: 120, accent: '#FFB84D' });
+      UI.citation(g, 'K. Rajayyan, Causes of the Defeat of the Poligar Confederacy', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.022 });
+    },
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 2.9, { gain: 0.20 });
+      k.play('swordClash', bt0 + 0.40, { gain: 0.48 });
+      k.play('ropeSnap', bt0 + 1.45, { gain: 0.55 });
+      k.play('pillBadge', bt0 + 1.45, { gain: 0.45 });
+    }
+  }
+];
+
+window.THEME = THEME;
+if (window.DK && DK.linkShotTransitions) DK.linkShotTransitions(SHOTS, window.THEME);
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const BATCH_START = SHOTS[0].start;
+const BATCH_END = SHOTS[SHOTS.length - 1].end;
+const DURATION = BATCH_END - BATCH_START;
+
+// Auto-runs each shot's attached sfx(k, bt0) if scoreSound(k) is not defined separately
+if (typeof window.scoreSound !== 'function') {
+  window.scoreSound = function scoreSound(k) {
+    SHOTS.forEach((s) => {
+      if (typeof s.sfx === 'function') s.sfx(k, s.start - BATCH_START);
+    });
+  };
+}
+const scoreSound = window.scoreSound;
+
+window.BATCH_START = BATCH_START;
+window.BATCH_END = BATCH_END;
+window.DURATION = DURATION;
+window.SHOTS = SHOTS;
+window.scoreSound = scoreSound;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, activeShotFilter = 'all', voAudio = null;
+
+function findShotAtGlobal(gt) {
+  for (let i = 0; i < SHOTS.length; i++) {
+    if (gt >= SHOTS[i].start && gt <= SHOTS[i].end) return SHOTS[i];
+  }
+  return gt < SHOTS[0].start ? SHOTS[0] : SHOTS[SHOTS.length - 1];
+}
+
+function renderAtLocal(localT) {
+  currentT = DK.clamp(localT, 0, DURATION);
+  const gt = BATCH_START + currentT;
+  const s = findShotAtGlobal(gt);
+  const lt = DK.clamp(gt - s.start, 0, s.duration);
+  const u = s.duration > 0 ? lt / s.duration : 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1920, 1080);
+  ctx.save();
+  if (window.DK && DK.drawShot) DK.drawShot(ctx, s, lt, gt, u);
+  else s.draw(ctx, lt, gt, u);
+  ctx.restore();
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = gt.toFixed(2) + 's (' + currentT.toFixed(2) + 's) · Shot ' + s.shot_number;
+}
+
+window.seek = function (t, opts) {
+  if (playing) pause();
+  const localT = opts && opts.global ? t - BATCH_START : t;
+  renderAtLocal(localT);
+};
+
+function startAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('mixSelect').value;
+  if (mixMode !== 'mute' && window.SOUND) stopSound = SOUND.live(scoreSound, currentT, { mixMode: 'sfxOnly' });
+  if (voAudio) { voAudio.currentTime = BATCH_START + currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (activeShotFilter !== 'all') {
+      const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+      if (s) {
+        const sLocal0 = s.start - BATCH_START, sLocal1 = s.end - BATCH_START;
+        if (nextT >= sLocal1) { nextT = sLocal0; currentT = nextT; startAudio(); }
+      }
+    } else if (nextT >= DURATION) {
+      nextT = 0; currentT = 0; startAudio();
+    }
+    renderAtLocal(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+const shotSelect = document.getElementById('shotSelect');
+SHOTS.forEach((s) => {
+  const opt = document.createElement('option');
+  opt.value = String(s.shot_number);
+  opt.textContent = 'Shot ' + s.shot_number + ': ' + s.title + ' (' + s.start.toFixed(1) + 's-' + s.end.toFixed(1) + 's)';
+  shotSelect.appendChild(opt);
+});
+
+shotSelect.addEventListener('change', () => {
+  activeShotFilter = shotSelect.value;
+  if (activeShotFilter !== 'all') {
+    const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+    if (s) { renderAtLocal(s.start - BATCH_START); if (playing) startAudio(); }
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  renderAtLocal(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('mixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('wavBtn').addEventListener('click', async () => {
+  const res = await SOUND.renderOffline(scoreSound, DURATION, 48000, { mixMode: 'sfxOnly' });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'batch_sfx_' + SHOTS[0].shot_number + '_' + SHOTS[SHOTS.length - 1].shot_number + '.wav';
+  a.click();
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  if (window.MAP && MAP.preloadAll) await MAP.preloadAll(SHOTS);
+  renderAtLocal(0);
+});
+</script>
+</body>
+</html>

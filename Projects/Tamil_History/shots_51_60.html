@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lumina 2.5D Storybook Studio (16:9) — Shots 051 to 060 (shots_51_60.html)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #05070d; color: #e2e8f0; font-family: 'Nunito', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#stage-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; overflow: hidden; }
+canvas { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; box-shadow: 0 16px 48px rgba(0,0,0,0.75); background: #070b16; }
+#controls { height: 58px; background: #101522; border-top: 1px solid #222b42; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 13px; }
+button, select, label.btn { background: #1c2539; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+button:hover, select:hover, label.btn:hover { background: #283552; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 12px; color: #ffb074; min-width: 230px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><canvas id="stage" width="1920" height="1080"></canvas></div>
+<div id="controls">
+  <button id="playBtn">Play</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.0s / 00.0s · Shot 51</div>
+  <select id="shotSelect"><option value="all">All Shots in Batch (51–60)</option></select>
+  <select id="mixSelect">
+    <option value="sfxOnly" selected>SFX + Ambient Only (No BGM)</option>
+    <option value="mute">Mute</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="wavBtn">Export Batch SFX (.wav)</button>
+</div>
+<script src="../../engine.js"></script>
+<script>
+// ============================================================================
+// MASTER CONSISTENCY BIBLE & GLOBAL THEME DICTIONARY (BATCH 11–12: SHOTS 51–60)
+// ============================================================================
+const THEME = {
+  CHARS: {
+    HOST_PROTAG: {
+      skin: '#D69A72',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'jacket',
+      topColor: '#FF851B',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      s: 1.0
+    },
+    SANGAM_MERCHANT: {
+      skin: '#C88C68',
+      hairStyle: 'scholarBun',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#38BDF8',
+      bottomColor: '#F4EFE6',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      s: 1.0
+    },
+    BUDDHIST_MONK: {
+      skin: '#E8A478',
+      hairStyle: 'baldTufts',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientChina',
+      topColor: '#FF851B',
+      bottomColor: '#D97706',
+      headwear: 'none',
+      foreheadMark: 'tilak',
+      s: 1.0
+    },
+    BODHIDHARMA: {
+      skin: '#C88C68',
+      hairStyle: 'wavyLocks',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientChina',
+      topColor: '#D97706',
+      bottomColor: '#F4EFE6',
+      headwear: 'kasa',
+      foreheadMark: 'tilak',
+      s: 1.04
+    },
+    NARASIMHAVARMAN: {
+      skin: '#C88C68',
+      hairStyle: 'royalBun',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#F7B928',
+      bottomColor: '#8B2635',
+      headwear: 'crown',
+      foreheadMark: 'vibhuti',
+      s: 1.05
+    },
+    PANDYA_KING: {
+      skin: '#B87A56',
+      hairStyle: 'warriorKnot',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#38BDF8',
+      bottomColor: '#1E3A8A',
+      headwear: 'crown',
+      foreheadMark: 'vibhuti',
+      s: 1.05
+    },
+    CHOLA_KING: {
+      skin: '#C88C68',
+      hairStyle: 'royalBun',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#F7B928',
+      bottomColor: '#991B1B',
+      headwear: 'crown',
+      foreheadMark: 'vibhuti',
+      s: 1.05
+    },
+    RAJARAJA_CHOLA: {
+      skin: '#C88C68',
+      hairStyle: 'royalBun',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#F7B928',
+      bottomColor: '#7F1D1D',
+      headwear: 'crown',
+      foreheadMark: 'vibhuti',
+      s: 1.08
+    },
+    RAJENDRA_CHOLA: {
+      skin: '#B87A56',
+      hairStyle: 'warriorKnot',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#FF851B',
+      bottomColor: '#1E3A8A',
+      headwear: 'crown',
+      foreheadMark: 'vibhuti',
+      s: 1.07
+    },
+    THIRUVALLUVAR: {
+      skin: '#C88C68',
+      hairStyle: 'scholarBun',
+      hairColor: '#788092',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#F4EFE6',
+      bottomColor: '#E2E8F0',
+      headwear: 'none',
+      foreheadMark: 'vibhuti',
+      s: 1.0
+    },
+    TAMIL_FARMER: {
+      skin: '#B87A56',
+      hairStyle: 'shortCrop',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#4ADE80',
+      bottomColor: '#F4EFE6',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      s: 1.0
+    },
+    PERUNTHACHAN: {
+      skin: '#C88C68',
+      hairStyle: 'scholarBun',
+      hairColor: '#788092',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#EAB308',
+      bottomColor: '#F4EFE6',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      s: 1.02
+    }
+  },
+  ANIMALS: {
+    ROYAL_ELEPHANT: {
+      kind: 'elephant',
+      royal: true,
+      s: 1.15
+    }
+  },
+  INFO: {
+    MAP_PALLAVA_CHINA: {
+      bbox: [74.0, 4.0, 120.0, 27.0],
+      style: 'terrainHistorical',
+      title: 'PALLAVA – TANG CHINA MARITIME SILK & SPICE ROUTE',
+      subTitle: '8TH CENTURY CE · MAMALLAPURAM TO GUANGZHOU',
+      reading: 'NAVAL DIPLOMACY & TRADE CORRIDOR'
+    },
+    PHY_KUNGFU_WALL: {
+      opts: {
+        id: 'kungfu_wall_53',
+        x: 885,
+        y: 840,
+        w: 170,
+        h: 250,
+        impactTime: 1.70,
+        impactPoint: [885, 710],
+        force: 960,
+        cols: 5,
+        rows: 7,
+        material: 'brick',
+        floorY: 840,
+        seed: 53
+      }
+    },
+    MAP_CHOLA_RISE: {
+      bbox: [74.5, 6.5, 84.5, 15.5],
+      style: 'terrainHistorical',
+      title: 'RISE OF THE IMPERIAL CHOLA HEARTLAND',
+      subTitle: 'c. 850 – 985 CE · THANJAVUR IMPERIAL EXPANSION',
+      reading: 'KAVERI DELTA SOVEREIGNTY'
+    }
+  },
+  ENVS: {
+    // Low foreground harbor terrace for map shots so UI.strategicMap is 100% unobstructed above y = 855
+    drawHarborMapTerrace(g, lt, gt, accentColor) {
+      g.save();
+      // Subtle lower-deck shadow gradient
+      const grad = g.createLinearGradient(0, 815, 0, 1080);
+      grad.addColorStop(0, 'rgba(7, 14, 28, 0.0)');
+      grad.addColorStop(0.22, 'rgba(12, 22, 40, 0.86)');
+      grad.addColorStop(1, 'rgba(8, 14, 26, 0.98)');
+      g.fillStyle = grad;
+      g.fillRect(0, 815, 1920, 265);
+
+      // Stone & timber harbor wharf deck at y = 850
+      g.fillStyle = '#3E2E22';
+      g.fillRect(0, 850, 1920, 230);
+      g.fillStyle = '#5C4332';
+      g.fillRect(0, 850, 1920, 16);
+      g.strokeStyle = accentColor || '#5CE1FF';
+      g.lineWidth = 2.5;
+      g.beginPath();
+      g.moveTo(0, 850);
+      g.lineTo(1920, 850);
+      g.stroke();
+
+      // Deck plank lines & mooring bollards
+      g.strokeStyle = 'rgba(255,255,255,0.08)';
+      g.lineWidth = 2;
+      for (let px = 80; px < 1920; px += 140) {
+        g.beginPath();
+        g.moveTo(px, 850);
+        g.lineTo(px - 35, 1080);
+        g.stroke();
+      }
+      [180, 1480, 1720].forEach((bx) => {
+        g.fillStyle = '#64748B';
+        g.fillRect(bx - 12, 822, 24, 30);
+        g.fillStyle = '#94A3B8';
+        g.fillRect(bx - 16, 816, 32, 8);
+      });
+      if (window.FX && FX.prop3D) {
+        FX.prop3D(g, 250, 850, 0.85, { kind: 'amphoraStack', t: gt });
+        FX.prop3D(g, 1580, 850, 0.85, { kind: 'spiceCrates', t: gt });
+      }
+      g.restore();
+    },
+
+    // Low foreground royal temple terrace for Shot 056 Map so UI.strategicMap is 100% unobstructed
+    drawRoyalMapTerrace(g, lt, gt) {
+      g.save();
+      const grad = g.createLinearGradient(0, 815, 0, 1080);
+      grad.addColorStop(0, 'rgba(18, 12, 6, 0.0)');
+      grad.addColorStop(0.22, 'rgba(32, 22, 12, 0.88)');
+      grad.addColorStop(1, 'rgba(18, 12, 8, 0.98)');
+      g.fillStyle = grad;
+      g.fillRect(0, 815, 1920, 265);
+
+      // Granite temple terrace floor at y = 850
+      g.fillStyle = '#4A3B31';
+      g.fillRect(0, 850, 1920, 230);
+      g.fillStyle = '#D99B26';
+      g.fillRect(0, 850, 1920, 12);
+
+      // Carved lotus border stones
+      g.fillStyle = '#6E5644';
+      for (let sx = 40; sx < 1920; sx += 120) {
+        g.fillRect(sx, 868, 96, 26);
+      }
+      g.restore();
+    },
+
+    // Shaolin Pagoda Courtyard under Edo Mist (Shots 052 & 053)
+    ENV_SHAOLIN_PAGODA(g, cam, lt, gt, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'edoMist');
+          FX.sun(g, 1460, 220, 68, '#FFD580');
+          FX.clouds(g, { seed: 52, count: 7, y: 170, h: 140, color: '#FFF7E6', a: 0.78, t: gt, speed: 10 });
+        },
+        bgFar: (g) => {
+          FX.hills(g, { seed: 101, y: 740, amp: 165, color: '#5E7268' });
+          FX.hills(g, { seed: 102, y: 780, amp: 115, color: '#465B52' });
+          FX.storybookHorizon(g, { style: 'eastAsian', y: 770, seed: 52 });
+        },
+        bgFarDepth: 0.32,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#6B706B', grassCol: '#4F7A54' });
+          FX.structure3D(g, 1340, 840, 320, 460, { kind: 'pagoda', color: '#9E2A2B', t: gt });
+          FX.structure3D(g, 280, 840, 220, 260, { kind: 'pagoda', color: '#8B3A2B', t: gt });
+          FX.tree(g, 520, 840, 1.15, '#E88D96', 'cherry');
+          FX.tree(g, 1660, 840, 1.2, '#E88D96', 'cherry');
+          FX.tree(g, 110, 840, 1.1, '#3E6B48', 'pine');
+        },
+        mgBackDepth: 0.68,
+        mgHero: heroFn,
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 14, color: 'rgba(255, 220, 160, 0.25)' });
+        },
+        fgBokehDepth: 1.4,
+        fgBokehBlur: 8
+      });
+    },
+
+    // Thirupurambiyam Stormy Battlefield (Shot 055)
+    ENV_BATTLEFIELD_STORM(g, cam, lt, gt, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'storm');
+          FX.clouds(g, { seed: 55, count: 9, y: 150, h: 170, color: '#475569', a: 0.85, t: gt, speed: 24 });
+        },
+        bgFar: (g) => {
+          FX.hills(g, { seed: 55, y: 760, amp: 130, color: '#334155' });
+          FX.storybookHorizon(g, { style: 'fortress', y: 775, seed: 55 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 2,
+        mgBack: (g) => {
+          FX.storybookGround(g, 840, { style: 'earthPath', baseCol: '#5C4433', grassCol: '#3F5238' });
+          FX.storybookScene(g, gt, { preset: 'battlefield', y: 840, seed: 55 });
+          FX.tree(g, 210, 840, 1.1, '#2D4030', 'palm');
+          FX.tree(g, 1710, 840, 1.15, '#2D4030', 'banyan');
+        },
+        mgBackDepth: 0.72,
+        mgHero: heroFn,
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 18, color: 'rgba(255, 130, 60, 0.32)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    // Thanjavur Temple & Fortress Ramparts (Shot 057)
+    ENV_THANJAVUR_VIMANA(g, cam, lt, gt, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'clearDay');
+          FX.sun(g, 1480, 210, 66);
+          FX.clouds(g, { seed: 57, count: 7, y: 150, h: 145, color: '#FFFFFF', a: 0.9, t: gt, speed: 12 });
+        },
+        bgFar: (g) => {
+          FX.hills(g, { seed: 57, y: 755, amp: 95, color: '#5A8F68' });
+          FX.storybookHorizon(g, { style: 'ancientTamil', y: 765, seed: 57 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#8A6F56', grassCol: '#4A8C4A' });
+          FX.storybookScene(g, gt, { preset: 'fortRamparts', y: 840, seed: 57 });
+          FX.structure3D(g, 1360, 840, 340, 480, { kind: 'gopuram', color: '#C87A3B', t: gt });
+          FX.structure3D(g, 310, 840, 260, 280, { kind: 'stoneFort', color: '#8C6D53', t: gt });
+          FX.tree(g, 1690, 840, 1.2, '#3D7A44', 'palm');
+        },
+        mgBackDepth: 0.72,
+        mgHero: heroFn,
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 12, color: 'rgba(255, 215, 120, 0.25)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 9
+      });
+    },
+
+    // Chola Royal Durbar Hall (Shots 058 & 060)
+    ENV_PALACE_DURBAR(g, cam, lt, gt, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'ancientInterior');
+          FX.godRays(g, 960, 80, { count: 9, color: 'rgba(255, 200, 90, 0.22)', spread: 1.2, len: 920 });
+        },
+        bgFar: (g) => {
+          // Ornate Chola palace colonnade & crimson-gold tapestries
+          g.save();
+          g.fillStyle = '#2B1810';
+          g.fillRect(0, 120, 1920, 720);
+          for (let cx = 180; cx <= 1740; cx += 260) {
+            g.fillStyle = '#7C2D12';
+            g.fillRect(cx - 55, 160, 110, 420);
+            g.strokeStyle = '#F7B928';
+            g.lineWidth = 3;
+            g.strokeRect(cx - 55, 160, 110, 420);
+          }
+          g.restore();
+        },
+        bgFarDepth: 0.3,
+        bgFarBlur: 1,
+        mgBack: (g) => {
+          FX.storybookGround(g, 840, { style: 'marbleFloor', baseCol: '#6E523C', grassCol: '#523A28' });
+          FX.storybookScene(g, gt, { preset: 'palaceInterior', y: 840, seed: 58 });
+          FX.structure3D(g, 320, 840, 240, 320, { kind: 'mandapam', color: '#B45309', t: gt });
+          FX.structure3D(g, 1600, 840, 240, 320, { kind: 'mandapam', color: '#B45309', t: gt });
+        },
+        mgBackDepth: 0.7,
+        mgHero: heroFn,
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 16, color: 'rgba(247, 185, 40, 0.28)' });
+        },
+        fgBokehDepth: 1.4,
+        fgBokehBlur: 8
+      });
+    },
+
+    // Uthiramerur Temple Courtyard & Inscribed Mandapam (Shot 059)
+    ENV_TEMPLE_COURTYARD(g, cam, lt, gt, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood(g, 'clearDay');
+          FX.sun(g, 1460, 200, 64);
+          FX.clouds(g, { seed: 59, count: 6, y: 145, h: 140, color: '#FFFFFF', a: 0.88, t: gt, speed: 11 });
+        },
+        bgFar: (g) => {
+          FX.hills(g, { seed: 59, y: 750, amp: 90, color: '#5A8F68' });
+          FX.storybookHorizon(g, { style: 'ancientTamil', y: 765, seed: 59 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#7C6550', grassCol: '#4A8C4A' });
+          FX.storybookScene(g, gt, { preset: 'templeCourtyard', y: 840, seed: 59 });
+          FX.structure3D(g, 520, 840, 380, 330, { kind: 'mandapam', color: '#A86438', t: gt });
+          FX.structure3D(g, 1480, 840, 280, 420, { kind: 'gopuram', color: '#B85D32', t: gt });
+          FX.tree(g, 175, 840, 1.2, '#3D7A44', 'banyan');
+        },
+        mgBackDepth: 0.72,
+        mgHero: heroFn,
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: 'rgba(255, 235, 170, 0.22)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    }
+  }
+};
+window.THEME = THEME;
+
+// ============================================================================
+// NON-DESTRUCTIVE FLOATING HUD HELPERS (RULE 5: CRITICAL HUD OVERLAY LAW)
+// ============================================================================
+function drawFloatingEraDial(g, lt, opts) {
+  const pop = DK.pop(lt, opts.t0 || 0.15, 0.45);
+  if (pop <= 0.01) return;
+  const x = opts.x || 960;
+  const y = opts.y || 135;
+  const w = 680;
+  const h = 76;
+  const lockPulse = lt >= (opts.lockTime || 1.6) ? 1 + 0.04 * Math.sin((lt - (opts.lockTime || 1.6)) * 8) : 1;
+
+  g.save();
+  g.translate(x, y);
+  g.scale(pop * lockPulse, pop * lockPulse);
+
+  // Sleek dark glass HUD pill banner
+  g.fillStyle = 'rgba(11, 16, 30, 0.90)';
+  g.strokeStyle = opts.accent || '#F7B928';
+  g.lineWidth = 3;
+  g.beginPath();
+  g.roundRect(-w / 2, -h / 2, w, h, 38);
+  g.fill();
+  g.stroke();
+
+  // Rotating compass/era dial icon on left
+  g.save();
+  g.translate(-w / 2 + 44, 0);
+  g.rotate(lt * 1.2);
+  g.strokeStyle = '#F7B928';
+  g.lineWidth = 2.5;
+  g.beginPath();
+  g.arc(0, 0, 22, 0, Math.PI * 2);
+  g.stroke();
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4;
+    g.beginPath();
+    g.moveTo(Math.cos(a) * 14, Math.sin(a) * 14);
+    g.lineTo(Math.cos(a) * 22, Math.sin(a) * 22);
+    g.stroke();
+  }
+  g.restore();
+
+  // Era & Year labels
+  g.textAlign = 'center';
+  g.font = '800 14px "Space Mono", monospace';
+  g.fillStyle = '#94A3B8';
+  g.fillText(opts.era || 'IMPERIAL CHOLA DYNASTY', 18, -8);
+
+  g.font = '900 22px "Fredoka", sans-serif';
+  g.fillStyle = lt >= (opts.lockTime || 1.6) ? '#FFD54F' : '#FFFFFF';
+  g.fillText(opts.year || 'c. 850 CE · VIJAYALAYA CHOLA', 18, 20);
+  g.restore();
+}
+
+// ============================================================================
+// SHOTS 051 TO 060 (169.6s – 204.8s)
+// ============================================================================
+const SHOTS = [
+  // --------------------------------------------------------------------------
+  // SHOT 051 · [02:49.6 - 02:53.0] (169.6s – 173.0s, dur: 3.4s)
+  // Pallava–China Maritime Trade Route
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 51,
+    start: 169.6,
+    end: 173.0,
+    duration: 3.4,
+    title: 'Pallava–China Maritime Trade Route',
+    vo_line: 'இந்த time-ல சீனாவுக்கும் தமிழ்நாட்டுக்கும் நடுவுல வணிகங்கள் நல்லா போயிட்டு இருந்திருக்கு.',
+    env_id: 'ENV_ANCIENT_HARBOR + MAP_PALLAVA_CHINA',
+    chars: 'SANGAM_MERCHANT (walk -> 780) + BUDDHIST_MONK (trade @ 960)',
+    on_screen_text: 'PALLAVA – CHINA MARITIME DIPLOMACY & TRADE',
+    camera_sfx: 'Map Zoom 1.0->1.06 · ancientHarbor + waterSplash + ding + coinClink',
+    transition_out: 'DIVE_TO_SHAOLIN_COURTYARD',
+    draw(g, lt, gt, u) {
+      const z = DK.key(lt, [[0, 1.0], [3.4, 1.06]], DK.ease.inOutSine);
+      g.save();
+      g.translate(960, 540);
+      g.scale(z, z);
+      g.translate(-960, -540);
+
+      // 1. Unobstructed Strategic Map across the canvas (Rule 4: Map Visibility Law)
+      UI.strategicMap(g, lt, {
+        bbox: THEME.INFO.MAP_PALLAVA_CHINA.bbox,
+        style: THEME.INFO.MAP_PALLAVA_CHINA.style,
+        title: THEME.INFO.MAP_PALLAVA_CHINA.title,
+        subTitle: THEME.INFO.MAP_PALLAVA_CHINA.subTitle,
+        reading: THEME.INFO.MAP_PALLAVA_CHINA.reading,
+        territories: [
+          { place: 'India', color: 'rgba(247, 185, 40, 0.38)', border: '#F7B928', label: 'PALLAVA TAMILAKAM', t0: 0.1 },
+          { place: 'China', color: 'rgba(92, 225, 255, 0.35)', border: '#5CE1FF', label: 'TANG DYNASTY CHINA', t0: 0.25 }
+        ],
+        routes: [
+          { from: [80.19, 12.62], to: [103.8, 1.35], t0: 0.2, dur: 0.9, color: '#FF851B', vessel: 'cholaShip' },
+          { from: [103.8, 1.35], to: [113.26, 23.13], t0: 0.95, dur: 0.95, color: '#5CE1FF', vessel: 'cholaShip' }
+        ],
+        pins: [
+          { lonLat: [80.19, 12.62], label: 'MAMALLAPURAM', diorama: 'gopuram', t0: 0.15 },
+          { lonLat: [113.26, 23.13], label: 'GUANGZHOU (CHINA)', diorama: 'pagoda', t0: 1.70 }
+        ]
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.70s): Guangzhou port callout badge
+      if (lt >= 1.70) {
+        const pPop = DK.pop(lt, 1.70, 0.35);
+        g.save();
+        g.translate(1390, 310);
+        g.scale(pPop, pPop);
+        g.fillStyle = 'rgba(12, 22, 42, 0.92)';
+        g.strokeStyle = '#5CE1FF';
+        g.lineWidth = 2.5;
+        g.beginPath();
+        g.roundRect(-165, -34, 330, 68, 12);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#5CE1FF';
+        g.font = '800 14px "Space Mono", monospace';
+        g.textAlign = 'center';
+        g.fillText('PORT ARRIVAL · 720 CE', 0, -6);
+        g.fillStyle = '#FFFFFF';
+        g.font = '800 17px "Nunito", sans-serif';
+        g.fillText('SILK, SPICES & EMBASSIES', 0, 18);
+        g.restore();
+      }
+
+      // 2. Low foreground harbor terrace (y = 850..1080) with active trade choreography
+      THEME.ENVS.drawHarborMapTerrace(g, lt, gt, '#5CE1FF');
+
+      // Target Interactive Prop at x = 870, y = 850 (exact 90px contact from both sides!)
+      FX.interactiveProp(g, { kind: 'merchantStall', x: 870, y: 850, lt, gt });
+
+      // Pallava Envoy walking [360 -> 780] to stall (x: 870 = charX + 90px at arrival)
+      DK.char(g, {
+        ...THEME.CHARS.SANGAM_MERCHANT,
+        moveX: [360, 780, lt, 3.4],
+        y: 850,
+        prop: 'scroll',
+        eyeMode: 'warm',
+        mouth: 'smile',
+        pose: { preset: 'walk', speed: 1.15 },
+        t: gt,
+        seed: 511
+      });
+
+      // Chinese Envoy trading at x = 960 (stall at 870 = charX - 90px exact contact)
+      DK.char(g, {
+        ...THEME.CHARS.BUDDHIST_MONK,
+        x: 960,
+        y: 850,
+        flipX: true,
+        prop: 'scroll',
+        eyeMode: 'warm',
+        mouth: 'smile',
+        pose: { preset: 'trade', speed: 1.15 },
+        t: gt,
+        seed: 512
+      });
+
+      g.restore();
+
+      // 3. HUD & Citation
+      UI.pillBadge(g, lt, { text: 'PALLAVA – CHINA MARITIME DIPLOMACY & TRADE', x: 960, y: 120, accent: '#5CE1FF', t0: 0.25 });
+      UI.citation(g, 'Narasimhavarman II (Rajasimha) Embassies to Tang China (720 CE)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.02 });
+    },
+    sfx(k, bt0) {
+      k.bed('ancientHarbor', bt0 + 0.0, bt0 + 3.4, { gain: 0.22 });
+      k.play('pillBadge', bt0 + 0.25, { gain: 0.42 });
+      k.play('waterSplash', bt0 + 0.90, { gain: 0.45 });
+      k.play('ding', bt0 + 1.70, { gain: 0.50 });
+      k.play('coinClink', bt0 + 2.40, { gain: 0.48 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 052 · [02:53.0 - 02:57.1] (173.0s – 177.1s, dur: 4.1s)
+  // Bodhidharma: Pallava Prince to Zen Founder in China
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 52,
+    start: 173.0,
+    end: 177.1,
+    duration: 4.1,
+    title: 'Bodhidharma: Pallava Prince to Zen Founder in China',
+    vo_line: 'இந்த time-லதான் பல்லவ இளவரசரான போதிதர்மர் Zen புத்த மதத்தை பரப்புறதுக்காக China போறாரு.',
+    env_id: 'ENV_SHAOLIN_PAGODA',
+    chars: 'BODHIDHARMA (walk 300->880) + BUDDHIST_MONK (experiment @ 1060)',
+    on_screen_text: 'BODHIDHARMA (போதிதர்மர்) · KANCHIPURAM → CHINA',
+    camera_sfx: 'Pan -25->+25, Zoom 1.0->1.07 · forestMorning + footstep + templeBell + starShimmer',
+    transition_out: 'WHIP_ZOOM_ACTION',
+    draw(g, lt, gt, u) {
+      // Rule 3: Camera Origin Law (cam.x within -35..+35, cam.y = 0)
+      const cam = {
+        x: DK.key(lt, [[0, -25], [4.1, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [4.1, 1.07]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_SHAOLIN_PAGODA(g, cam, lt, gt, (g) => {
+        // Mid-Shot Micro-Beat (lt = 2.05s): Golden Dharma Lotus Halo blooms behind desk & pagoda
+        if (lt >= 2.05) {
+          const bloom = DK.pop(lt, 2.05, 0.55);
+          g.save();
+          g.translate(970, 650);
+          g.scale(bloom, bloom);
+          const halo = g.createRadialGradient(0, 0, 15, 0, 0, 220);
+          halo.addColorStop(0, 'rgba(255, 215, 90, 0.55)');
+          halo.addColorStop(0.6, 'rgba(255, 133, 27, 0.22)');
+          halo.addColorStop(1, 'rgba(255, 133, 27, 0)');
+          g.fillStyle = halo;
+          g.beginPath();
+          g.arc(0, 0, 220, 0, Math.PI * 2);
+          g.fill();
+
+          // 8-spoked Dharma Wheel emblem
+          g.rotate(gt * 0.6);
+          g.strokeStyle = 'rgba(255, 215, 100, 0.75)';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.arc(0, 0, 88, 0, Math.PI * 2);
+          g.stroke();
+          for (let i = 0; i < 8; i++) {
+            const a = (i * Math.PI) / 4;
+            g.beginPath();
+            g.moveTo(0, 0);
+            g.lineTo(Math.cos(a) * 88, Math.sin(a) * 88);
+            g.stroke();
+          }
+          g.restore();
+        }
+
+        // Target Interactive Prop at x: 970, y: 840 (charX + 90px at arrival)
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 970, y: 840, lt, gt });
+
+        // Bodhidharma walking [300 -> 880] across monastery courtyard
+        DK.char(g, {
+          ...THEME.CHARS.BODHIDHARMA,
+          moveX: [300, 880, lt, 4.1],
+          y: 840,
+          prop: 'walkingStick',
+          eyeMode: 'warm',
+          mouth: 'neutral',
+          pose: { preset: 'walk', speed: 1.1 },
+          t: gt,
+          seed: 521
+        });
+
+        // Shaolin Abbot receiving Chan/Zen scroll at x: 1060 (desk at 970 = charX - 90px exact contact)
+        DK.char(g, {
+          ...THEME.CHARS.BUDDHIST_MONK,
+          x: 1060,
+          y: 840,
+          flipX: true,
+          prop: 'scroll',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          pose: { preset: 'experiment', speed: 1.1 },
+          t: gt,
+          seed: 522
+        });
+      });
+
+      UI.pillBadge(g, lt, { text: 'BODHIDHARMA (போதிதர்மர்) · KANCHIPURAM → CHINA', x: 960, y: 120, accent: '#FF851B', t0: 0.3 });
+      UI.citation(g, 'Yang Xuanzhi, Record of the Buddhist Monasteries of Luoyang (547 CE)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('forestMorning', bt0 + 0.0, bt0 + 4.1, { gain: 0.20 });
+      k.play('footstep', bt0 + 0.70, { gain: 0.38 });
+      k.play('templeBell', bt0 + 2.05, { gain: 0.55 });
+      k.play('starShimmer', bt0 + 2.35, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 053 · [02:57.1 - 03:00.5] (177.1s – 180.5s, dur: 3.4s)
+  // "7aum Arivu" Suriya as Bodhidharma Practicing Kung Fu
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 53,
+    start: 177.1,
+    end: 180.5,
+    duration: 3.4,
+    title: '"7aum Arivu" Suriya as Bodhidharma Practicing Kung Fu',
+    vo_line: 'ஏழாம் அறிவு சூர்யா as போதிதர்மர் practicing Kung Fu.',
+    env_id: 'ENV_SHAOLIN_PAGODA + PHY_KUNGFU_WALL',
+    chars: 'BODHIDHARMA (fight @ 780) + BUDDHIST_MONK (fight 1380->1120)',
+    on_screen_text: '7AUM ARIVU MODE · SHAOLIN KUNGFU & KALARI ROOTS',
+    camera_sfx: 'Impact Shake @ 1.70s · swish + punchHit + whipCrack + shatter',
+    transition_out: 'CUT_TO_DEADPAN_HOST',
+    draw(g, lt, gt, u) {
+      const shk = lt > 1.7 ? DK.shake(lt - 1.7, 8, 18, 53) : { x: 0, y: 0 };
+      const cam = {
+        x: shk.x,
+        y: shk.y * 0.5,
+        z: DK.key(lt, [[0, 1.0], [1.7, 1.08], [3.4, 1.10]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_SHAOLIN_PAGODA(g, cam, lt, gt, (g) => {
+        // Wooden training post for Shaolin Monk trainee at x: 1030 (charX - 90px at arrival)
+        FX.interactiveProp(g, { kind: 'crumblingPillar', x: 1030, y: 840, cutTime: 2.6, lt, gt });
+
+        // Shaolin Monk Trainee practicing synchronized stances [1380 -> 1120]
+        DK.char(g, {
+          ...THEME.CHARS.BUDDHIST_MONK,
+          moveX: [1380, 1120, lt, 3.4],
+          y: 840,
+          flipX: true,
+          prop: 'none',
+          eyeMode: 'warm',
+          brows: 'furrowed',
+          mouth: 'o',
+          pose: { preset: 'fight', speed: 1.3 },
+          t: gt,
+          seed: 532
+        });
+
+        // Bodhidharma at x: 780 striking PHY_KUNGFU_WALL at x: 885 (exact charX + 105px contact!)
+        DK.char(g, {
+          ...THEME.CHARS.BODHIDHARMA,
+          x: 780,
+          y: 840,
+          prop: 'none',
+          eyeMode: 'warm',
+          brows: 'furrowed',
+          mouth: lt >= 1.65 && lt <= 2.1 ? 'scream' : 'neutral',
+          pose: { preset: 'fight', speed: 1.45 },
+          t: gt,
+          seed: 531
+        });
+
+        // 120Hz Deterministic Shatter Wall at x: 885, impactTime: 1.70
+        if (window.PHY && PHY.shatterWall) {
+          PHY.shatterWall(g, lt, THEME.INFO.PHY_KUNGFU_WALL.opts);
+        }
+
+        // Mid-Shot Micro-Beat (lt = 1.70s): Golden Chi Impact Shockwave Ring
+        if (lt >= 1.70 && lt <= 2.45) {
+          const p = (lt - 1.70) / 0.75;
+          g.save();
+          g.strokeStyle = `rgba(247, 185, 40, ${1 - p})`;
+          g.lineWidth = 6 * (1 - p);
+          g.beginPath();
+          g.arc(885, 710, 24 + p * 170, 0, Math.PI * 2);
+          g.stroke();
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, { text: '7AUM ARIVU MODE · SHAOLIN KUNGFU & KALARI ROOTS', x: 960, y: 120, accent: '#F7B928', t0: 0.25 });
+      UI.citation(g, 'Shaolin Monastic Tradition & Pop-Culture Reference (7aum Arivu, 2011)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.28, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('forestMorning', bt0 + 0.0, bt0 + 3.4, { gain: 0.18 });
+      k.play('swish', bt0 + 0.45, { gain: 0.52 });
+      k.play('punchHit', bt0 + 0.90, { gain: 0.58 });
+      k.play('whipCrack', bt0 + 1.65, { gain: 0.55 });
+      k.play('shatter', bt0 + 1.70, { gain: 0.72 });
+      if (window.PHY && PHY.scheduleImpacts) {
+        PHY.scheduleImpacts(k, 'shatter', THEME.INFO.PHY_KUNGFU_WALL.opts, 177.1, BATCH_START);
+      }
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 054 · [03:00.5 - 03:03.2] (180.5s – 183.2s, dur: 2.7s)
+  // "Everyone Knows What Happened Next" (Deadpan Studio Wink)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 54,
+    start: 180.5,
+    end: 183.2,
+    duration: 2.7,
+    title: '"Everyone Knows What Happened Next" (Deadpan Studio Wink)',
+    vo_line: 'அதுக்கப்புறம் என்ன நடந்துச்சுங்கிறது எல்லாத்துக்கும் தெரியும்னு நினைக்கிறேன்.',
+    env_id: 'ENV_CREATOR_STUDIO',
+    chars: 'HOST_PROTAG (walk 620->880, deadpan wink @ 1.35s)',
+    on_screen_text: 'POP-CULTURE LEGEND UNLOCKED 😉 · DNA ACTIVATED 😉',
+    camera_sfx: 'Push-In 1.0->1.06 · DIEGETIC SILENCE @ 1.35s + ding + awkwardPluck',
+    transition_out: 'WHIP_PAN_TO_BATTLEFIELD',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [2.7, 1.06]], DK.ease.outCubic)
+      };
+
+      FX.infographicEnv(g, gt, {
+        preset: 'techStudio',
+        cam,
+        y: 840,
+        seed: 54,
+        hero: (g) => {
+          // Target 3D Prop at x: 975, y: 840 (charX + 95px at arrival)
+          FX.prop3D(g, 975, 840, 1.0, { kind: 'dualMonitorDesk', t: gt });
+
+          // Host walking [620 -> 880] and giving a knowing deadpan wink at lt = 1.35s
+          DK.char(g, {
+            ...THEME.CHARS.HOST_PROTAG,
+            moveX: [620, 880, lt, 2.7],
+            y: 840,
+            eyeMode: lt >= 1.35 ? 'happyArch' : 'warm',
+            brows: lt >= 1.35 ? 'asymmetric' : 'raised',
+            mouth: 'smile',
+            pose: { preset: 'walk', speed: 1.05 },
+            t: gt,
+            seed: 541
+          });
+
+          // Mid-Shot Micro-Beat (lt = 1.35s): "DNA ACTIVATED 😉" pop-up card above monitor
+          if (lt >= 1.35) {
+            const pop = DK.pop(lt, 1.35, 0.32);
+            g.save();
+            g.translate(1045, 595);
+            g.scale(pop, pop);
+            g.fillStyle = 'rgba(15, 23, 42, 0.95)';
+            g.strokeStyle = '#38C878';
+            g.lineWidth = 3;
+            g.beginPath();
+            g.roundRect(-155, -46, 310, 92, 14);
+            g.fill();
+            g.stroke();
+
+            g.fillStyle = '#38C878';
+            g.font = '800 13px "Space Mono", monospace';
+            g.textAlign = 'center';
+            g.fillText('GENETIC MEMORY PROTOCOL', 0, -14);
+            g.fillStyle = '#FFFFFF';
+            g.font = '900 22px "Fredoka", sans-serif';
+            g.fillText('DNA ACTIVATED 😉', 0, 20);
+            g.restore();
+          }
+        }
+      });
+
+      UI.pillBadge(g, lt, { text: 'POP-CULTURE LEGEND UNLOCKED 😉', x: 960, y: 120, accent: '#38C878', t0: 0.25 });
+      UI.citation(g, 'Cultural Memory & Historical Folklore Synthesis', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('cabinHum', bt0 + 0.0, bt0 + 1.3, { gain: 0.16 });
+      k.play('footstep', bt0 + 0.55, { gain: 0.35 });
+      k.play('ding', bt0 + 1.35, { gain: 0.52 });
+      k.play('awkwardPluck', bt0 + 1.45, { gain: 0.45 });
+      k.play('whoosh', bt0 + 2.45, { gain: 0.48 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 055 · [03:03.2 - 03:06.1] (183.2s – 186.1s, dur: 2.9s)
+  // Pallava vs. Pandya Exhaustion Wars (Thirupurambiyam c. 885 CE)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 55,
+    start: 183.2,
+    end: 186.1,
+    duration: 2.9,
+    title: 'Pallava vs. Pandya Exhaustion Wars (Thirupurambiyam c. 885 CE)',
+    vo_line: 'ஆனா இந்த time-ல பல்லவர்களும் பாண்டியர்களும் நிறைய சண்டை போட்டுட்டு இருந்தாங்க.',
+    env_id: 'ENV_BATTLEFIELD_STORM',
+    chars: 'NARASIMHAVARMAN (swordFight @ 740) vs PANDYA_KING (swordFight @ 855)',
+    on_screen_text: 'PALLAVA – PANDYA WARS · BATTLE OF THIRUPURAMBIYAM (c. 885 CE)',
+    camera_sfx: 'Push-In 1.0->1.07 · battlefield + swordClash + powerDown',
+    transition_out: 'CAMERA_PAN_TO_THANJAVUR',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [2.9, 1.07]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_BATTLEFIELD_STORM(g, cam, lt, gt, (g) => {
+        // Mid-Shot Micro-Beat (lt = 1.45s): Giant golden Chola Tiger emblem rises on the horizon behind the exhausted rivals
+        if (lt >= 1.2) {
+          const rise = DK.prog(lt, 1.2, 2.2);
+          g.save();
+          g.translate(1220, 620 - rise * 140);
+          g.globalAlpha = rise * 0.82;
+          const aura = g.createRadialGradient(0, 0, 20, 0, 0, 210);
+          aura.addColorStop(0, 'rgba(247, 185, 40, 0.55)');
+          aura.addColorStop(1, 'rgba(247, 185, 40, 0)');
+          g.fillStyle = aura;
+          g.beginPath();
+          g.arc(0, 0, 210, 0, Math.PI * 2);
+          g.fill();
+
+          g.fillStyle = 'rgba(20, 14, 8, 0.88)';
+          g.strokeStyle = '#F7B928';
+          g.lineWidth = 3.5;
+          g.beginPath();
+          g.arc(0, 0, 92, 0, Math.PI * 2);
+          g.fill();
+          g.stroke();
+
+          g.fillStyle = '#F7B928';
+          g.font = '900 18px "Fredoka", sans-serif';
+          g.textAlign = 'center';
+          g.fillText('CHOLA TIGER', 0, -8);
+          g.font = '800 14px "Space Mono", monospace';
+          g.fillStyle = '#FFD54F';
+          g.fillText('RISING IN SHADOWS', 0, 18);
+          g.restore();
+        }
+
+        // Pallava King at x: 740 clashing swords with Pandya King at x: 855 (exact 115px contact!)
+        DK.char(g, {
+          ...THEME.CHARS.NARASIMHAVARMAN,
+          x: 740,
+          y: 840,
+          prop: 'sword',
+          eyeMode: lt >= 1.45 ? 'wince' : 'warm',
+          brows: 'furrowed',
+          mouth: 'scream',
+          pose: { preset: 'swordFight', speed: 1.4 },
+          t: gt,
+          seed: 551
+        });
+
+        DK.char(g, {
+          ...THEME.CHARS.PANDYA_KING,
+          x: 855,
+          y: 840,
+          flipX: true,
+          prop: 'sword',
+          eyeMode: lt >= 1.45 ? 'wince' : 'warm',
+          brows: 'furrowed',
+          mouth: 'scream',
+          pose: { preset: 'swordFight', speed: 1.4 },
+          t: gt,
+          seed: 552
+        });
+
+        // Metallic weapon-clash sparks at sword contact point (x: 798, y: 735)
+        const clashFlash = Math.abs(Math.sin(lt * 9));
+        if (clashFlash > 0.65) {
+          g.save();
+          g.translate(798, 735);
+          g.strokeStyle = '#FDE047';
+          g.lineWidth = 3;
+          for (let i = 0; i < 6; i++) {
+            const a = (i * Math.PI) / 3 + gt * 3;
+            g.beginPath();
+            g.moveTo(Math.cos(a) * 6, Math.sin(a) * 6);
+            g.lineTo(Math.cos(a) * 26, Math.sin(a) * 26);
+            g.stroke();
+          }
+          g.restore();
+        }
+
+        // Stamina Bars draining to 12% (EXHAUSTED) at lt = 1.45s
+        const stam = DK.key(lt, [[0, 0.82], [1.45, 0.12], [2.9, 0.10]], DK.ease.outCubic);
+        [
+          { x: 650, y: 540, label: 'PALLAVA STAMINA' },
+          { x: 945, y: 540, label: 'PANDYA STAMINA' }
+        ].forEach((b) => {
+          g.save();
+          g.translate(b.x, b.y);
+          g.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          g.strokeStyle = stam < 0.25 ? '#FF4D6A' : '#F7B928';
+          g.lineWidth = 2;
+          g.beginPath();
+          g.roundRect(-95, -24, 190, 48, 8);
+          g.fill();
+          g.stroke();
+
+          g.fillStyle = '#CBD5E1';
+          g.font = '800 11px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.fillText(b.label + ' (' + Math.round(stam * 100) + '%)', 0, -6);
+
+          g.fillStyle = '#1E293B';
+          g.fillRect(-80, 4, 160, 12);
+          g.fillStyle = stam < 0.25 ? '#FF4D6A' : '#38C878';
+          g.fillRect(-80, 4, 160 * stam, 12);
+          g.restore();
+        });
+      });
+
+      UI.pillBadge(g, lt, { text: 'PALLAVA – PANDYA WARS · BATTLE OF THIRUPURAMBIYAM (c. 885 CE)', x: 960, y: 120, accent: '#FF4D6A', t0: 0.25 });
+      UI.citation(g, 'Battle of Thirupurambiyam (c. 885 CE) · Aditya I Chola', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.30, grain: 0.028 });
+    },
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 2.9, { gain: 0.22 });
+      k.play('swordClash', bt0 + 0.40, { gain: 0.62 });
+      k.play('swordClash', bt0 + 1.10, { gain: 0.65 });
+      k.play('powerDown', bt0 + 1.45, { gain: 0.48 });
+      k.play('swordClash', bt0 + 2.15, { gain: 0.60 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 056 · [03:06.1 - 03:10.3] (186.1s – 190.3s, dur: 4.2s)
+  // Rise of the Imperial Chola Empire from Thanjavur
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 56,
+    start: 186.1,
+    end: 190.3,
+    duration: 4.2,
+    title: 'Rise of the Imperial Chola Empire from Thanjavur',
+    vo_line: 'அப்பதான் தஞ்சாவூர்ல இருந்த சோழ அரசு இவங்க எல்லாத்தையும் வீழ்த்தி ஒரு பேரரசாவும் மாறுது.',
+    env_id: 'ENV_THANJAVUR_VIMANA + MAP_CHOLA_RISE',
+    chars: 'CHOLA_KING (march 380->900, planting Tiger banner @ 990)',
+    on_screen_text: 'RISE OF THE IMPERIAL CHOLA EMPIRE · THANJAVUR',
+    camera_sfx: 'Map Zoom 1.0->1.10 · warHorn + marchSteps + impact + conchShell',
+    transition_out: 'DIVE_TO_FORTRESS_GATE',
+    draw(g, lt, gt, u) {
+      const z = DK.key(lt, [[0, 1.0], [2.1, 1.06], [4.2, 1.10]], DK.ease.inOutSine);
+      g.save();
+      g.translate(960, 540);
+      g.scale(z, z);
+      g.translate(-960, -540);
+
+      // 1. Unobstructed Strategic Map across the canvas (Rule 4: Map Visibility Law)
+      UI.strategicMap(g, lt, {
+        bbox: THEME.INFO.MAP_CHOLA_RISE.bbox,
+        style: THEME.INFO.MAP_CHOLA_RISE.style,
+        title: THEME.INFO.MAP_CHOLA_RISE.title,
+        subTitle: THEME.INFO.MAP_CHOLA_RISE.subTitle,
+        reading: THEME.INFO.MAP_CHOLA_RISE.reading,
+        territories: [
+          { place: 'Tamil Nadu', color: 'rgba(247, 185, 40, 0.52)', border: '#FFD54F', label: 'IMPERIAL CHOLA HEARTLAND', t0: 0.2 }
+        ],
+        routes: [
+          { from: [79.13, 10.78], to: [79.70, 12.83], t0: 0.4, dur: 1.5, color: '#F7B928' },
+          { from: [79.13, 10.78], to: [78.12, 9.92], t0: 0.5, dur: 1.5, color: '#F7B928' },
+          { from: [79.13, 10.78], to: [80.40, 8.31], t0: 0.8, dur: 1.6, color: '#FF851B' }
+        ],
+        pins: [
+          { lonLat: [79.13, 10.78], label: 'THANJAVUR (CAPITAL)', diorama: 'gopuram', t0: 2.10 },
+          { lonLat: [79.70, 12.83], label: 'KANCHIPURAM', diorama: 'pin', t0: 1.2 },
+          { lonLat: [78.12, 9.92], label: 'MADURAI', diorama: 'pin', t0: 1.4 }
+        ]
+      });
+
+      // Mid-Shot Micro-Beat (lt = 2.10s): Golden imperial expansion wave radiating from Thanjavur
+      if (lt >= 2.10) {
+        const waveP = DK.prog(lt, 2.10, 3.80);
+        g.save();
+        g.strokeStyle = `rgba(247, 185, 40, ${(1 - waveP) * 0.85})`;
+        g.lineWidth = 5;
+        g.beginPath();
+        g.arc(960, 480, 40 + waveP * 360, 0, Math.PI * 2);
+        g.stroke();
+        g.restore();
+      }
+
+      // 2. Low foreground granite terrace (y = 850..1080)
+      THEME.ENVS.drawRoyalMapTerrace(g, lt, gt);
+
+      // Centerpiece pedestal at x: 990, y: 850 (charX + 90px at arrival)
+      FX.interactiveProp(g, { kind: 'scholarDesk', x: 990, y: 850, lt, gt });
+
+      // Chola Monarch marching [380 -> 900] with Chola Tiger Flag
+      DK.char(g, {
+        ...THEME.CHARS.CHOLA_KING,
+        moveX: [380, 900, lt, 4.2],
+        y: 850,
+        prop: 'flag',
+        eyeMode: 'warm',
+        mouth: 'smile',
+        pose: { preset: 'march', speed: 1.25 },
+        t: gt,
+        seed: 561
+      });
+
+      g.restore();
+
+      UI.pillBadge(g, lt, { text: 'RISE OF THE IMPERIAL CHOLA EMPIRE · THANJAVUR', x: 960, y: 120, accent: '#F7B928', t0: 0.3 });
+      UI.citation(g, 'K.A. Nilakanta Sastri, The Colas (1935)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.022 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 4.2, { gain: 0.22 });
+      k.play('warHorn', bt0 + 0.25, { gain: 0.58 });
+      k.play('marchSteps', bt0 + 1.00, { gain: 0.42 });
+      k.play('impact', bt0 + 2.10, { gain: 0.65 });
+      k.play('conchShell', bt0 + 2.35, { gain: 0.55 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 057 · [03:10.3 - 03:13.5] (190.3s – 193.5s, dur: 3.2s)
+  // Vijayalaya Chola: The Dynasty Begins (~850 CE)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 57,
+    start: 190.3,
+    end: 193.5,
+    duration: 3.2,
+    title: 'Vijayalaya Chola: The Dynasty Begins (~850 CE)',
+    vo_line: 'சுமாரா ஒரு 1000 வருஷத்துக்கு முன்னாடி விஜயாலய சோழன்ல ஆரம்பிச்ச இந்த சாம்ராஜ்யம்,',
+    env_id: 'ENV_THANJAVUR_VIMANA',
+    chars: 'CHOLA_KING Vijayalaya (march 340->820, sword touch @ 910)',
+    on_screen_text: 'IMPERIAL CHOLA DYNASTY · c. 850 CE · VIJAYALAYA CHOLA',
+    camera_sfx: 'Pan -20->+20, Zoom 1.04 · marchSteps + timerChime + swordDraw',
+    transition_out: 'CAMERA_PAN_TO_PALACE',
+    draw(g, lt, gt, u) {
+      // Rule 3: Camera Origin Law (cam.x within -35..+35, cam.y = 0)
+      const cam = {
+        x: DK.key(lt, [[0, -20], [3.2, 20]], DK.ease.inOutSine),
+        y: 0,
+        z: 1.04
+      };
+
+      THEME.ENVS.ENV_THANJAVUR_VIMANA(g, cam, lt, gt, (g) => {
+        // Royal foundation stone pillar at x: 910, y: 840 (charX + 90px at arrival)
+        FX.interactiveProp(g, { kind: 'crumblingPillar', x: 910, y: 840, cutTime: 99, lt, gt });
+
+        // Vijayalaya Chola marching [340 -> 820] with royal sword
+        DK.char(g, {
+          ...THEME.CHARS.CHOLA_KING,
+          moveX: [340, 820, lt, 3.2],
+          y: 840,
+          prop: 'sword',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          pose: { preset: 'march', speed: 1.2 },
+          t: gt,
+          seed: 571
+        });
+      });
+
+      // Rule 5: Non-destructive floating HUD Era Chapter Dial at y = 135 (locks at lt = 1.60s)
+      drawFloatingEraDial(g, lt, {
+        era: 'IMPERIAL CHOLA DYNASTY',
+        year: 'c. 850 CE · VIJAYALAYA CHOLA',
+        x: 960,
+        y: 135,
+        lockTime: 1.60,
+        accent: '#F7B928'
+      });
+
+      UI.citation(g, 'Tiruvalangadu Copper Plates · Capture of Thanjavur (c. 850 CE)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.2, { gain: 0.20 });
+      k.play('marchSteps', bt0 + 0.45, { gain: 0.42 });
+      k.play('timerChime', bt0 + 1.60, { gain: 0.52 });
+      k.play('swordDraw', bt0 + 2.30, { gain: 0.55 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 058 · [03:13.5 - 03:17.8] (193.5s – 197.8s, dur: 4.3s)
+  // Rajaraja Chola I & Rajendra Chola I: Making the World Look Back
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 58,
+    start: 193.5,
+    end: 197.8,
+    duration: 4.3,
+    title: 'Rajaraja Chola I & Rajendra Chola I: Making the World Look Back',
+    vo_line: 'ராஜராஜ சோழன், ராஜேந்திர சோழன் இந்த மாதிரி காலத்துல எல்லாம் உலகத்தையே திரும்பிப் பார்க்க வச்சது.',
+    env_id: 'ENV_PALACE_DURBAR',
+    chars: 'RAJARAJA_CHOLA (@ 680) + RAJENDRA_CHOLA (march 1340->865) + ROYAL_ELEPHANT (1480->1080)',
+    on_screen_text: 'RAJARAJA CHOLA I & RAJENDRA CHOLA I (985–1044 CE)',
+    camera_sfx: 'Zoom 1.0->1.08 · conchShell + elephantTrumpet + templeBell + starShimmer',
+    transition_out: 'CUT_TO_VILLAGE_ASSEMBLY',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [4.3, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_PALACE_DURBAR(g, cam, lt, gt, (g) => {
+        // Royal Elephant marching forward [1480 -> 1080] with flipX: true (facing left in direction of travel!)
+        DK.animal(g, {
+          ...THEME.ANIMALS.ROYAL_ELEPHANT,
+          moveX: [1480, 1080, lt, 4.3],
+          y: 840,
+          flipX: true,
+          expr: 'happy',
+          t: gt
+        });
+
+        // Royal War-Council Table at x: 770, y: 840 (Rajaraja @ 680 + 90px; Rajendra @ 865 - 95px)
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 770, y: 840, lt, gt });
+
+        // Rajaraja Chola I at x: 680
+        DK.char(g, {
+          ...THEME.CHARS.RAJARAJA_CHOLA,
+          x: 680,
+          y: 840,
+          prop: 'scroll',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          pose: { preset: 'experiment', speed: 1.15 },
+          t: gt,
+          seed: 581
+        });
+
+        // Rajendra Chola I marching [1340 -> 865]
+        DK.char(g, {
+          ...THEME.CHARS.RAJENDRA_CHOLA,
+          moveX: [1340, 865, lt, 4.3],
+          y: 840,
+          flipX: true,
+          prop: 'sword',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          pose: { preset: 'march', speed: 1.15 },
+          t: gt,
+          seed: 582
+        });
+
+        // Mid-Shot Micro-Beat (lt = 2.15s): Dual Golden Royal Nameplates flare in god-rays
+        if (lt >= 2.15) {
+          const p = DK.pop(lt, 2.15, 0.4);
+          [
+            { x: 600, y: 520, name: 'RAJARAJA CHOLA I', sub: '985 – 1014 CE' },
+            { x: 960, y: 520, name: 'RAJENDRA CHOLA I', sub: '1014 – 1044 CE' }
+          ].forEach((tag) => {
+            g.save();
+            g.translate(tag.x, tag.y);
+            g.scale(p, p);
+            g.fillStyle = 'rgba(28, 16, 8, 0.92)';
+            g.strokeStyle = '#F7B928';
+            g.lineWidth = 2.5;
+            g.beginPath();
+            g.roundRect(-125, -30, 250, 60, 10);
+            g.fill();
+            g.stroke();
+            g.fillStyle = '#FFD54F';
+            g.font = '900 16px "Fredoka", sans-serif';
+            g.textAlign = 'center';
+            g.fillText(tag.name, 0, -4);
+            g.fillStyle = '#E2E8F0';
+            g.font = '700 12px "Space Mono", monospace';
+            g.fillText(tag.sub, 0, 16);
+            g.restore();
+          });
+        }
+      });
+
+      UI.pillBadge(g, lt, { text: 'RAJARAJA CHOLA I & RAJENDRA CHOLA I (985–1044 CE)', x: 960, y: 120, accent: '#F7B928', t0: 0.3 });
+      UI.citation(g, 'Thanjavur & Tiruvalangadu Royal Inscriptions', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.28, grain: 0.025 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 4.3, { gain: 0.22 });
+      k.play('conchShell', bt0 + 0.25, { gain: 0.55 });
+      k.play('elephantTrumpet', bt0 + 1.20, { gain: 0.48 });
+      k.play('templeBell', bt0 + 2.15, { gain: 0.55 });
+      k.play('starShimmer', bt0 + 2.40, { gain: 0.48 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 059 · [03:17.8 - 03:21.7] (197.8s – 201.7s, dur: 3.9s)
+  // Village Sabhas, Land Survey (1001 CE) & Kudavolai Ballot Elections
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 59,
+    start: 197.8,
+    end: 201.7,
+    duration: 3.9,
+    title: 'Village Sabhas, Land Survey (1001 CE) & Kudavolai Ballot Elections',
+    vo_line: 'ராஜராஜ சோழன்லாம் ஊராட்சி சபைகள், நில அளவை முறை, ஜனநாயக தேர்தல்,',
+    env_id: 'ENV_TEMPLE_COURTYARD',
+    chars: 'THIRUVALLUVAR Voter (walk 320->740) + TAMIL_FARMER Surveyor (walk 1440->1020)',
+    on_screen_text: 'KUDAVOLAI BALLOT & LAND SURVEY · 1001 CE Cadastral Survey',
+    camera_sfx: 'Pan -18->+18 · footstep + pillBadge + pop + ding',
+    transition_out: 'CAMERA_PAN_RIGHT',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0, -18], [3.9, 18]], DK.ease.inOutSine),
+        y: 0,
+        z: 1.05
+      };
+
+      THEME.ENVS.ENV_TEMPLE_COURTYARD(g, cam, lt, gt, (g) => {
+        // Surveyed field boundary at x: 930, y: 840 (charX - 90px for Surveyor at 1020)
+        FX.interactiveProp(g, { kind: 'plowField', x: 930, y: 840, lt, gt });
+
+        // Election desk at x: 830, y: 840 (charX + 90px for Voter at 740)
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 830, y: 840, lt, gt });
+
+        // Bespoke Kudavolai Terracotta Ballot Pot on top of the desk (x: 830, y: 742)
+        g.save();
+        g.translate(830, 742);
+        // Ballot dropping into pot at Mid-Shot Micro-Beat (lt = 1.95s)
+        if (lt >= 1.4 && lt <= 2.15) {
+          const dropY = DK.key(lt, [[1.4, -55], [1.95, -8]], DK.ease.inQuad);
+          g.fillStyle = '#FDE047';
+          g.strokeStyle = '#92400E';
+          g.lineWidth = 2;
+          g.fillRect(-18, dropY - 8, 36, 16);
+          g.strokeRect(-18, dropY - 8, 36, 16);
+        }
+        // Terracotta pot body
+        g.fillStyle = '#C2593F';
+        g.strokeStyle = '#7C2D12';
+        g.lineWidth = 2.5;
+        g.beginPath();
+        g.arc(0, 6, 26, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+        // Pot rim
+        g.fillStyle = '#9A3412';
+        g.beginPath();
+        g.roundRect(-20, -22, 40, 10, 5);
+        g.fill();
+        g.stroke();
+        g.restore();
+
+        // Kudavolai Voter walking [320 -> 740] with palm-leaf ballot
+        DK.char(g, {
+          ...THEME.CHARS.THIRUVALLUVAR,
+          moveX: [320, 740, lt, 3.9],
+          y: 840,
+          prop: 'palmLeaf',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt,
+          seed: 591
+        });
+
+        // Cadastral Land Surveyor walking [1440 -> 1020] with Ulagalantha Kol measuring rod
+        DK.char(g, {
+          ...THEME.CHARS.TAMIL_FARMER,
+          moveX: [1440, 1020, lt, 3.9],
+          y: 840,
+          flipX: true,
+          prop: 'walkingStick',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          pose: { preset: 'walk', speed: 1.1 },
+          t: gt,
+          seed: 592
+        });
+      });
+
+      UI.pillBadge(g, lt, { text: 'VILLAGE SABHAS, KUDAVOLAI BALLOTS & LAND SURVEY', x: 960, y: 120, accent: '#38C878', t0: 0.2 });
+      UI.techCallout(g, lt, {
+        from: [830, 720],
+        elbow: [1040, 580],
+        to: [1380, 580],
+        title: 'KUDAVOLAI BALLOT & LAND SURVEY',
+        spec: 'Palm-Leaf Pot Elections & 1001 CE Cadastral Survey',
+        accent: '#38C878',
+        t0: 1.6
+      });
+      UI.citation(g, 'Uthiramerur Inscriptions (Parantaka I) & Rajaraja I Land Survey (1001 CE)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.022 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.9, { gain: 0.20 });
+      k.play('footstep', bt0 + 0.65, { gain: 0.35 });
+      k.play('pillBadge', bt0 + 1.60, { gain: 0.42 });
+      k.play('pop', bt0 + 1.95, { gain: 0.50 });
+      k.play('ding', bt0 + 2.30, { gain: 0.48 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 060 · [03:21.7 - 03:24.8] (201.7s – 204.8s, dur: 3.1s)
+  // Progressive Governance 1,000 Years Ahead
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 60,
+    start: 201.7,
+    end: 204.8,
+    duration: 3.1,
+    title: 'Progressive Governance 1,000 Years Ahead',
+    vo_line: 'இந்த மாதிரியான முற்போக்கு சிந்தனைகள் எல்லாம் அப்பவே அவர் வச்சிருந்தாரு.',
+    env_id: 'ENV_PALACE_DURBAR',
+    chars: 'RAJARAJA_CHOLA (write @ 680) + PERUNTHACHAN (walk 1280->855)',
+    on_screen_text: '1,000 YEARS AHEAD IN CIVIC GOVERNANCE',
+    camera_sfx: 'Zoom 1.0->1.06 · pillBadge + anvilStrike (royal seal stamp) + starShimmer',
+    transition_out: 'CRANE_UP_TO_BIG_TEMPLE',
+    draw(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [3.1, 1.06]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_PALACE_DURBAR(g, cam, lt, gt, (g) => {
+        // Royal Charter Desk at x: 765, y: 840 (Rajaraja @ 680 + 85px; Perunthachan @ 855 - 90px)
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 765, y: 840, lt, gt });
+
+        // Rajaraja Chola I stamping royal copper-plate charters at x: 680
+        DK.char(g, {
+          ...THEME.CHARS.RAJARAJA_CHOLA,
+          x: 680,
+          y: 840,
+          prop: 'scroll',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          pose: { preset: 'write', speed: 1.15 },
+          t: gt,
+          seed: 601
+        });
+
+        // Chief Architect / Minister Perunthachan walking [1280 -> 855]
+        DK.char(g, {
+          ...THEME.CHARS.PERUNTHACHAN,
+          moveX: [1280, 855, lt, 3.1],
+          y: 840,
+          flipX: true,
+          prop: 'scroll',
+          eyeMode: 'warm',
+          mouth: 'smile',
+          pose: { preset: 'walk', speed: 1.1 },
+          t: gt,
+          seed: 602
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.55s): Golden Chola Tiger Seal stamps onto copper-plate grant
+        if (lt >= 1.55) {
+          const sealPop = DK.pop(lt, 1.55, 0.35);
+          g.save();
+          g.translate(765, 610);
+          g.scale(sealPop, sealPop);
+
+          g.fillStyle = 'rgba(28, 16, 8, 0.94)';
+          g.strokeStyle = '#F7B928';
+          g.lineWidth = 3.5;
+          g.beginPath();
+          g.arc(0, 0, 56, 0, Math.PI * 2);
+          g.fill();
+          g.stroke();
+
+          g.fillStyle = '#F7B928';
+          g.font = '900 14px "Fredoka", sans-serif';
+          g.textAlign = 'center';
+          g.fillText('ROYAL CHOLA', 0, -6);
+          g.fillStyle = '#FFD54F';
+          g.font = '800 12px "Space Mono", monospace';
+          g.fillText('COPPER SEAL', 0, 14);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, { text: '1,000 YEARS AHEAD IN CIVIC GOVERNANCE', x: 960, y: 120, accent: '#F7B928', t0: 0.25 });
+      UI.citation(g, 'Y. Subbarayalu, South India Under the Cholas (2012)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.024 });
+    },
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.1, { gain: 0.20 });
+      k.play('pillBadge', bt0 + 0.25, { gain: 0.42 });
+      k.play('anvilStrike', bt0 + 1.55, { gain: 0.55 });
+      k.play('starShimmer', bt0 + 1.75, { gain: 0.45 });
+    }
+  }
+];
+
+if (window.DK && DK.linkShotTransitions) DK.linkShotTransitions(SHOTS, window.THEME);
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const BATCH_START = SHOTS[0].start;
+const BATCH_END = SHOTS[SHOTS.length - 1].end;
+const DURATION = BATCH_END - BATCH_START;
+
+// Auto-runs each shot's attached sfx(k, bt0) if scoreSound(k) is not defined separately
+if (typeof window.scoreSound !== 'function') {
+  window.scoreSound = function scoreSound(k) {
+    SHOTS.forEach((s) => {
+      if (typeof s.sfx === 'function') s.sfx(k, s.start - BATCH_START);
+    });
+  };
+}
+const scoreSound = window.scoreSound;
+
+window.BATCH_START = BATCH_START;
+window.BATCH_END = BATCH_END;
+window.DURATION = DURATION;
+window.SHOTS = SHOTS;
+window.scoreSound = scoreSound;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, activeShotFilter = 'all', voAudio = null;
+
+function findShotAtGlobal(gt) {
+  for (let i = 0; i < SHOTS.length; i++) {
+    if (gt >= SHOTS[i].start && gt <= SHOTS[i].end) return SHOTS[i];
+  }
+  return gt < SHOTS[0].start ? SHOTS[0] : SHOTS[SHOTS.length - 1];
+}
+
+function renderAtLocal(localT) {
+  currentT = DK.clamp(localT, 0, DURATION);
+  const gt = BATCH_START + currentT;
+  const s = findShotAtGlobal(gt);
+  const lt = DK.clamp(gt - s.start, 0, s.duration);
+  const u = s.duration > 0 ? lt / s.duration : 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1920, 1080);
+  ctx.save();
+  if (window.DK && DK.drawShot) DK.drawShot(ctx, s, lt, gt, u);
+  else s.draw(ctx, lt, gt, u);
+  ctx.restore();
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = gt.toFixed(2) + 's (' + currentT.toFixed(2) + 's) · Shot ' + s.shot_number;
+}
+
+window.seek = function (t, opts) {
+  if (playing) pause();
+  const localT = opts && opts.global ? t - BATCH_START : t;
+  renderAtLocal(localT);
+};
+
+function startAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('mixSelect').value;
+  if (mixMode !== 'mute' && window.SOUND) stopSound = SOUND.live(scoreSound, currentT, { mixMode: 'sfxOnly' });
+  if (voAudio) { voAudio.currentTime = BATCH_START + currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (activeShotFilter !== 'all') {
+      const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+      if (s) {
+        const sLocal0 = s.start - BATCH_START, sLocal1 = s.end - BATCH_START;
+        if (nextT >= sLocal1) { nextT = sLocal0; currentT = nextT; startAudio(); }
+      }
+    } else if (nextT >= DURATION) {
+      nextT = 0; currentT = 0; startAudio();
+    }
+    renderAtLocal(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+const shotSelect = document.getElementById('shotSelect');
+SHOTS.forEach((s) => {
+  const opt = document.createElement('option');
+  opt.value = String(s.shot_number);
+  opt.textContent = 'Shot ' + s.shot_number + ': ' + s.title + ' (' + s.start.toFixed(1) + 's-' + s.end.toFixed(1) + 's)';
+  shotSelect.appendChild(opt);
+});
+
+shotSelect.addEventListener('change', () => {
+  activeShotFilter = shotSelect.value;
+  if (activeShotFilter !== 'all') {
+    const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+    if (s) { renderAtLocal(s.start - BATCH_START); if (playing) startAudio(); }
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  renderAtLocal(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('mixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('wavBtn').addEventListener('click', async () => {
+  const res = await SOUND.renderOffline(scoreSound, DURATION, 48000, { mixMode: 'sfxOnly' });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'batch_sfx_' + SHOTS[0].shot_number + '_' + SHOTS[SHOTS.length - 1].shot_number + '.wav';
+  a.click();
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  if (window.MAP && MAP.preloadAll) await MAP.preloadAll(SHOTS);
+  renderAtLocal(0);
+});
+</script>
+</body>
+</html>

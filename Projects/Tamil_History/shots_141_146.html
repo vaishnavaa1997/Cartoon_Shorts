@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lumina 2.5D Storybook Studio (16:9) — Batch 29: Shots 141 to 146 (Climax & Outro)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #05070d; color: #e2e8f0; font-family: 'Nunito', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#stage-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; overflow: hidden; }
+canvas { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; box-shadow: 0 16px 48px rgba(0,0,0,0.75); background: #070b16; }
+#controls { height: 58px; background: #101522; border-top: 1px solid #222b42; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 13px; }
+button, select, label.btn { background: #1c2539; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+button:hover, select:hover, label.btn:hover { background: #283552; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 12px; color: #ffb074; min-width: 230px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><canvas id="stage" width="1920" height="1080"></canvas></div>
+<div id="controls">
+  <button id="playBtn">Play</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.0s / 00.0s · Shot 141</div>
+  <select id="shotSelect"><option value="all">All Shots in Batch (141–146)</option></select>
+  <select id="mixSelect">
+    <option value="sfxOnly" selected>SFX + Ambient Only (No BGM)</option>
+    <option value="mute">Mute</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="wavBtn">Export Batch SFX (.wav)</button>
+</div>
+<script src="../../engine.js"></script>
+<script>
+// ============================================================================
+// NON-DESTRUCTIVE FLOATING HUD OVERLAY ENFORCERS (RULE 5 COMPLIANCE)
+// Guarantees UI.eraChapterDial, UI.horizonChapterDial & UI.titleCard NEVER paint
+// a full-screen background over a DK.fivePlane scene, rendering strictly at y = 110..175
+// ============================================================================
+(function enforceNonDestructiveHUD() {
+  if (!window.UI) window.UI = {};
+
+  function drawRoundedBanner(g, x, y, w, h, r, fillStyle, strokeStyle, lineWidth) {
+    g.save();
+    g.beginPath();
+    if (g.roundRect) {
+      g.roundRect(x - w * 0.5, y - h * 0.5, w, h, r);
+    } else {
+      g.rect(x - w * 0.5, y - h * 0.5, w, h);
+    }
+    if (fillStyle) { g.fillStyle = fillStyle; g.fill(); }
+    if (strokeStyle) { g.lineWidth = lineWidth || 2; g.strokeStyle = strokeStyle; g.stroke(); }
+    g.restore();
+  }
+
+  window.UI.eraChapterDial = function(g, lt, opts) {
+    opts = opts || {};
+    const t0 = opts.t0 !== undefined ? opts.t0 : 0.0;
+    const sweepT = opts.sweepT !== undefined ? opts.sweepT : 1.35;
+    const enterP = DK.clamp((lt - t0) / 0.45, 0, 1);
+    if (enterP <= 0) return;
+
+    const cy = DK.clamp(opts.y || 135, 110, 175);
+    const cx = opts.x || 960;
+    const w = opts.w || 920;
+    const h = 88;
+    const sweepProg = DK.clamp((lt - sweepT) / 0.85, 0, 1);
+
+    g.save();
+    g.globalAlpha = enterP;
+    g.translate(cx, cy - (1 - enterP) * 18);
+
+    // Floating glassmorphic heritage HUD banner
+    const grad = g.createLinearGradient(-w * 0.5, -h * 0.5, w * 0.5, h * 0.5);
+    grad.addColorStop(0, 'rgba(15, 23, 42, 0.90)');
+    grad.addColorStop(0.5, 'rgba(30, 22, 16, 0.94)');
+    grad.addColorStop(1, 'rgba(15, 23, 42, 0.90)');
+    drawRoundedBanner(g, 0, 0, w, h, 18, grad, '#F7B928', 2.5);
+
+    // Inner golden trim & dial ticks
+    drawRoundedBanner(g, 0, 0, w - 12, h - 12, 13, null, 'rgba(255, 213, 79, 0.32)', 1.2);
+    for (let i = -10; i <= 10; i++) {
+      const tx = i * 38 + (sweepProg * 24) % 38;
+      const isMajor = i % 5 === 0;
+      g.strokeStyle = isMajor ? 'rgba(247, 185, 40, 0.55)' : 'rgba(226, 232, 240, 0.20)';
+      g.lineWidth = isMajor ? 2 : 1;
+      g.beginPath();
+      g.moveTo(tx, h * 0.5 - (isMajor ? 14 : 9));
+      g.lineTo(tx, h * 0.5 - 3);
+      g.stroke();
+    }
+
+    // Sweep highlight bar at mid-shot micro-beat
+    if (sweepProg > 0) {
+      const barW = (w - 40) * sweepProg;
+      g.fillStyle = 'rgba(247, 185, 40, 0.16)';
+      g.fillRect(-w * 0.5 + 20, -h * 0.5 + 8, barW, h - 16);
+    }
+
+    // Era Title
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = '800 22px "Fredoka", "Nunito", sans-serif';
+    g.fillStyle = '#FFD54F';
+    g.fillText(opts.era || '4,200+ YEARS OF TAMIL CIVILIZATION', 0, -14);
+
+    // Year Span Subtitle
+    g.font = '700 16px "Space Mono", monospace';
+    g.fillStyle = sweepProg > 0.1 ? '#5CE1FF' : '#F8FAFC';
+    g.fillText(opts.year || '2172 BCE – 2026 CE', 0, 16);
+
+    g.restore();
+  };
+
+  window.UI.horizonChapterDial = window.UI.eraChapterDial;
+
+  window.UI.titleCard = function(g, lt, opts) {
+    opts = opts || {};
+    const t0 = opts.t0 !== undefined ? opts.t0 : 0.0;
+    const enterP = DK.clamp((lt - t0) / 0.45, 0, 1);
+    if (enterP <= 0) return;
+
+    const cy = DK.clamp(opts.y || 155, 110, 175);
+    const cx = opts.x || 960;
+    const w = opts.w || 980;
+    const h = 98;
+
+    g.save();
+    g.globalAlpha = enterP;
+    const scalePop = 0.94 + 0.06 * Math.sin(enterP * Math.PI * 0.5);
+    g.translate(cx, cy);
+    g.scale(scalePop, scalePop);
+
+    const grad = g.createLinearGradient(-w * 0.5, -h * 0.5, w * 0.5, h * 0.5);
+    grad.addColorStop(0, 'rgba(13, 18, 32, 0.92)');
+    grad.addColorStop(0.5, 'rgba(38, 25, 15, 0.95)');
+    grad.addColorStop(1, 'rgba(13, 18, 32, 0.92)');
+    drawRoundedBanner(g, 0, 0, w, h, 20, grad, '#FF851B', 2.8);
+    drawRoundedBanner(g, 0, 0, w - 14, h - 14, 15, null, 'rgba(255, 213, 79, 0.40)', 1.2);
+
+    // Decorative side diamonds
+    g.fillStyle = '#FFD54F';
+    [-w * 0.5 + 34, w * 0.5 - 34].forEach((dx) => {
+      g.beginPath();
+      g.moveTo(dx, -8);
+      g.lineTo(dx + 8, 0);
+      g.lineTo(dx, 8);
+      g.lineTo(dx - 8, 0);
+      g.closePath();
+      g.fill();
+    });
+
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = '900 28px "Fredoka", "Nunito", sans-serif';
+    g.fillStyle = '#FFFFFF';
+    g.shadowColor = 'rgba(255, 133, 27, 0.55)';
+    g.shadowBlur = 12;
+    g.fillText(opts.title || 'தமிழ்நாடு · HISTORY AWAITS', 0, -14);
+
+    g.shadowBlur = 0;
+    g.font = '800 16px "Space Mono", "Nunito", monospace';
+    g.fillStyle = '#FFD54F';
+    g.fillText(opts.sub || '4,200 YEARS & COUNTING', 0, 20);
+
+    g.restore();
+  };
+})();
+
+// ============================================================================
+// MASTER CONSISTENCY BIBLE & GLOBAL THEME DICTIONARY (BATCH 29: SHOTS 141–146)
+// ============================================================================
+const THEME = {
+  CHARS: {
+    HOST_PROTAG: {
+      skin: '#D69A72',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      hairWind: 0.2,
+      wardrobe: 'ancientTamil',
+      topColor: '#F7B928',
+      bottomColor: '#F4EFE6',
+      headwear: 'none',
+      foreheadMark: 'vibhuti',
+      beard: false,
+      mustache: false,
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 1.0
+    },
+    HOST_SCIENTIST: {
+      skin: '#D69A72',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      hairWind: 0.15,
+      wardrobe: 'astronaut',
+      topColor: '#F8FAFC',
+      bottomColor: '#CBD5E1',
+      headwear: 'none',
+      foreheadMark: null,
+      beard: false,
+      mustache: false,
+      eyeMode: 'warm',
+      brows: 'raised',
+      mouth: 'smile',
+      s: 1.0
+    },
+    MODERN_ENG: {
+      skin: '#C88C68',
+      hairStyle: 'sidePart',
+      hairColor: '#1A1615',
+      hairWind: 0.15,
+      wardrobe: 'shirtTie',
+      topColor: '#38BDF8',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      beard: false,
+      mustache: false,
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 0.98
+    },
+    HOST_SWEATER: {
+      skin: '#D69A72',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      hairWind: 0.12,
+      wardrobe: 'sweater',
+      topColor: '#FF851B',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      beard: false,
+      mustache: false,
+      eyeMode: 'happyArch',
+      brows: 'raised',
+      mouth: 'smile',
+      s: 1.02
+    }
+  },
+
+  ANIMALS: {},
+
+  spawnChar: function(g, charId, overrides) {
+    const base = this.CHARS[charId] || this.CHARS.HOST_PROTAG;
+    const cfg = Object.assign({}, base, overrides || {});
+    cfg.beard = false;
+    cfg.mustache = false;
+    if (overrides && overrides.pose) {
+      cfg.pose = Object.assign({}, base.pose || {}, overrides.pose);
+    }
+    DK.char(g, cfg);
+  },
+
+  ENVS: {
+    // 1. GRAND 4,200-YEAR HERITAGE PANORAMA (THANJAVUR BRIHADEESWARAR VIMANA & HERITAGE COURTYARD)
+    ENV_THANJAVUR_VIMANA: function(g, cam, lt, gt, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('clearDay')(g);
+          FX.sun(g, 1520, 195, 66);
+          FX.godRays(g, 1520, 195, { count: 9, alpha: 0.18 });
+          FX.clouds(g, { seed: 41, count: 7, y: 155, h: 145, color: '#FFFFFF', a: 0.88, t: gt, speed: 12 });
+        },
+        bgFar: (g) => {
+          FX.hills(g, { seed: 14, y: 740, amp: 95, color: '#689B74' });
+          FX.storybookHorizon(g, { style: 'ancientTamil', y: 760, seed: 21 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'templeCourtyard', y: 840, seed: 33 });
+          FX.structure3D(g, 390, 840, 260, 430, { kind: 'gopuram', color: '#C87A38', t: gt });
+          FX.structure3D(g, 1510, 840, 240, 350, { kind: 'mandapam', color: '#B8682C', t: gt });
+          FX.tree(g, 175, 840, 1.05, '#3E7E4C', 'banyan');
+          FX.tree(g, 1750, 840, 1.0, '#4A8C4A', 'palm');
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#8C6D53', grassCol: '#4A8C4A' });
+          // Carved Chola stone courtyard pillars & heritage stelae flanking the stage
+          g.save();
+          const stelae = [
+            { x: 560, label: '2172 BCE', sub: 'SIVAGALAI IRON' },
+            { x: 740, label: '580 BCE', sub: 'KEELADI URBAN' },
+            { x: 1180, label: '1010 CE', sub: 'CHOLA VIMANA' },
+            { x: 1360, label: '2026 CE', sub: 'TAMIL NADU' }
+          ];
+          stelae.forEach((st) => {
+            g.fillStyle = '#7C5D44';
+            g.fillRect(st.x - 42, 742, 84, 98);
+            g.strokeStyle = '#FFD54F';
+            g.lineWidth = 1.5;
+            g.strokeRect(st.x - 38, 746, 76, 90);
+            g.fillStyle = '#FFD54F';
+            g.font = '800 12px "Space Mono", monospace';
+            g.textAlign = 'center';
+            g.fillText(st.label, st.x, 774);
+            g.fillStyle = '#F8FAFC';
+            g.font = '700 10px "Nunito", sans-serif';
+            g.fillText(st.sub, st.x, 796);
+          });
+          g.restore();
+
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 14, color: '#FFD54F', a: 0.22 });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    // 2. KULASEKARAPATTINAM SPACEPORT & MODERN TAMIL COMPUTING HORIZON
+    ENV_MODERN_CHENNAI: function(g, cam, lt, gt, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('coastalDay')(g);
+          FX.sun(g, 1490, 190, 62);
+          FX.clouds(g, { seed: 52, count: 6, y: 150, h: 140, color: '#FFFFFF', a: 0.88, t: gt, speed: 14 });
+        },
+        bgFar: (g) => {
+          FX.waterBody(g, gt, { x: 0, y: 725, w: 1920, h: 115, color: '#1B6CA8', waves: true });
+          FX.storybookHorizon(g, { style: 'modern', y: 735, seed: 19 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          if (FX.envExterior) {
+            FX.envExterior(g, gt, { preset: 'launchPad', y: 840, seed: 12 });
+          }
+          FX.tree(g, 165, 840, 0.95, '#388E3C', 'palm');
+          FX.tree(g, 1765, 840, 0.95, '#388E3C', 'palm');
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#475569', grassCol: '#388E3C' });
+          // Launchpad safety markings
+          g.save();
+          g.fillStyle = '#334155';
+          g.fillRect(180, 840, 1560, 28);
+          for (let x = 220; x < 1700; x += 90) {
+            g.fillStyle = '#F7B928';
+            g.fillRect(x, 844, 48, 8);
+          }
+          g.restore();
+
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: '#5CE1FF', a: 0.18 });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    // 3. LUMINA CREATOR STUDIO (2.5D TECH & YOUTUBE PRODUCTION STUDIO)
+    ENV_CREATOR_STUDIO: function(g, cam, lt, gt, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          const grad = g.createLinearGradient(0, 0, 0, 1080);
+          grad.addColorStop(0, '#0F172A');
+          grad.addColorStop(0.6, '#1E293B');
+          grad.addColorStop(1, '#0F172A');
+          g.fillStyle = grad;
+          g.fillRect(0, 0, 1920, 1080);
+        },
+        bgFar: (g) => {
+          // Warm acoustic studio wall panels & LED neon accent tubes
+          g.save();
+          for (let x = 140; x <= 1780; x += 205) {
+            g.fillStyle = '#1E293B';
+            g.fillRect(x - 80, 180, 160, 560);
+            g.strokeStyle = 'rgba(255, 133, 27, 0.28)';
+            g.lineWidth = 2;
+            g.strokeRect(x - 80, 180, 160, 560);
+          }
+          // Glowing vertical RGB studio tubes
+          [260, 680, 1240, 1660].forEach((lx, idx) => {
+            g.fillStyle = idx % 2 === 0 ? '#FF851B' : '#38BDF8';
+            g.fillRect(lx - 4, 210, 8, 480);
+          });
+          g.restore();
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1,
+        mgBack: (g) => {
+          if (FX.envInterior) {
+            FX.envInterior(g, gt, { preset: 'techStudio', y: 840, seed: 7 });
+          }
+          // Studio heritage shelf on left wall
+          g.save();
+          g.fillStyle = '#334155';
+          g.fillRect(190, 470, 250, 370);
+          g.strokeStyle = '#64748B';
+          g.lineWidth = 3;
+          g.strokeRect(190, 470, 250, 370);
+          g.fillStyle = '#FFD54F';
+          g.font = '800 13px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.fillText('TAMIL HISTORY ARCHIVE', 315, 502);
+          g.restore();
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'woodFloor', baseCol: '#5C4028', grassCol: '#3E2A19' });
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 12, color: '#FF851B', a: 0.16 });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    }
+  },
+
+  INFO: {
+    SANKEY_LIKE_SHARE: {
+      x: 960,
+      y: 410,
+      w: 1320,
+      h: 360,
+      nodes: [
+        { id: 'like', label: 'YOUR 1 LIKE 👍', x: 340, y: 410, color: '#FF851B', value: 100 },
+        { id: 'algo', label: 'ALGORITHM BOOST', x: 820, y: 310, color: '#5CE1FF', value: 65 },
+        { id: 'share', label: 'RECOMMENDED FEED', x: 820, y: 510, color: '#F7B928', value: 35 },
+        { id: 'aud', label: '100,000+ TAMIL HISTORY AUDIENCE', x: 1420, y: 410, color: '#38C878', value: 100 }
+      ],
+      links: [
+        { source: 'like', target: 'algo', from: 0, to: 1, value: 65, color: '#5CE1FF' },
+        { source: 'like', target: 'share', from: 0, to: 2, value: 35, color: '#F7B928' },
+        { source: 'algo', target: 'aud', from: 1, to: 3, value: 65, color: '#38C878' },
+        { source: 'share', target: 'aud', from: 2, to: 3, value: 35, color: '#38C878' }
+      ]
+    }
+  },
+
+  drawInfo: function(infoId, g, lt, gt) {
+    if (infoId === 'SANKEY_LIKE_SHARE') {
+      const cfg = this.INFO.SANKEY_LIKE_SHARE;
+      const enterP = DK.clamp(lt / 0.8, 0, 1);
+      const cascadeP = DK.clamp((lt - 1.65) / 1.1, 0, 1);
+
+      g.save();
+      g.globalAlpha = enterP;
+
+      // Holographic backing board in upper studio space (y: 210..590 — zero floor overlap)
+      g.fillStyle = 'rgba(11, 17, 32, 0.86)';
+      g.strokeStyle = 'rgba(56, 200, 120, 0.55)';
+      g.lineWidth = 2.5;
+      g.beginPath();
+      if (g.roundRect) g.roundRect(220, 210, 1480, 380, 20);
+      else g.rect(220, 210, 1480, 380);
+      g.fill();
+      g.stroke();
+
+      // Call native UI.flowDiagram if available
+      if (window.UI && typeof UI.flowDiagram === 'function') {
+        try {
+          UI.flowDiagram(g, lt, {
+            x: cfg.x,
+            y: cfg.y,
+            w: cfg.w,
+            h: cfg.h,
+            nodes: cfg.nodes,
+            links: cfg.links,
+            t: gt
+          });
+        } catch (e) {}
+      }
+
+      // Crisp 2.5D Sankey Bézier ribbons & animated golden cascade particles (lt >= 1.65s)
+      const paths = [
+        { x0: 470, y0: 395, x1: 690, y1: 310, w: 36, col: 'rgba(92, 225, 255, 0.42)' },
+        { x0: 470, y0: 425, x1: 690, y1: 500, w: 26, col: 'rgba(247, 185, 40, 0.42)' },
+        { x0: 950, y0: 310, x1: 1210, y1: 395, w: 36, col: 'rgba(56, 200, 120, 0.45)' },
+        { x0: 950, y0: 500, x1: 1210, y1: 425, w: 26, col: 'rgba(56, 200, 120, 0.45)' }
+      ];
+
+      paths.forEach((p, idx) => {
+        g.strokeStyle = p.col;
+        g.lineWidth = p.w * enterP;
+        g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(p.x0, p.y0);
+        g.bezierCurveTo((p.x0 + p.x1) * 0.5, p.y0, (p.x0 + p.x1) * 0.5, p.y1, p.x1, p.y1);
+        g.stroke();
+
+        // Golden flow particles cascading at lt >= 1.65s
+        if (lt >= 1.65) {
+          for (let k = 0; k < 5; k++) {
+            const u = ((gt * 0.85 + k * 0.2 + idx * 0.13) % 1);
+            const inv = 1 - u;
+            const cx = (p.x0 + p.x1) * 0.5;
+            const px = inv * inv * inv * p.x0 + 3 * inv * inv * u * cx + 3 * inv * u * u * cx + u * u * u * p.x1;
+            const py = inv * inv * inv * p.y0 + 3 * inv * inv * u * p.y0 + 3 * inv * u * u * p.y1 + u * u * u * p.y1;
+            g.fillStyle = '#FFD54F';
+            g.beginPath();
+            g.arc(px, py, 6.5, 0, Math.PI * 2);
+            g.fill();
+          }
+        }
+      });
+
+      // Render crisp 3D Node Cards
+      cfg.nodes.forEach((nd, i) => {
+        const nw = i === 3 ? 340 : 250;
+        const nh = 74;
+        g.fillStyle = '#131C31';
+        g.strokeStyle = nd.color;
+        g.lineWidth = 3;
+        g.beginPath();
+        if (g.roundRect) g.roundRect(nd.x - nw * 0.5, nd.y - nh * 0.5, nw, nh, 14);
+        else g.rect(nd.x - nw * 0.5, nd.y - nh * 0.5, nw, nh);
+        g.fill();
+        g.stroke();
+
+        g.fillStyle = '#FFFFFF';
+        g.font = '800 16px "Fredoka", "Nunito", sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(nd.label, nd.x, nd.y - 8);
+
+        g.fillStyle = nd.color;
+        g.font = '700 13px "Space Mono", monospace';
+        const subLabel = i === 0 ? '1 CLICK TRIGGER' : (i === 3 ? (lt >= 1.65 ? 'REACH: 100,000+ VIEWERS' : 'EXPANDING AUDIENCE...') : 'ORGANIC MULTIPLIER');
+        g.fillText(subLabel, nd.x, nd.y + 16);
+      });
+
+      g.restore();
+    }
+  }
+};
+window.THEME = THEME;
+
+// ============================================================================
+// BATCH 29: SHOTS 141 TO 146 (478.3s – 497.8s · CLIMAX & OUTRO)
+// ============================================================================
+const SHOTS = [
+  // --------------------------------------------------------------------------
+  // SHOT 141 · [07:58.3 - 08:01.0] (478.3s – 481.0s · Duration: 2.7s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 141,
+    title: '4,200-Year Heritage Panorama',
+    start: 478.3,
+    end: 481.0,
+    duration: 2.7,
+    vo_line: 'இதுவரைக்கும் நம்மளுக்கு கிடைச்சது ஒரு 4000 வருஷத்துக்கான வரலாறு.',
+    env_id: 'ENV_THANJAVUR_VIMANA',
+    chars: 'HOST_PROTAG (walk moveX 460->880 touching scholarDesk monument at 970)',
+    on_screen_text: '4,200+ YEARS OF TAMIL CIVILIZATION · 2172 BCE – 2026 CE',
+    camera_sfx: 'Pan -25 to +25, zoom 1.00->1.08 · templeCourtyard, footstep, timerChime',
+    transition_id: 'CAMERA_TILT_TO_HORIZON',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -25], [2.7, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.35, 1.05], [2.7, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_THANJAVUR_VIMANA(g, cam, lt, gt, (g) => {
+        // Target Prop: 4,200-Year Timeline Monument & Scholar Desk at x: 970, y: 840
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 970, y: 840, lt, gt });
+
+        // Glowing 4,200-Year Heritage Pillar Stele atop the monument base
+        g.save();
+        const glowA = lt >= 1.35 ? 0.95 : 0.65;
+        g.fillStyle = '#5C4028';
+        g.fillRect(935, 675, 70, 105);
+        g.strokeStyle = `rgba(255, 213, 79, ${glowA})`;
+        g.lineWidth = 3;
+        g.strokeRect(935, 675, 70, 105);
+        g.fillStyle = '#FFD54F';
+        g.font = '800 13px "Space Mono", monospace';
+        g.textAlign = 'center';
+        g.fillText('4,200 YRS', 970, 715);
+        g.fillStyle = '#FFFFFF';
+        g.font = '700 11px "Nunito", sans-serif';
+        g.fillText('TAMILAGA', 970, 738);
+        g.fillText('CHRONICLE', 970, 754);
+        g.restore();
+
+        // Hero 1 (HOST_PROTAG): walks from 460 to 880 (880 + 90 = 970px touching the monument)
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          moveX: [460, 880, lt, 2.7],
+          y: 840,
+          eyeMode: lt >= 1.35 ? 'happyArch' : 'warm',
+          mouth: 'smile',
+          pose: { preset: 'walk', speed: 1.1 },
+          t: gt
+        });
+      });
+
+      // Floating Non-Destructive HUD Chapter Dial & Citation
+      UI.eraChapterDial(g, lt, {
+        era: '4,200+ YEARS OF TAMIL CIVILIZATION',
+        year: '2172 BCE – 2026 CE',
+        y: 135,
+        t0: 0.0,
+        sweepT: 1.35
+      });
+      UI.citation(g, 'TNSDA, ASI & Epigraphia Indica Master Synthesis', { align: 'right' });
+
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 2.7, { gain: 0.22 });
+      k.play('footstep', bt0 + 0.30, { gain: 0.38 });
+      k.play('timerChime', bt0 + 1.35, { gain: 0.55 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 142 · [08:01.0 - 08:03.5] (481.0s – 483.5s · Duration: 2.5s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 142,
+    title: 'Kulasekarapattinam Spaceport Horizon',
+    start: 481.0,
+    end: 483.5,
+    duration: 2.5,
+    vo_line: 'இனிமேல் வரப்போற ஆயிரக்கணக்கான வருஷங்கள்',
+    env_id: 'ENV_MODERN_CHENNAI',
+    chars: 'HOST_SCIENTIST (astronaut walk 380->840 touching console 930), MODERN_ENG (walk 260->720)',
+    on_screen_text: 'THE NEXT THOUSAND YEARS · FUTURE HORIZON',
+    camera_sfx: 'Pan -25 to +25, zoom 1.00->1.08 · serverRoom, dataStream, powerUp, pillBadge',
+    transition_id: 'CONTINUOUS_CRANE_UP',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -25], [2.5, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.25, 1.05], [2.5, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_MODERN_CHENNAI(g, cam, lt, gt, (g) => {
+        // Spaceport Props
+        FX.prop3D(g, 930, 840, 1.0, {
+          kind: 'missileConsole',
+          color: lt >= 1.25 ? '#5CE1FF' : '#38BDF8',
+          state: 'active',
+          t: gt
+        });
+        FX.prop3D(g, 1380, 840, 1.15, {
+          kind: 'rocketGantry',
+          color: '#F8FAFC',
+          state: 'active',
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.25s): Spaceport telemetry hologram lights up above console
+        if (lt >= 1.25) {
+          const holoP = DK.clamp((lt - 1.25) / 0.4, 0, 1);
+          g.save();
+          g.globalAlpha = holoP;
+          g.fillStyle = 'rgba(14, 116, 144, 0.85)';
+          g.strokeStyle = '#5CE1FF';
+          g.lineWidth = 2;
+          g.fillRect(825, 625, 210, 68);
+          g.strokeRect(825, 625, 210, 68);
+          g.fillStyle = '#5CE1FF';
+          g.font = '800 12px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.fillText('KULASEKARAPATTINAM', 930, 650);
+          g.fillStyle = '#FFFFFF';
+          g.font = '700 11px "Space Mono", monospace';
+          g.fillText('LAUNCH TELEMETRY: GO', 930, 672);
+          g.restore();
+        }
+
+        // Hero 2 (MODERN_ENG): walks alongside from 260 to 720
+        THEME.spawnChar(g, 'MODERN_ENG', {
+          moveX: [260, 720, lt, 2.5],
+          y: 840,
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+
+        // Hero 1 (HOST_SCIENTIST in Astronaut Suit): walks 380 to 840 (840 + 90 = 930px operating console)
+        THEME.spawnChar(g, 'HOST_SCIENTIST', {
+          moveX: [380, 840, lt, 2.5],
+          y: 840,
+          wardrobe: 'astronaut',
+          eyeMode: lt >= 1.25 ? 'happyArch' : 'warm',
+          mouth: 'smile',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat Badge & Citation
+      if (lt >= 1.25) {
+        UI.pillBadge(g, lt - 1.25, {
+          text: 'THE NEXT THOUSAND YEARS · FUTURE HORIZON',
+          x: 960,
+          y: 120,
+          accent: '#5CE1FF'
+        });
+      }
+      UI.citation(g, 'Kulasekarapattinam Spaceport & Tamil Computing Future', { align: 'left' });
+
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('serverRoom', bt0 + 0.0, bt0 + 2.5, { gain: 0.20 });
+      k.play('dataStream', bt0 + 0.30, { gain: 0.42 });
+      k.play('powerUp', bt0 + 1.25, { gain: 0.52 });
+      k.play('pillBadge', bt0 + 1.25, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 143 · [08:03.5 - 08:06.1] (483.5s – 486.1s · Duration: 2.6s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 143,
+    title: 'Grand Cultural Synthesis — History Awaits',
+    start: 483.5,
+    end: 486.1,
+    duration: 2.6,
+    vo_line: 'தமிழையும், தமிழ்நாட்டையும் பத்தி எழுதுறதுக்காக வரலாறு காத்திருக்கு.',
+    env_id: 'ENV_THANJAVUR_VIMANA',
+    chars: 'HOST_PROTAG (write at x:780 touching Golden Chronicle scholarDesk at x:865)',
+    on_screen_text: 'தமிழ்நாடு · HISTORY AWAITS · 4,200 YEARS & COUNTING',
+    camera_sfx: 'Tilt y 0 to -15, zoom 1.00->1.10 · templeCourtyard, penScratch, templeBell, starShimmer',
+    transition_id: 'CUT_TO_CREATOR_STUDIO',
+    draw: function(g, lt, gt, u) {
+      // Rule 3 Camera Origin Law: cam.x = 0, cam.y kept strictly within -15..+15
+      const cam = {
+        x: 0,
+        y: DK.key(lt, [[0.0, 0], [2.6, -15]], DK.ease.outCubic),
+        z: DK.key(lt, [[0.0, 1.00], [1.30, 1.06], [2.6, 1.10]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_THANJAVUR_VIMANA(g, cam, lt, gt, (g) => {
+        // Golden God-Rays blooming at mid-shot micro-beat (lt = 1.30s)
+        if (lt >= 1.30) {
+          const rayA = DK.clamp((lt - 1.30) / 0.6, 0, 1) * 0.28;
+          FX.godRays(g, 960, 180, { count: 12, alpha: rayA });
+        }
+
+        // Target Prop: Golden Chronicle Desk at x: 865, y: 840
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 865, y: 840, lt, gt });
+
+        // Illuminated Golden Chronicle Book open on the desk (x: 865)
+        g.save();
+        g.fillStyle = '#FFD54F';
+        g.fillRect(838, 742, 54, 18);
+        g.strokeStyle = '#FF851B';
+        g.lineWidth = 2;
+        g.strokeRect(838, 742, 54, 18);
+        g.restore();
+
+        // Hero 1 (HOST_PROTAG): x: 780 + 85 = 865px writing in the golden chronicle book
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          x: 780,
+          y: 840,
+          eyeMode: 'happyArch',
+          mouth: 'smile',
+          prop: 'quill',
+          pose: { preset: 'write', speed: 1.2 },
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.30s): Floating Non-Destructive Title Card at y = 155
+      if (lt >= 1.30) {
+        UI.titleCard(g, lt, {
+          title: 'தமிழ்நாடு · HISTORY AWAITS',
+          sub: '4,200 YEARS & COUNTING',
+          y: 155,
+          t0: 1.30
+        });
+      }
+      UI.citation(g, 'Classical Tamil Continuity: 6th Century BCE – Present', { align: 'right' });
+
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 2.6, { gain: 0.22 });
+      k.play('penScratch', bt0 + 0.30, { gain: 0.42 });
+      k.play('templeBell', bt0 + 1.30, { gain: 0.58 });
+      k.play('starShimmer', bt0 + 1.35, { gain: 0.50 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 144 · [08:06.1 - 08:09.7] (486.1s – 489.7s · Duration: 3.6s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 144,
+    title: 'Creator Studio — New Channel Support',
+    start: 486.1,
+    end: 489.7,
+    duration: 3.6,
+    vo_line: 'Hi guys, இந்த வீடியோ நல்லா இருந்துச்சுன்னா like பண்ணி support பண்ணுங்க, channel இப்பதான் புதுசா ஆரம்பிச்சிருக்கேன்.',
+    env_id: 'ENV_CREATOR_STUDIO',
+    chars: 'HOST_SWEATER (walk 380->840 touching dualMonitorDesk at 935) + DK.hand thumbsUp',
+    on_screen_text: 'NEW CHANNEL · HIT LIKE 👍 TO SUPPORT!',
+    camera_sfx: 'Pan -25 to +20, zoom 1.00->1.08 · cabinHum, footstep, pop, ding',
+    transition_id: 'CAMERA_PUSH_TO_NETWORK',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -25], [3.6, 20]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.80, 1.05], [3.6, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_CREATOR_STUDIO(g, cam, lt, gt, (g) => {
+        // Target Prop: Creator Studio Desk at x: 935, y: 840
+        FX.prop3D(g, 935, 840, 1.05, {
+          kind: 'dualMonitorDesk',
+          color: '#FF851B',
+          state: 'active',
+          t: gt
+        });
+
+        // Hero 1 (HOST_SWEATER): walks 380 to 840 (840 + 95 = 935px arriving at creator studio desk)
+        THEME.spawnChar(g, 'HOST_SWEATER', {
+          moveX: [380, 840, lt, 3.6],
+          y: 840,
+          eyeMode: 'happyArch',
+          mouth: 'smile',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.80s): 3D Thumbs-Up Hand & glowing Like Counter Card
+        if (lt >= 1.80) {
+          const popS = DK.clamp((lt - 1.80) / 0.32, 0, 1);
+          g.save();
+          g.globalAlpha = popS;
+          g.fillStyle = 'rgba(19, 28, 49, 0.92)';
+          g.strokeStyle = '#FF851B';
+          g.lineWidth = 3;
+          g.beginPath();
+          if (g.roundRect) g.roundRect(1180, 410, 280, 210, 18);
+          else g.rect(1180, 410, 280, 210);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FFD54F';
+          g.font = '800 16px "Fredoka", sans-serif';
+          g.textAlign = 'center';
+          g.fillText('SUPPORT THE CHANNEL', 1320, 442);
+          g.restore();
+
+          DK.hand(g, {
+            x: 1320,
+            y: 520,
+            s: 1.15 * popS,
+            skin: '#D69A72',
+            sleeveColor: '#FF851B',
+            pose: 'thumbsUp',
+            rot: -0.1,
+            t: gt
+          });
+        }
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.80s): HUD Pill Badge
+      if (lt >= 1.80) {
+        UI.pillBadge(g, lt - 1.80, {
+          text: 'NEW CHANNEL · HIT LIKE 👍 TO SUPPORT!',
+          x: 960,
+          y: 120,
+          accent: '#FF851B'
+        });
+      }
+
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('cabinHum', bt0 + 0.0, bt0 + 3.6, { gain: 0.16 });
+      k.play('footstep', bt0 + 0.35, { gain: 0.38 });
+      k.play('pop', bt0 + 1.80, { gain: 0.50 });
+      k.play('ding', bt0 + 1.85, { gain: 0.48 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 145 · [08:09.7 - 08:13.0] (489.7s – 493.0s · Duration: 3.3s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 145,
+    title: 'Algorithm Reach Sankey Network',
+    start: 489.7,
+    end: 493.0,
+    duration: 3.3,
+    vo_line: 'அதனால நீங்க like பண்றது மூலியமா இது நிறைய audience-க்கு இதை கொண்டு போய் சேர்த்தும்.',
+    env_id: 'ENV_CREATOR_STUDIO + SANKEY_LIKE_SHARE',
+    chars: 'HOST_SWEATER (push 460->780 touching dualMonitorDesk console at 870)',
+    on_screen_text: '1 LIKE = SHARES TAMIL HISTORY WITH THOUSANDS MORE!',
+    camera_sfx: 'cam.x=0, cam.y=0, zoom 1.00->1.08 · cabinHum, dataStream, starShimmer, pillBadge',
+    transition_id: 'CUT_TO_FINAL_SIGN_OFF',
+    draw: function(g, lt, gt, u) {
+      // Rule 3 Camera Origin Law: cam.x = 0, cam.y = 0 on 3D chart / Sankey shot
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.65, 1.05], [3.3, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_CREATOR_STUDIO(g, cam, lt, gt, (g) => {
+        // Unobstructed Sankey Reach Flow in upper-middle studio space
+        THEME.drawInfo('SANKEY_LIKE_SHARE', g, lt, gt);
+
+        // Target Prop: Algorithm Launch Console at x: 870, y: 850
+        FX.prop3D(g, 870, 850, 1.0, {
+          kind: 'dualMonitorDesk',
+          color: '#38C878',
+          state: 'active',
+          t: gt
+        });
+
+        // Hero 1 (HOST_SWEATER): pushes algorithm reach console from 460 to 780 (780 + 90 = 870px)
+        THEME.spawnChar(g, 'HOST_SWEATER', {
+          moveX: [460, 780, lt, 3.3],
+          y: 850,
+          eyeMode: 'happyArch',
+          mouth: 'smile',
+          pose: { preset: 'push', speed: 1.15 },
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.65s): HUD Pill Badge
+      if (lt >= 1.65) {
+        UI.pillBadge(g, lt - 1.65, {
+          text: '1 LIKE = SHARES TAMIL HISTORY WITH THOUSANDS MORE!',
+          x: 960,
+          y: 120,
+          accent: '#38C878'
+        });
+      }
+
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('cabinHum', bt0 + 0.0, bt0 + 3.3, { gain: 0.16 });
+      k.play('dataStream', bt0 + 0.35, { gain: 0.42 });
+      k.play('starShimmer', bt0 + 1.65, { gain: 0.48 });
+      k.play('pillBadge', bt0 + 1.65, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 146 · [08:13.0 - 08:17.8] (493.0s – 497.8s · Duration: 4.8s)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 146,
+    title: 'Final Sign-Off — Thanks for Watching!',
+    start: 493.0,
+    end: 497.8,
+    duration: 4.8,
+    vo_line: 'அதனால இந்த வீடியோ புடிச்சிருந்துச்சுன்னா like மட்டும் பண்ணி support பண்ணுங்க, and thanks for watching.',
+    env_id: 'ENV_CREATOR_STUDIO',
+    chars: 'HOST_SWEATER (walk 420->740 beside studio podium at 830) + phoneScreen & thumbsUp hand',
+    on_screen_text: 'THANKS FOR WATCHING! · நன்றி! · LIKE 👍 · SHARE · SUBSCRIBE FOR MORE',
+    camera_sfx: 'Pan -20 to 0, zoom 1.00->1.06 · cabinHum, footstep, pop, templeBell, starShimmer',
+    transition_id: 'FADE_TO_BLACK',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -20], [4.8, 0]], DK.ease.outCubic),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [2.40, 1.04], [4.8, 1.06]], DK.ease.outCubic)
+      };
+
+      THEME.ENVS.ENV_CREATOR_STUDIO(g, cam, lt, gt, (g) => {
+        // Target Prop: Studio Podium at x: 830, y: 840
+        FX.prop3D(g, 830, 840, 1.05, {
+          kind: 'dualMonitorDesk',
+          color: '#FF851B',
+          state: 'active',
+          t: gt
+        });
+
+        // Hero 1 (HOST_SWEATER): walks 420 to 740 (740 + 90 = 830px standing beside studio podium)
+        THEME.spawnChar(g, 'HOST_SWEATER', {
+          moveX: [420, 740, lt, 4.8],
+          y: 840,
+          eyeMode: 'happyArch',
+          mouth: 'smile',
+          pose: { preset: 'walk', speed: 1.1 },
+          t: gt
+        });
+
+        // End-Screen Phone Card & Thumbs-Up Hand
+        UI.phoneScreen(g, lt, {
+          x: 1360,
+          y: 540,
+          title: 'LIKE & SUBSCRIBE',
+          sub: '4,200 YEARS OF TAMIL NADU'
+        });
+
+        DK.hand(g, {
+          x: 1380,
+          y: 580,
+          s: 1.1,
+          skin: '#D69A72',
+          sleeveColor: '#FF851B',
+          pose: 'thumbsUp',
+          rot: -0.1,
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 2.40s): Non-Destructive Floating Title Card at y = 155
+      if (lt >= 2.40) {
+        UI.titleCard(g, lt, {
+          title: 'THANKS FOR WATCHING! · நன்றி!',
+          sub: 'LIKE 👍 · SHARE · SUBSCRIBE FOR MORE',
+          y: 155,
+          t0: 2.40
+        });
+      }
+
+      // Final Episode Fade-to-Black over last 0.45s (TRANSITION_ID: FADE_TO_BLACK)
+      if (lt > 4.35) {
+        const fadeA = DK.clamp((lt - 4.35) / 0.45, 0, 1);
+        g.save();
+        g.fillStyle = `rgba(5, 7, 13, ${fadeA})`;
+        g.fillRect(0, 0, 1920, 1080);
+        g.restore();
+      }
+
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('cabinHum', bt0 + 0.0, bt0 + 4.8, { gain: 0.16 });
+      k.play('footstep', bt0 + 0.35, { gain: 0.38 });
+      k.play('pop', bt0 + 1.80, { gain: 0.48 });
+      k.play('templeBell', bt0 + 2.40, { gain: 0.52 });
+      k.play('starShimmer', bt0 + 2.45, { gain: 0.50 });
+    }
+  }
+];
+
+if (window.DK && DK.linkShotTransitions) DK.linkShotTransitions(SHOTS, window.THEME);
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const BATCH_START = SHOTS[0].start;
+const BATCH_END = SHOTS[SHOTS.length - 1].end;
+const DURATION = BATCH_END - BATCH_START;
+
+// Auto-runs each shot's attached sfx(k, bt0) if scoreSound(k) is not defined separately
+if (typeof window.scoreSound !== 'function') {
+  window.scoreSound = function scoreSound(k) {
+    SHOTS.forEach((s) => {
+      if (typeof s.sfx === 'function') s.sfx(k, s.start - BATCH_START);
+    });
+  };
+}
+const scoreSound = window.scoreSound;
+
+window.BATCH_START = BATCH_START;
+window.BATCH_END = BATCH_END;
+window.DURATION = DURATION;
+window.SHOTS = SHOTS;
+window.scoreSound = scoreSound;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, activeShotFilter = 'all', voAudio = null;
+
+function findShotAtGlobal(gt) {
+  for (let i = 0; i < SHOTS.length; i++) {
+    if (gt >= SHOTS[i].start && gt <= SHOTS[i].end) return SHOTS[i];
+  }
+  return gt < SHOTS[0].start ? SHOTS[0] : SHOTS[SHOTS.length - 1];
+}
+
+function renderAtLocal(localT) {
+  currentT = DK.clamp(localT, 0, DURATION);
+  const gt = BATCH_START + currentT;
+  const s = findShotAtGlobal(gt);
+  const lt = DK.clamp(gt - s.start, 0, s.duration);
+  const u = s.duration > 0 ? lt / s.duration : 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1920, 1080);
+  ctx.save();
+  if (window.DK && DK.drawShot) DK.drawShot(ctx, s, lt, gt, u);
+  else s.draw(ctx, lt, gt, u);
+  ctx.restore();
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = gt.toFixed(2) + 's (' + currentT.toFixed(2) + 's) · Shot ' + s.shot_number;
+}
+
+window.seek = function (t, opts) {
+  if (playing) pause();
+  const localT = opts && opts.global ? t - BATCH_START : t;
+  renderAtLocal(localT);
+};
+
+function startAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('mixSelect').value;
+  if (mixMode !== 'mute' && window.SOUND) stopSound = SOUND.live(scoreSound, currentT, { mixMode: 'sfxOnly' });
+  if (voAudio) { voAudio.currentTime = BATCH_START + currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (activeShotFilter !== 'all') {
+      const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+      if (s) {
+        const sLocal0 = s.start - BATCH_START, sLocal1 = s.end - BATCH_START;
+        if (nextT >= sLocal1) { nextT = sLocal0; currentT = nextT; startAudio(); }
+      }
+    } else if (nextT >= DURATION) {
+      nextT = 0; currentT = 0; startAudio();
+    }
+    renderAtLocal(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+const shotSelect = document.getElementById('shotSelect');
+SHOTS.forEach((s) => {
+  const opt = document.createElement('option');
+  opt.value = String(s.shot_number);
+  opt.textContent = 'Shot ' + s.shot_number + ': ' + s.title + ' (' + s.start.toFixed(1) + 's-' + s.end.toFixed(1) + 's)';
+  shotSelect.appendChild(opt);
+});
+
+shotSelect.addEventListener('change', () => {
+  activeShotFilter = shotSelect.value;
+  if (activeShotFilter !== 'all') {
+    const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+    if (s) { renderAtLocal(s.start - BATCH_START); if (playing) startAudio(); }
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  renderAtLocal(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('mixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('wavBtn').addEventListener('click', async () => {
+  const res = await SOUND.renderOffline(scoreSound, DURATION, 48000, { mixMode: 'sfxOnly' });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'batch_sfx_' + SHOTS[0].shot_number + '_' + SHOTS[SHOTS.length - 1].shot_number + '.wav';
+  a.click();
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  if (window.MAP && MAP.preloadAll) await MAP.preloadAll(SHOTS);
+  renderAtLocal(0);
+});
+</script>
+</body>
+</html>

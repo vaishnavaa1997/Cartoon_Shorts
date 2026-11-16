@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lumina Studio — Universal Generative Master BGM (bgm_master.html)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #080b14; color: #e2e8f0; font-family: 'Nunito', sans-serif; padding: 32px; max-width: 1360px; margin: 0 auto; }
+header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 16px; margin-bottom: 24px; }
+h1 { font-family: 'Fredoka', sans-serif; font-size: 26px; color: #ff8a3d; }
+.controls { background: #121829; border: 1px solid #26324d; border-radius: 12px; padding: 18px 22px; display: flex; align-items: center; gap: 14px; margin-bottom: 24px; box-shadow: 0 12px 32px rgba(0,0,0,0.45); }
+button, select, label.btn { background: #1e293b; color: #f8fafc; border: 1px solid #3b4c6b; border-radius: 8px; padding: 9px 16px; font-family: inherit; font-weight: 800; font-size: 13.5px; cursor: pointer; }
+button.primary { background: #ff8a3d; color: #0b0e17; border-color: #ff8a3d; }
+button:hover, select:hover, label.btn:hover { border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 13px; color: #ffb074; min-width: 250px; }
+.cue-list { display: grid; gap: 12px; }
+.cue-card { background: #13192b; border: 1px solid #24304c; border-left: 5px solid #ff8a3d; border-radius: 8px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; }
+.cue-card.active { border-color: #38c878; background: #1a233d; }
+.cue-title { font-weight: 900; color: #ffb074; font-size: 15.5px; }
+.cue-sub { color: #94a3b8; font-size: 13px; margin-top: 4px; }
+.badge { font-family: 'Space Mono', monospace; font-size: 12px; background: #0d1220; color: #ff8a3d; padding: 5px 10px; border-radius: 6px; border: 1px solid #2e3c5e; }
+</style>
+</head>
+<body>
+<header>
+  <h1>LUMINA STUDIO — UNIVERSAL GENERATIVE MASTER BGM (STEP 12.1)</h1>
+  <div id="summary" class="badge"></div>
+</header>
+<div class="controls">
+  <button id="playBtn">Play Master BGM</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.00s / 00.00s · CUE_01</div>
+  <select id="bgmMixSelect">
+    <option value="bgmOnly" selected>VO-Ducked BGM (0.18 Bed / 0.55 Swell)</option>
+    <option value="bgmFull">Unducked Full BGM (0.42 Bed / 0.55 Swell)</option>
+  </select>
+  <label class="btn">Load vo.wav (Preview Sync) <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="exportBtn" class="primary">Export bgm_master.wav</button>
+</div>
+<div class="cue-list" id="cueList"></div>
+<script src="../../engine.js"></script>
+<script>
+// ============================================================================
+// LUMINA STUDIO — EPISODE-WIDE UNIVERSAL GENERATIVE MASTER BGM SCORE
+// Episode: "4,200 Years of Tamil Nadu History — From Mayiladumparai to Modern Chennai"
+// Total Duration: 497.8s (00:00.0 – 08:17.8 · Shots 001 to 146)
+// Includes: 12 Bespoke Era-Authentic Generative Cues + Frame-Accurate Volume
+//           Automation (0.18 VO Bed, 0.55 Swells, and 0.00 DIEGETIC_SILENCE Drops)
+// ============================================================================
+
+const BGM_SCORE = {
+  total_duration: 497.8,
+
+  cues: [
+    {
+      cue_id: 'CUE_01_HOOK_PROMISE',
+      shots: 'Shots 001–004',
+      start_time: 0.0,
+      end_time: 14.2,
+      situation: 'HISTORICAL_GRANDEUR',
+      mood: 'Heroic, Ancient-to-Modern Sweeping Opening',
+      culture: 'southIndianBronze',
+      desc: 'Mayiladumparai 2170 BCE Iron Forge to Modern Chennai Skyline & 4,200-Year Resilience',
+      key: 'C Major',
+      scale: 'carnaticHamsadhwani',
+      progression: 'royalGrandeur',
+      lead: 'nadaswaramShehnai',
+      counter: 'sitarVeena',
+      pad: 'warmStringSection',
+      bass: 'tanpuraDrone',
+      perc: 'indianPerc',
+      tension: 0.45,
+      valence: 0.78,
+      energy: 0.82,
+      quirk: 0.0,
+      grandeur: 0.92,
+      bpm: 112,
+      tempoCurve: 'steady',
+      timerChime: true
+    },
+    {
+      cue_id: 'CUE_02_MAYILADUMPARAI_IRON_AGE',
+      shots: 'Shots 005–017',
+      start_time: 14.2,
+      end_time: 54.3,
+      situation: 'ARCHAEOLOGICAL_DISCOVERY',
+      mood: 'Curious, Scientific & Ancient Forge Wonder',
+      culture: 'indianClassical',
+      desc: 'Krishnagiri Mayiladumparai 2172 BCE Iron Smelting, AMS Carbon Dating & Early Agrarian Villages',
+      key: 'D Minor',
+      scale: 'dorian',
+      progression: 'mysteryInquire',
+      lead: 'kalimbaMarimba',
+      counter: 'bansuriFlute',
+      pad: 'analogPad',
+      bass: 'subPedal',
+      perc: 'cinematic',
+      tension: 0.38,
+      valence: 0.42,
+      energy: 0.64,
+      quirk: 0.10,
+      grandeur: 0.65,
+      bpm: 104,
+      tempoCurve: 'steady',
+      timerChime: true
+    },
+    {
+      cue_id: 'CUE_03_SANGAM_KEELADI_GOLDEN_ERA',
+      shots: 'Shots 018–030',
+      start_time: 54.3,
+      end_time: 104.6,
+      situation: 'CIVILIZATION_FLOURISH',
+      mood: 'Warm, Prosperous, Literary & Maritime',
+      culture: 'southIndianBronze',
+      desc: 'Keeladi 580 BCE Brick Urbanism, Underground Terracotta Ring-Well Drainage, Roman Trade, Mooventhar & Thirukkural',
+      key: 'G Major',
+      scale: 'carnaticMohanam',
+      progression: 'carnaticPedal',
+      lead: 'sitarVeena',
+      counter: 'bansuriFlute',
+      pad: 'warmStringSection',
+      bass: 'tanpuraDrone',
+      perc: 'indianPerc',
+      tension: 0.25,
+      valence: 0.85,
+      energy: 0.74,
+      quirk: 0.05,
+      grandeur: 0.86,
+      bpm: 110,
+      tempoCurve: 'steady',
+      timerChime: true
+    },
+    {
+      cue_id: 'CUE_04_KALABHRA_INTERREGNUM',
+      shots: 'Shots 031–039',
+      start_time: 104.6,
+      end_time: 136.7,
+      situation: 'DARK_AGE_MYSTERY_TO_DAWN',
+      mood: 'Ominous Invasion Shifting to Monastic Scholarship & Pallava-Pandya Revival',
+      culture: 'hybridCinematic',
+      desc: 'Kalabhra Invasion (300–600 CE), Epigraphical Gap, Jain/Buddhist Flourishing & Late 6th-Century Pincer Victory',
+      key: 'E Minor',
+      scale: 'phrygianDominant',
+      progression: 'darkDread',
+      lead: 'dudukReed',
+      counter: 'soloCello',
+      pad: 'glassPad',
+      bass: 'darkDreadDrone',
+      perc: 'warMarch',
+      tension: 0.76,
+      valence: -0.35,
+      energy: 0.68,
+      quirk: 0.15,
+      grandeur: 0.60,
+      bpm: 106,
+      tempoCurve: 'accelerate',
+      timerChime: true
+    },
+    {
+      cue_id: 'CUE_05_PALLAVA_MONOLITHS_AND_BODHIDHARMA',
+      shots: 'Shots 040–055',
+      start_time: 136.7,
+      end_time: 186.1,
+      situation: 'ARCHITECTURAL_MARVEL_AND_EAST_ASIAN_VOYAGE',
+      mood: 'Ingenious, Sculptural Precision & Shaolin Martial Energy',
+      culture: 'indoEastAsianFusion',
+      desc: 'Mamallapuram Top-to-Bottom Monolithic Rock-Cut Temples, China Trade & Bodhidharma Zen/Kung-Fu Tribute',
+      key: 'F Minor',
+      scale: 'carnaticMayamalavagowla',
+      progression: 'heroicTriumph',
+      lead: 'sitarVeena',
+      counter: 'kotoGuzheng',
+      pad: 'warmStringSection',
+      bass: 'subPedal',
+      perc: 'taikoPerc',
+      tension: 0.48,
+      valence: 0.65,
+      energy: 0.78,
+      quirk: 0.25,
+      grandeur: 0.84,
+      bpm: 114,
+      tempoCurve: 'steady',
+      timerChime: false
+    },
+    {
+      cue_id: 'CUE_06_IMPERIAL_CHOLA_APOGEE',
+      shots: 'Shots 056–074',
+      start_time: 186.1,
+      end_time: 249.6,
+      situation: 'IMPERIAL_GRANDEUR',
+      mood: 'Majestic, Unstoppable, Engineering & Naval Supremacy',
+      culture: 'southIndianBronze',
+      desc: 'Vijayalaya, Rajaraja I & Rajendra Chola I, Kudavolai Elections, 66m Thanjavur Big Temple LEGO Interlocking & 1025 CE Southeast Asian Naval Expedition',
+      key: 'D Major',
+      scale: 'carnaticHamsadhwani',
+      progression: 'royalGrandeur',
+      lead: 'nadaswaramShehnai',
+      counter: 'brassHornSwell',
+      pad: 'warmStringSection',
+      bass: 'tanpuraDrone',
+      perc: 'epicDrums',
+      tension: 0.52,
+      valence: 0.90,
+      energy: 0.92,
+      quirk: 0.0,
+      grandeur: 0.98,
+      bpm: 120,
+      tempoCurve: 'steady',
+      timerChime: true
+    },
+    {
+      cue_id: 'CUE_07_PANDYA_PEARLS_TO_1311_INVASION',
+      shots: 'Shots 075–084',
+      start_time: 249.6,
+      end_time: 282.9,
+      situation: 'IMPERIAL_COLLAPSE_AND_INVASION',
+      mood: 'Mercantile Brilliance Plunging into 1311 CE Invasion Crisis',
+      culture: 'middleEasternCinematic',
+      desc: 'Marco Polo in Pandya Kingdom, 1311 CE Malik Kafur Invasion, Temple Raids & Political Fragmentation',
+      key: 'A Minor',
+      scale: 'harmonicMinor',
+      progression: 'tickingSurvival',
+      lead: 'oudLute',
+      counter: 'soloCello',
+      pad: 'analogPad',
+      bass: 'darkDreadDrone',
+      perc: 'warMarch',
+      tension: 0.86,
+      valence: -0.58,
+      energy: 0.80,
+      quirk: 0.0,
+      grandeur: 0.72,
+      bpm: 116,
+      tempoCurve: 'steady',
+      timerChime: true
+    },
+    {
+      cue_id: 'CUE_08_NAYAK_RENAISSANCE_AND_72_PALAIYAMS',
+      shots: 'Shots 085–095',
+      start_time: 282.9,
+      end_time: 321.0,
+      situation: 'REGAL_REVIVAL_TO_FEUDAL_FRAGMENTATION',
+      mood: 'Regal Architectural Revival Shifting to 72 Palaiyam Feudal Rivalry',
+      culture: 'southIndianBronze',
+      desc: 'Vijayanagara Victory, Thirumalai & Raghunatha Nayak, 72 Palaiyakkarar System & 1565 Battle of Talikota',
+      key: 'C Minor',
+      scale: 'carnaticCharukesi',
+      progression: 'cinematicMinor',
+      lead: 'sitarVeena',
+      counter: 'vibraphone',
+      pad: 'warmStringSection',
+      bass: 'moogBass',
+      perc: 'indianPerc',
+      tension: 0.58,
+      valence: 0.30,
+      energy: 0.74,
+      quirk: 0.05,
+      grandeur: 0.80,
+      bpm: 110,
+      tempoCurve: 'steady',
+      timerChime: true
+    },
+    {
+      cue_id: 'CUE_09_COLONIAL_DIVIDE_AND_POLYGAR_WARS',
+      shots: 'Shots 096–111',
+      start_time: 321.0,
+      end_time: 374.4,
+      situation: 'COLONIAL_INTRIGUE_AND_HEROIC_REBELLION',
+      mood: 'Calculating Colonial Chess Shifting to Fierce Anti-Colonial Resistance',
+      culture: 'colonialCinematic',
+      desc: '1639 Fort St. George, Divide and Rule Strategy, Puli Thevar, Rani Velu Nachiyar, Kattabomman, Marudhu Brothers & Dheeran Chinnamalai',
+      key: 'G Minor',
+      scale: 'aeolian',
+      progression: 'tickingSurvival',
+      lead: 'harpsichordStrings',
+      counter: 'brassHornSwell',
+      pad: 'warmStringSection',
+      bass: 'subPedal',
+      perc: 'warMarch',
+      tension: 0.84,
+      valence: -0.25,
+      energy: 0.86,
+      quirk: 0.15,
+      grandeur: 0.82,
+      bpm: 118,
+      tempoCurve: 'steady',
+      timerChime: true
+    },
+    {
+      cue_id: 'CUE_10_GREAT_FAMINE_1876_ELEGY',
+      shots: 'Shots 112–123',
+      start_time: 374.4,
+      end_time: 418.7,
+      situation: 'SOLEMN_HISTORICAL_TRAGEDY',
+      mood: 'Heartbreaking, Somber, Reflective & Urgent',
+      culture: 'universalElegy',
+      desc: 'Colonial Drain of Wealth, Ryotwari Tax Extortion, The Great Famine of 1876–1878 (50+ Lakh Deaths) & Curriculum Omission',
+      key: 'D Minor',
+      scale: 'carnaticSivaranjani',
+      progression: 'solemnTragedy',
+      lead: 'soloCello',
+      counter: 'feltPiano',
+      pad: 'glassPad',
+      bass: 'subPedal',
+      perc: 'minimalClock',
+      tension: 0.72,
+      valence: -0.82,
+      energy: 0.42,
+      quirk: 0.0,
+      grandeur: 0.55,
+      bpm: 84,
+      tempoCurve: 'steady',
+      timerChime: false
+    },
+    {
+      cue_id: 'CUE_11_SOCIAL_JUSTICE_KAMARAJAR_AND_MODERN_RISE',
+      shots: 'Shots 124–140',
+      start_time: 418.7,
+      end_time: 478.3,
+      situation: 'AWAKENING_REFORM_AND_INDUSTRIAL_TRIUMPH',
+      mood: 'Inspiring, Progressive, Educational & High-Tech Momentum',
+      culture: 'modernTamilFusion',
+      desc: 'Bharathiyar, V.O.C., Satyamurti, Periyar, Justice Party, 1947 Independence, Kamarajar Mid-Day Meal Revolution & #2 Largest Economy in India',
+      key: 'F Major',
+      scale: 'lydian',
+      progression: 'heroicTriumph',
+      lead: 'kurzgesagtPluck',
+      counter: 'bansuriFlute',
+      pad: 'warmStringSection',
+      bass: 'moogBass',
+      perc: 'techGroove',
+      tension: 0.35,
+      valence: 0.88,
+      energy: 0.86,
+      quirk: 0.05,
+      grandeur: 0.90,
+      bpm: 118,
+      tempoCurve: 'accelerate',
+      timerChime: true
+    },
+    {
+      cue_id: 'CUE_12_CLIMAX_SYNTHESIS_AND_CREATOR_OUTRO',
+      shots: 'Shots 141–146',
+      start_time: 478.3,
+      end_time: 497.8,
+      situation: 'COSMIC_AWE_AND_WARM_CREATOR_OUTRO',
+      mood: 'Triumphant 4,200-Year Payoff & Warm Community Sign-Off',
+      culture: 'southIndianBronze',
+      desc: '4,200-Year Synthesis, Next Millennium Horizon & Creator Studio Like/Support CTA',
+      key: 'C Major',
+      scale: 'ionian',
+      progression: 'cosmicLydian',
+      lead: 'grandPiano',
+      counter: 'nadaswaramShehnai',
+      pad: 'warmStringSection',
+      bass: 'subPedal',
+      perc: 'cinematic',
+      tension: 0.20,
+      valence: 0.95,
+      energy: 0.78,
+      quirk: 0.05,
+      grandeur: 0.94,
+      bpm: 112,
+      tempoCurve: 'decelerate',
+      timerChime: true
+    }
+  ],
+
+  volume_automation: [
+    // Act I Hook & Title Card Swell
+    { time: 0.0,   gain: 0.55, label: 'HOOK_OPENING_SWELL' },
+    { time: 1.2,   gain: 0.18, label: 'VO_DUCK_BED' },
+    { time: 5.2,   gain: 0.55, label: 'TITLE_CARD_SWELL' },
+    { time: 6.6,   gain: 0.18, label: 'VO_DUCK_BED' },
+    { time: 12.5,  gain: 0.55, label: 'ACT_I_FINALE_SWELL' },
+    { time: 14.2,  gain: 0.18, label: 'ACT_II_VO_BED' },
+
+    // Act II to Act III Transition Swell
+    { time: 52.8,  gain: 0.55, label: 'KEELADI_URBAN_REVEAL_SWELL' },
+    { time: 54.8,  gain: 0.18, label: 'ACT_III_VO_BED' },
+
+    // Act V Shot 049 Deadpan Chisel Slip Gag (DIEGETIC_SILENCE = 0.00)
+    { time: 165.3, gain: 0.18, label: 'PRE_GAG_BED' },
+    { time: 165.4, gain: 0.00, label: 'DIEGETIC_SILENCE_MONOLITH_OOPS_GAG' },
+    { time: 166.5, gain: 0.00, label: 'HOLD_SILENCE' },
+    { time: 166.8, gain: 0.18, label: 'RESUME_BED' },
+
+    // Act V Shot 054 Deadpan 7aum Arivu Wink (DIEGETIC_SILENCE = 0.00)
+    { time: 181.6, gain: 0.18, label: 'PRE_WINK_BED' },
+    { time: 181.7, gain: 0.00, label: 'DIEGETIC_SILENCE_7AUM_ARIVU_WINK' },
+    { time: 182.4, gain: 0.00, label: 'HOLD_SILENCE' },
+    { time: 182.6, gain: 0.18, label: 'RESUME_BED' },
+
+    // Act VI Imperial Chola Rise & Naval Swells
+    { time: 188.0, gain: 0.55, label: 'CHOLA_EMPIRE_RISE_SWELL' },
+    { time: 189.8, gain: 0.18, label: 'VO_DUCK_BED' },
+    { time: 244.8, gain: 0.55, label: 'CHOLA_TIGER_FLAG_SWELL' },
+    { time: 246.6, gain: 0.18, label: 'VO_DUCK_BED' },
+
+    // Act VII Shot 077 1311 CE Turning Point Gate Slam (DIEGETIC_SILENCE = 0.00)
+    { time: 258.4, gain: 0.18, label: 'PRE_1311_SLAM' },
+    { time: 258.5, gain: 0.00, label: 'DIEGETIC_SILENCE_1311_TURNING_POINT' },
+    { time: 259.3, gain: 0.00, label: 'HOLD_SILENCE' },
+    { time: 259.6, gain: 0.18, label: 'RESUME_INVASION_BED' },
+
+    // Act IX Shot 118 1876 Great Famine Solemn Silence (DIEGETIC_SILENCE = 0.00)
+    { time: 396.7, gain: 0.18, label: 'PRE_FAMINE_TOLL' },
+    { time: 396.8, gain: 0.00, label: 'DIEGETIC_SILENCE_50_LAKH_MEMORIAL' },
+    { time: 397.9, gain: 0.00, label: 'HOLD_SILENCE' },
+    { time: 398.3, gain: 0.18, label: 'RESUME_ELEGY_BED' },
+
+    // Act X Freedom Chain Snap & Independence Day Swells
+    { time: 420.2, gain: 0.55, label: 'GREAT_AWAKENING_SWELL' },
+    { time: 421.8, gain: 0.18, label: 'VO_DUCK_BED' },
+    { time: 444.4, gain: 0.55, label: 'INDEPENDENCE_1947_SWELL' },
+    { time: 446.5, gain: 0.18, label: 'VO_DUCK_BED' },
+
+    // Act XI Climax & Final End-Screen Resolution Swell
+    { time: 484.5, gain: 0.55, label: 'HISTORY_AWAITS_CLIMAX_SWELL' },
+    { time: 486.1, gain: 0.18, label: 'CREATOR_OUTRO_BED' },
+    { time: 495.4, gain: 0.55, label: 'FINAL_END_SCREEN_RESOLUTION_SWELL' },
+    { time: 497.8, gain: 0.00, label: 'EPISODE_END_FADE' }
+  ]
+};
+
+const DURATION = BGM_SCORE.total_duration;
+function scoreBGM(k) { k.bgmScore(BGM_SCORE); }
+window.BGM_SCORE = BGM_SCORE;
+window.DURATION = DURATION;
+window.scoreBGM = scoreBGM;
+window.scoreSound = scoreBGM;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, voAudio = null;
+
+document.getElementById('summary').textContent = BGM_SCORE.cues.length + ' Generative Cues · Total ' + DURATION.toFixed(1) + 's';
+
+const cueListEl = document.getElementById('cueList');
+BGM_SCORE.cues.forEach((c, idx) => {
+  const div = document.createElement('div');
+  div.className = 'cue-card';
+  div.id = 'cue-card-' + idx;
+  const dna = window.SOUND && SOUND.analyzeCueDNA ? SOUND.analyzeCueDNA(c) : {};
+  const sit = c.situation || c.mood || c.archetype || 'CUSTOM_SCORE';
+  const scaleStr = dna.scaleName || c.scale || 'dorian';
+  const progStr = dna.progName || c.progression || 'kurzgesagtDorian';
+  const leadStr = dna.leadVoice || c.lead || 'kalimbaMarimba';
+  const padStr = dna.padVoice || c.pad || 'analogPad';
+  const percStr = dna.percStyle || c.perc || 'cinematic';
+  const tens = dna.tension !== undefined ? Math.round(dna.tension * 100) + '%' : '50%';
+  const val = dna.valence !== undefined ? (dna.valence >= 0 ? '+' + dna.valence.toFixed(2) : dna.valence.toFixed(2)) : '0.0';
+  div.innerHTML =
+    '<div>' +
+      '<div class="cue-title">' + c.cue_id + ' (' + (c.shots || '') + ') · ' + sit + ' — ' + (c.desc || '') + '</div>' +
+      '<div class="cue-sub">Scale: ' + scaleStr + ' (' + (dna.key || c.key || 'D Minor') + ') · Prog: ' + progStr + ' · Voices: [' + leadStr + ' + ' + padStr + ' + ' + percStr + '] · Tension: ' + tens + ' · Valence: ' + val + ' · BPM: ' + (dna.bpm || c.bpm || 108) + '</div>' +
+    '</div>' +
+    '<div class="badge">' + c.start_time.toFixed(1) + 's – ' + c.end_time.toFixed(1) + 's</div>';
+  cueListEl.appendChild(div);
+});
+
+function findCueAt(t) {
+  for (let i = 0; i < BGM_SCORE.cues.length; i++) {
+    const c = BGM_SCORE.cues[i];
+    if (t >= c.start_time && t <= c.end_time) return { c, idx: i };
+  }
+  return { c: BGM_SCORE.cues[0], idx: 0 };
+}
+
+function updateUI(t) {
+  currentT = DK.clamp(t, 0, DURATION);
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  const active = findCueAt(currentT);
+  document.getElementById('readout').textContent = currentT.toFixed(2) + 's / ' + DURATION.toFixed(2) + 's · ' + (active.c ? active.c.cue_id : '');
+  BGM_SCORE.cues.forEach((_, idx) => {
+    const el = document.getElementById('cue-card-' + idx);
+    if (el) el.classList.toggle('active', idx === active.idx);
+  });
+}
+
+function startAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('bgmMixSelect').value;
+  stopSound = SOUND.live(scoreBGM, currentT, { mixMode });
+  if (voAudio) { voAudio.currentTime = currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (nextT >= DURATION) { nextT = 0; currentT = 0; startAudio(); }
+    updateUI(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play Master BGM';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  updateUI(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('bgmMixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('exportBtn');
+  btn.textContent = 'Rendering bgm_master.wav...';
+  const mixMode = document.getElementById('bgmMixSelect').value;
+  const res = await SOUND.renderOffline(scoreBGM, DURATION, 48000, { mixMode });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'bgm_master.wav';
+  a.click();
+  btn.textContent = 'Export bgm_master.wav';
+});
+</script>
+</body>
+</html>

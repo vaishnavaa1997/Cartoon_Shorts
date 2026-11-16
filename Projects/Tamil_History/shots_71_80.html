@@ -1,0 +1,1784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lumina 2.5D Storybook Studio (16:9) — Shots 71 to 80 (shots_71_80.html)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #05070d; color: #e2e8f0; font-family: 'Nunito', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#stage-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; overflow: hidden; }
+canvas { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; box-shadow: 0 16px 48px rgba(0,0,0,0.75); background: #070b16; }
+#controls { height: 58px; background: #101522; border-top: 1px solid #222b42; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 13px; }
+button, select, label.btn { background: #1c2539; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+button:hover, select:hover, label.btn:hover { background: #283552; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 12px; color: #ffb074; min-width: 230px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><canvas id="stage" width="1920" height="1080"></canvas></div>
+<div id="controls">
+  <button id="playBtn">Play</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.0s / 00.0s · Shot 71</div>
+  <select id="shotSelect"><option value="all">All Shots in Batch (71–80)</option></select>
+  <select id="mixSelect">
+    <option value="sfxOnly" selected>SFX + Ambient Only (No BGM)</option>
+    <option value="mute">Mute</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="wavBtn">Export Batch SFX (.wav)</button>
+</div>
+<script src="../../engine.js"></script>
+<script>
+// ============================================================================
+// MASTER CONSISTENCY BIBLE & GLOBAL THEME DICTIONARY (BATCHES 15 & 16: SHOTS 71–80)
+// ============================================================================
+const THEME = {
+  CHARS: {
+    HOST_PROTAG: {
+      skin: '#C88C68',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'jacket',
+      topColor: '#FF851B',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      s: 1.0
+    },
+    RAJENDRA_CHOLA: {
+      skin: '#C88C68',
+      hairStyle: 'royalBun',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#D93829',
+      bottomColor: '#F7B928',
+      headwear: 'crown',
+      foreheadMark: 'vibhuti',
+      s: 1.04
+    },
+    CHOLA_KING: {
+      skin: '#C88C68',
+      hairStyle: 'warriorKnot',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#F7B928',
+      bottomColor: '#F4EFE6',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      s: 1.0
+    },
+    PANDYA_KING: {
+      skin: '#C88C68',
+      hairStyle: 'royalBun',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#2B7AC9',
+      bottomColor: '#F7B928',
+      headwear: 'crown',
+      foreheadMark: 'tilak',
+      s: 1.02
+    },
+    MARCO_POLO: {
+      skin: '#E8A478',
+      hairStyle: 'wavyLocks',
+      hairColor: '#4A2E20',
+      beard: false,
+      mustache: false,
+      wardrobe: 'medieval',
+      topColor: '#8C2D19',
+      bottomColor: '#3B2F2F',
+      headwear: 'scholarCap',
+      foreheadMark: null,
+      s: 1.0
+    },
+    MALIK_KAFUR: {
+      skin: '#C88C68',
+      hairStyle: 'warriorKnot',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'medieval',
+      topColor: '#222831',
+      bottomColor: '#8B1E24',
+      headwear: 'turban',
+      foreheadMark: null,
+      s: 1.04
+    },
+    THIRUVALLUVAR: {
+      skin: '#C88C68',
+      hairStyle: 'scholarBun',
+      hairColor: '#788092',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#F4EFE6',
+      bottomColor: '#E2D5C1',
+      headwear: 'none',
+      foreheadMark: 'vibhuti',
+      s: 0.98
+    }
+  },
+
+  ANIMALS: {
+    WAR_HORSE: {
+      kind: 'horse',
+      s: 1.08,
+      royal: true
+    }
+  },
+
+  // Helper to spawn a clean-shaven character with overrides
+  drawChar(g, id, overrides = {}) {
+    const base = this.CHARS[id] || this.CHARS.HOST_PROTAG;
+    DK.char(g, Object.assign({}, base, overrides, {
+      beard: false,
+      mustache: false
+    }));
+  },
+
+  // Custom 2.5D Chola Tiger Banner (புலிக்கொடி) helper
+  drawTigerBanner(g, x, y, scale, gt, opts = {}) {
+    g.save();
+    g.translate(x, y);
+    g.scale(scale, scale);
+    const unfurl = opts.unfurl !== undefined ? opts.unfurl : 1.0;
+    const poleH = opts.poleH || 170;
+
+    // Brass flagpole
+    g.strokeStyle = '#D99B26';
+    g.lineWidth = 6;
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.lineTo(0, -poleH);
+    g.stroke();
+
+    // Finial spearhead
+    g.fillStyle = '#FFD54F';
+    g.beginPath();
+    g.moveTo(0, -poleH - 18);
+    g.lineTo(-8, -poleH);
+    g.lineTo(8, -poleH);
+    g.closePath();
+    g.fill();
+
+    if (unfurl > 0.02) {
+      const bw = 115 * unfurl;
+      const bh = 64;
+      const wave1 = Math.sin(gt * 6.5 + (opts.seed || 0)) * 7 * unfurl;
+      const wave2 = Math.cos(gt * 5.2 + (opts.seed || 0)) * 9 * unfurl;
+
+      g.fillStyle = opts.bgColor || '#B91C1C';
+      g.strokeStyle = '#F7B928';
+      g.lineWidth = 3.5;
+      g.beginPath();
+      g.moveTo(3, -poleH + 6);
+      g.bezierCurveTo(bw * 0.4, -poleH + 6 + wave1, bw * 0.75, -poleH + 6 - wave2, bw, -poleH + 12 + wave1);
+      g.lineTo(bw - 18, -poleH + 6 + bh * 0.5 + wave2 * 0.5);
+      g.lineTo(bw, -poleH + 6 + bh + wave2);
+      g.bezierCurveTo(bw * 0.7, -poleH + 6 + bh - wave1, bw * 0.35, -poleH + 6 + bh + wave2, 3, -poleH + 6 + bh);
+      g.closePath();
+      g.fill();
+      g.stroke();
+
+      // Stylized pouncing Chola Tiger emblem in gold
+      if (unfurl > 0.45) {
+        g.save();
+        g.translate(bw * 0.44, -poleH + 38 + wave1 * 0.35);
+        g.scale(unfurl, 1);
+        g.fillStyle = '#FFD54F';
+        // Tiger torso & arched back
+        g.beginPath();
+        g.ellipse(0, 0, 22, 9, -0.15, 0, Math.PI * 2);
+        g.fill();
+        // Tiger head
+        g.beginPath();
+        g.arc(20, -7, 8, 0, Math.PI * 2);
+        g.fill();
+        // Pouncing forelegs & hindlegs
+        g.strokeStyle = '#FFD54F';
+        g.lineWidth = 4;
+        g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(15, -2); g.lineTo(28, -12);
+        g.moveTo(12, 4);  g.lineTo(25, 9);
+        g.moveTo(-14, 3); g.lineTo(-24, 13);
+        g.moveTo(-18, -2); g.lineTo(-30, -14);
+        g.stroke();
+        // Stripes
+        g.strokeStyle = '#7F1D1D';
+        g.lineWidth = 2;
+        for (let i = -10; i <= 8; i += 6) {
+          g.beginPath();
+          g.moveTo(i, -6);
+          g.lineTo(i - 2, 5);
+          g.stroke();
+        }
+        g.restore();
+      }
+    }
+    g.restore();
+  },
+
+  // Custom 2.5D Pandya Twin-Fish Banner (இரட்டை மீன் கொடி)
+  drawPandyaBanner(g, x, y, scale, gt, seed = 1) {
+    g.save();
+    g.translate(x, y);
+    g.scale(scale, scale);
+    const poleH = 165;
+    g.strokeStyle = '#D99B26';
+    g.lineWidth = 6;
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.lineTo(0, -poleH);
+    g.stroke();
+
+    const bw = 108, bh = 62;
+    const wv = Math.sin(gt * 5.5 + seed) * 6;
+    g.fillStyle = '#1E40AF';
+    g.strokeStyle = '#F7B928';
+    g.lineWidth = 3.5;
+    g.beginPath();
+    g.moveTo(3, -poleH + 6);
+    g.quadraticCurveTo(bw * 0.5, -poleH + 6 + wv, bw, -poleH + 10 - wv);
+    g.lineTo(bw - 14, -poleH + 6 + bh * 0.5);
+    g.lineTo(bw, -poleH + 6 + bh + wv);
+    g.quadraticCurveTo(bw * 0.5, -poleH + 6 + bh - wv, 3, -poleH + 6 + bh);
+    g.closePath();
+    g.fill();
+    g.stroke();
+
+    // Twin golden fish emblem
+    g.fillStyle = '#FFD54F';
+    for (let f = -1; f <= 1; f += 2) {
+      g.save();
+      g.translate(bw * 0.42 + f * 12, -poleH + 37 + wv * 0.3);
+      g.rotate(-0.35 * f);
+      g.beginPath();
+      g.ellipse(0, 0, 7, 15, 0, 0, Math.PI * 2);
+      g.fill();
+      g.beginPath();
+      g.moveTo(0, 13);
+      g.lineTo(-6, 21);
+      g.lineTo(6, 21);
+      g.closePath();
+      g.fill();
+      g.restore();
+    }
+    g.restore();
+  },
+
+  // Non-destructive Floating HUD Chapter Dial Banner (Strictly obeys Rule 5: y = 110..175, never full-screen)
+  drawEraDialBanner(g, lt, opts = {}) {
+    const y = opts.y || 132;
+    const t0 = opts.t0 || 0.15;
+    const lockTime = opts.lockTime || 1.75;
+    const p = DK.pop(lt, t0, 0.45);
+    if (p <= 0.01) return;
+
+    const locked = lt >= lockTime;
+    const slamPop = locked ? DK.pop(lt, lockTime, 0.28) : 1.0;
+
+    g.save();
+    g.translate(960, y);
+    g.scale(0.88 + 0.12 * p * (locked ? (0.94 + 0.06 * slamPop) : 1), 0.88 + 0.12 * p);
+
+    // Sleek dark obsidian HUD pill with glowing crimson/gold trim
+    const w = 680, h = 76;
+    g.fillStyle = locked ? 'rgba(28, 10, 18, 0.94)' : 'rgba(13, 19, 34, 0.90)';
+    g.strokeStyle = locked ? '#FF4D6A' : '#F7B928';
+    g.lineWidth = locked ? 3.5 : 2.5;
+    g.beginPath();
+    g.roundRect(-w / 2, -h / 2, w, h, 38);
+    g.fill();
+    g.stroke();
+
+    // Rotating mechanical chapter dial wheel on left side of pill
+    g.save();
+    g.translate(-w / 2 + 46, 0);
+    const dialAngle = locked ? 0 : (1.75 - lt) * 5.2;
+    g.rotate(dialAngle);
+    g.strokeStyle = locked ? '#FF4D6A' : '#FFD54F';
+    g.lineWidth = 2.5;
+    g.beginPath();
+    g.arc(0, 0, 24, 0, Math.PI * 2);
+    g.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      g.beginPath();
+      g.moveTo(Math.cos(a) * 16, Math.sin(a) * 16);
+      g.lineTo(Math.cos(a) * 24, Math.sin(a) * 24);
+      g.stroke();
+    }
+    g.restore();
+
+    // Era label & Year readout
+    g.textAlign = 'left';
+    g.textBaseline = 'middle';
+    g.font = '800 15px "Space Mono", monospace';
+    g.fillStyle = locked ? '#FF94A6' : '#94A3B8';
+    g.fillText(opts.era || 'THE TURNING POINT', -w / 2 + 88, -13);
+
+    g.font = '900 28px "Fredoka", sans-serif';
+    g.fillStyle = locked ? '#FFFFFF' : '#FFD54F';
+    const yearDisplay = locked ? (opts.year || '1311 CE') : (1292 + Math.floor(DK.clamp(lt / lockTime, 0, 1) * 19)) + ' CE';
+    g.fillText(yearDisplay + (locked ? ' · INVASION SHOCK' : ''), -w / 2 + 88, 14);
+
+    if (locked) {
+      g.textAlign = 'right';
+      g.font = '800 14px "Space Mono", monospace';
+      g.fillStyle = '#FF4D6A';
+      g.fillText('FATE ALTERED', w / 2 - 28, 0);
+    }
+    g.restore();
+  },
+
+  // Low Foreground Terrace for Map & Chart Shots (Strictly obeys Rule 4: y = 980 unobstructed map/chart)
+  drawMapForeTerrace(g, gt, opts = {}) {
+    const ty = opts.y || 980;
+    const style = opts.style || 'flagstone';
+    const baseCol = opts.baseCol || '#2A221B';
+    const trimCol = opts.trimCol || '#D99B26';
+
+    // Subtle soft shadow under terrace lip
+    const grad = g.createLinearGradient(0, ty - 28, 0, 1080);
+    grad.addColorStop(0, 'rgba(6, 10, 20, 0.0)');
+    grad.addColorStop(0.25, 'rgba(6, 10, 20, 0.85)');
+    grad.addColorStop(1, 'rgba(6, 10, 20, 0.98)');
+    g.fillStyle = grad;
+    g.fillRect(0, ty - 28, 1920, 1080 - (ty - 28));
+
+    FX.storybookGround(g, ty, {
+      style: style,
+      baseCol: baseCol,
+      grassCol: trimCol
+    });
+
+    // Ornate carved stone balustrade edge along y = 980
+    g.strokeStyle = trimCol;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(0, ty);
+    g.lineTo(1920, ty);
+    g.stroke();
+  }
+};
+
+// ============================================================================
+// SHOTS 071 TO 080 (BATCHES 15 & 16 · 236.1s – 268.6s)
+// ============================================================================
+const SHOTS = [
+  // --------------------------------------------------------------------------
+  // SHOT 071 · [03:56.1 - 03:58.7] — Building the Imperial Chola Blue-Water Navy
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 71,
+    start: 236.1,
+    end: 238.7,
+    duration: 2.6,
+    title: 'Building the Imperial Chola Blue-Water Navy (கடற்படை)',
+    vo_line: 'இதுக்கும் மேல ஒரு படி போய் ஒரு பெரிய கடற்படையை உருவாக்கியிருக்காரு.',
+    env_id: 'ENV_ANCIENT_HARBOR',
+    chars: 'RAJENDRA_CHOLA (march, sword), CHOLA_KING (pull sail rope)',
+    on_screen_text: 'IMPERIAL CHOLA BLUE-WATER NAVY (கடற்படை)',
+    camera_sfx: 'Pan [-25 -> +25], z: 1.05 · ancientHarbor bed, warHorn, waterSplash, swish',
+
+    draw(g, lt, gt, u) {
+      // Strictly obeys Rule 3: cam.x = 0, cam.y = 0 is centered!
+      const cam = {
+        x: DK.key(lt, [[0, -25], [2.6, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: 1.05
+      };
+
+      const sailUnfurl = lt >= 1.30 ? DK.segTime(lt, 1.30, 1.75, DK.ease.outBack) : 0.35;
+
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('coastalDay')(g);
+          FX.sun(g, 1520, 195, 62);
+          FX.clouds(g, { seed: 71, count: 7, y: 150, h: 135, color: '#FFFFFF', a: 0.90, t: gt, speed: 14 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'harbor', y: 740, seed: 71 });
+          FX.waterBody(g, gt, { x: 0, y: 715, w: 1920, h: 140, color: '#1E66B0', waves: true });
+          // Distant Chola Armada warships across the horizon
+          FX.structure3D(g, 280, 725, 160, 140, { kind: 'cholaShip', t: gt + 1.2 });
+          FX.structure3D(g, 620, 730, 175, 150, { kind: 'cholaShip', t: gt + 2.4 });
+          FX.structure3D(g, 1420, 725, 185, 155, { kind: 'cholaShip', t: gt + 0.7 });
+          FX.structure3D(g, 1690, 735, 165, 140, { kind: 'cholaShip', t: gt + 3.1 });
+          THEME.drawTigerBanner(g, 280, 620, 0.55, gt, { unfurl: sailUnfurl, seed: 1 });
+          THEME.drawTigerBanner(g, 620, 620, 0.60, gt, { unfurl: sailUnfurl, seed: 2 });
+          THEME.drawTigerBanner(g, 1420, 615, 0.62, gt, { unfurl: sailUnfurl, seed: 3 });
+        },
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'harborWharf', y: 840, seed: 71 });
+          FX.waterBody(g, gt, { x: 760, y: 770, w: 1160, h: 95, color: '#2574C4', waves: true });
+          FX.prop3D(g, 240, 840, 0.95, { kind: 'amphoraStack', t: gt });
+          FX.prop3D(g, 390, 840, 0.95, { kind: 'spiceCrates', t: gt });
+        },
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#6B5643', grassCol: '#8C735B' });
+
+          // Flagship Chola Warship docked at x: 980, y: 780
+          FX.structure3D(g, 980, 780, 260, 220, { kind: 'cholaShip', t: gt });
+
+          // Mid-Shot Micro-Beat (lt = 1.30s): Giant Crimson-and-Gold Tiger sails unfurl across the flagship
+          THEME.drawTigerBanner(g, 980, 585, 1.15, gt, { unfurl: sailUnfurl, poleH: 185, seed: 7 });
+          THEME.drawTigerBanner(g, 1140, 615, 0.92, gt, { unfurl: sailUnfurl, poleH: 155, seed: 9 });
+
+          if (lt >= 1.30) {
+            const glowA = DK.clamp(1.0 - (lt - 1.30) * 0.9, 0, 0.65);
+            if (glowA > 0.01) {
+              g.save();
+              g.strokeStyle = `rgba(255, 213, 79, ${glowA})`;
+              g.lineWidth = 4;
+              g.beginPath();
+              g.arc(980, 520, 65 + (lt - 1.30) * 140, 0, Math.PI * 2);
+              g.stroke();
+              g.restore();
+            }
+          }
+
+          // Wooden boarding gangplank connecting wharf (x: 820, y: 840) to flagship deck (x: 980, y: 780)
+          g.save();
+          g.fillStyle = '#7C4D2B';
+          g.strokeStyle = '#3E2412';
+          g.lineWidth = 3;
+          g.beginPath();
+          g.moveTo(790, 842);
+          g.lineTo(985, 782);
+          g.lineTo(995, 798);
+          g.lineTo(800, 856);
+          g.closePath();
+          g.fill();
+          g.stroke();
+          g.restore();
+
+          // Naval Captain (CHOLA_KING) at x: 1080, y: 780 hoisting the Tiger sail halyard rope (charX - 100px = 980 mast contact)
+          g.save();
+          g.strokeStyle = '#E2C08D';
+          g.lineWidth = 3.5;
+          g.beginPath();
+          g.moveTo(980, 440);
+          g.lineTo(1045, 735);
+          g.stroke();
+          g.restore();
+
+          THEME.drawChar(g, 'CHOLA_KING', {
+            x: 1080,
+            y: 780,
+            flipX: true,
+            pose: { preset: 'pull', speed: 1.2 },
+            eyeMode: 'warm',
+            mouth: lt >= 1.30 ? 'smile' : 'o',
+            t: gt,
+            seed: 711
+          });
+
+          // Rajendra Chola I (RAJENDRA_CHOLA) marching from 420 -> 880 (charX + 100px = 980 flagship gangplank contact)
+          THEME.drawChar(g, 'RAJENDRA_CHOLA', {
+            moveX: [420, 880, lt, 2.6],
+            y: 840,
+            pose: { preset: 'march', speed: 1.25 },
+            prop: 'sword',
+            eyeMode: 'warm',
+            brows: 'raised',
+            mouth: lt >= 1.30 ? 'smile' : 'neutral',
+            t: gt,
+            seed: 710
+          });
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: 'rgba(255, 220, 140, 0.18)' });
+        }
+      });
+
+      // HUD & Citation
+      UI.pillBadge(g, lt, {
+        text: 'IMPERIAL CHOLA BLUE-WATER NAVY (கடற்படை)',
+        x: 960,
+        y: 120,
+        accent: '#5CE1FF',
+        t0: 0.2
+      });
+      UI.citation(g, 'Hermann Kulke & K.A.N. Sastri, Chola Naval Expeditions (1025 CE)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.02 });
+    },
+
+    sfx(k, bt0) {
+      k.bed('ancientHarbor', bt0 + 0.0, bt0 + 2.6, { gain: 0.24 });
+      k.play('warHorn', bt0 + 0.25, { gain: 0.55 });
+      k.play('waterSplash', bt0 + 1.30, { gain: 0.50 });
+      k.play('swish', bt0 + 1.45, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 072 · [03:58.7 - 04:03.2] — 1025 CE Expedition: Malaysia, Indonesia & Singapore
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 72,
+    start: 238.7,
+    end: 243.2,
+    duration: 4.5,
+    title: '1025 CE Expedition: Malaysia, Indonesia & Singapore',
+    vo_line: 'இன்னைக்கு இருக்குற Malaysia, Indonesia, Singapore இது எல்லாத்தையும் படையெடுத்தும் ஜெயிச்சிருக்காரு.',
+    env_id: 'MAP_RAJENDRA_NAVAL',
+    chars: 'RAJENDRA_CHOLA (walk on y: 980 terrace, sword -> scholarDesk map pedestal at x: 835)',
+    on_screen_text: '1025 CE SRIVIJAYA EXPEDITION · Kadaram · Temasek · Srivijaya',
+    camera_sfx: 'Unobstructed Strategic Map + y: 980 Terrace · ocean bed, pop x2, pillBadge, impact',
+
+    draw(g, lt, gt, u) {
+      // Strictly obeys Rule 4: Render UI.strategicMap unobstructed across the canvas!
+      UI.strategicMap(g, lt, {
+        bbox: [75.5, -6.5, 109.5, 17.5],
+        style: 'terrainHistorical',
+        title: 'RAJENDRA CHOLA I · 1025 CE NAVAL EXPEDITION',
+        subTitle: 'BAY OF BENGAL & STRAIT OF MALACCA',
+        reading: 'IMPERIAL CHOLA ARMADA TRACKING',
+        territories: [
+          { place: 'Tamil Nadu', color: 'rgba(247, 185, 40, 0.52)', border: '#FFD54F', label: 'CHOLA EMPIRE', t0: 0.05 },
+          { place: 'Malaysia', color: 'rgba(255, 133, 27, 0.46)', border: '#FF851B', label: 'KADARAM (MALAYSIA)', t0: 0.85 },
+          { place: 'Singapore', color: 'rgba(255, 77, 106, 0.55)', border: '#FF4D6A', label: 'TEMASEK (SINGAPORE)', t0: 1.40 },
+          { place: 'Indonesia', color: 'rgba(255, 133, 27, 0.44)', border: '#FFB84D', label: 'SRIVIJAYA (INDONESIA)', t0: 1.85 }
+        ],
+        routes: [
+          { from: [79.84, 10.76], to: [100.42, 5.72], t0: 0.25, dur: 1.6, color: '#FFD54F', vessel: 'cholaShip' },
+          { from: [100.42, 5.72], to: [103.82, 1.35], t0: 1.25, dur: 1.0, color: '#FF851B', vessel: 'cholaShip' },
+          { from: [103.82, 1.35], to: [104.75, -2.99], t0: 1.75, dur: 1.1, color: '#FF4D6A', vessel: 'cholaShip' }
+        ],
+        pins: [
+          { lonLat: [79.84, 10.76], label: 'NAGAPATTINAM', diorama: 'gopuram', t0: 0.10 },
+          { lonLat: [100.42, 5.72], label: 'KADARAM (MALAYSIA)', diorama: 'pin', t0: 0.85 },
+          { lonLat: [103.82, 1.35], label: 'TEMASEK (SINGAPORE)', diorama: 'pin', t0: 1.55 },
+          { lonLat: [104.75, -2.99], label: 'SRIVIJAYA (INDONESIA)', diorama: 'pin', t0: 2.25 }
+        ]
+      });
+
+      // Mid-Shot Micro-Beat (lt = 2.25s): The 3 port pins light up across the Strait of Malacca with golden pulse rings
+      if (lt >= 2.25) {
+        const pulse = (lt - 2.25) % 1.2;
+        const pts = [
+          { x: 1210, y: 520, name: 'MALAYSIA (கடாரம்)' },
+          { x: 1285, y: 615, name: 'SINGAPORE' },
+          { x: 1315, y: 710, name: 'INDONESIA (ஸ்ரீவிஜயம்)' }
+        ];
+        pts.forEach((pt, idx) => {
+          const popP = DK.pop(lt, 2.25 + idx * 0.12, 0.35);
+          if (popP > 0.01) {
+            g.save();
+            g.strokeStyle = `rgba(255, 213, 79, ${DK.clamp(1 - pulse / 1.2, 0.15, 0.85)})`;
+            g.lineWidth = 3;
+            g.beginPath();
+            g.arc(pt.x, pt.y, 16 + pulse * 36, 0, Math.PI * 2);
+            g.stroke();
+
+            g.fillStyle = 'rgba(18, 25, 43, 0.92)';
+            g.strokeStyle = '#FFD54F';
+            g.lineWidth = 2;
+            g.beginPath();
+            g.roundRect(pt.x + 18, pt.y - 16, 215, 32, 8);
+            g.fill();
+            g.stroke();
+
+            g.fillStyle = '#FFD54F';
+            g.font = '800 13px "Nunito", sans-serif';
+            g.textAlign = 'left';
+            g.textBaseline = 'middle';
+            g.fillText('✓ ' + pt.name, pt.x + 28, pt.y);
+            g.restore();
+          }
+        });
+      }
+
+      // Strictly obeys Rule 4: Low foreground terrace at y = 980 so the map is 100% unobstructed!
+      THEME.drawMapForeTerrace(g, gt, { y: 980 });
+
+      // Southeast Asia Map Pedestal at x: 835, y: 980 (charX + 95px at arrival)
+      FX.interactiveProp(g, { kind: 'scholarDesk', x: 835, y: 980, lt, gt });
+      if (lt >= 2.25) {
+        THEME.drawTigerBanner(g, 835, 910, 0.72 * DK.pop(lt, 2.25, 0.35), gt, { unfurl: 1.0, poleH: 130, seed: 72 });
+      }
+
+      // Rajendra Chola I advancing from 300 -> 740 along y = 980 terrace
+      THEME.drawChar(g, 'RAJENDRA_CHOLA', {
+        moveX: [300, 740, lt, 4.5],
+        y: 980,
+        pose: { preset: 'walk', speed: 1.15 },
+        prop: 'sword',
+        eyeMode: 'warm',
+        brows: 'raised',
+        mouth: lt >= 2.25 ? 'smile' : 'neutral',
+        t: gt,
+        seed: 720
+      });
+
+      // Technical Callout & Citation
+      UI.techCallout(g, lt, {
+        from: [1220, 560],
+        elbow: [1380, 420],
+        to: [1640, 420],
+        title: '1025 CE SRIVIJAYA EXPEDITION',
+        spec: 'Kadaram (Malaysia) · Sumatra (Indonesia) · Strait of Malacca',
+        accent: '#FF851B',
+        t0: 2.0
+      });
+      UI.citation(g, 'Thanjavur Inscription of Rajendra Chola I (1025 CE): 14 Srivijaya Ports', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.22, grain: 0.02 });
+    },
+
+    sfx(k, bt0) {
+      k.bed('ocean', bt0 + 0.0, bt0 + 4.5, { gain: 0.24 });
+      k.play('pop', bt0 + 0.85, { gain: 0.45 });
+      k.play('pop', bt0 + 1.55, { gain: 0.45 });
+      k.play('pillBadge', bt0 + 2.00, { gain: 0.45 });
+      k.play('impact', bt0 + 2.25, { gain: 0.60 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 073 · [04:03.2 - 04:06.8] — The Chola Tiger Banner Flies Across Southeast Asia
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 73,
+    start: 243.2,
+    end: 246.8,
+    duration: 3.6,
+    title: 'The Chola Tiger Banner Flies Across Southeast Asia',
+    vo_line: 'இந்த time-ல தென்கிழக்கு Asia முழுக்க சோழர்களோட புலிக்கொடிதான் பறந்துட்டு இருந்துச்சு.',
+    env_id: 'MAP_RAJENDRA_NAVAL',
+    chars: 'RAJENDRA_CHOLA (march on y: 980, prop: flag -> cholaShip bow at x: 970)',
+    on_screen_text: 'SOUTHEAST ASIA · THE CHOLA TIGER BANNER REIGNS',
+    camera_sfx: 'Unobstructed Map + Golden Chola Lake Rays + y: 980 Ship Deck · ocean bed, swish, conchShell, templeBell',
+
+    draw(g, lt, gt, u) {
+      // Unobstructed Strategic Map across the canvas
+      UI.strategicMap(g, lt, {
+        bbox: [76.0, -6.0, 109.0, 18.0],
+        style: 'terrainHistorical',
+        title: 'CHOLA THALASSOCRACY · SOUTHEAST ASIA',
+        subTitle: 'BAY OF BENGAL ("THE CHOLA LAKE / சோழ ஏரி")',
+        reading: 'MARITIME HEGEMONY · 1025–1070 CE',
+        territories: [
+          { place: 'Tamil Nadu', color: 'rgba(247, 185, 40, 0.58)', border: '#FFD54F', label: 'CHOLA MANDALAM', t0: 0.0 },
+          { place: 'Sri Lanka', color: 'rgba(247, 185, 40, 0.48)', border: '#FFD54F', label: 'MUMMUDI CHOLA MANDALAM', t0: 0.1 },
+          { place: 'Malaysia', color: 'rgba(247, 185, 40, 0.54)', border: '#FFD54F', label: 'KADARAM', t0: 0.2 },
+          { place: 'Indonesia', color: 'rgba(247, 185, 40, 0.50)', border: '#FFD54F', label: 'SRIVIJAYA', t0: 0.3 }
+        ],
+        routes: [
+          { from: [79.84, 10.76], to: [100.42, 5.72], t0: 0.0, dur: 1.2, color: '#FFD54F', vessel: 'cholaShip' },
+          { from: [79.84, 10.76], to: [96.15, 16.80], t0: 0.2, dur: 1.3, color: '#FFB84D', vessel: 'cholaShip' },
+          { from: [100.42, 5.72], to: [104.75, -2.99], t0: 0.4, dur: 1.2, color: '#FFD54F', vessel: 'cholaShip' }
+        ],
+        pins: [
+          { lonLat: [79.84, 10.76], label: 'NAGAPATTINAM', diorama: 'gopuram', t0: 0.05 },
+          { lonLat: [100.42, 5.72], label: 'KADARAM', diorama: 'pin', t0: 0.15 },
+          { lonLat: [103.82, 1.35], label: 'TEMASEK', diorama: 'pin', t0: 0.25 },
+          { lonLat: [104.75, -2.99], label: 'PALEMBANG', diorama: 'pin', t0: 0.35 }
+        ]
+      });
+
+      // Fluttering Tiger Banners over Southeast Asian map ports
+      THEME.drawTigerBanner(g, 1185, 495, 0.68, gt, { unfurl: 1.0, poleH: 120, seed: 11 });
+      THEME.drawTigerBanner(g, 1265, 585, 0.68, gt, { unfurl: 1.0, poleH: 120, seed: 22 });
+      THEME.drawTigerBanner(g, 1310, 680, 0.68, gt, { unfurl: 1.0, poleH: 120, seed: 33 });
+
+      // Mid-Shot Micro-Beat (lt = 1.80s): Golden rays illuminate the Bay of Bengal ("CHOLA LAKE / சோழ ஏரி")
+      if (lt >= 1.80) {
+        const rayA = DK.segTime(lt, 1.80, 2.35, DK.ease.outCubic);
+        FX.godRays(g, 960, 460, { count: 10, color: `rgba(255, 215, 80, ${0.26 * rayA})`, r: 580 });
+
+        g.save();
+        g.translate(920, 465);
+        g.scale(0.9 + 0.1 * rayA, 0.9 + 0.1 * rayA);
+        g.fillStyle = `rgba(20, 28, 48, ${0.88 * rayA})`;
+        g.strokeStyle = `rgba(255, 213, 79, ${0.95 * rayA})`;
+        g.lineWidth = 2.5;
+        g.beginPath();
+        g.roundRect(-195, -26, 390, 52, 26);
+        g.fill();
+        g.stroke();
+
+        g.fillStyle = '#FFD54F';
+        g.font = '900 18px "Fredoka", sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('BAY OF BENGAL = "CHOLA LAKE" (சோழ ஏரி)', 0, 0);
+        g.restore();
+      }
+
+      // Low foreground water & ship bow at y = 980 (Rule 4)
+      FX.waterBody(g, gt, { x: 0, y: 935, w: 1920, h: 145, color: '#164E87', waves: true });
+      THEME.drawMapForeTerrace(g, gt, { y: 980, style: 'woodFloor', baseCol: '#4A2F1D', trimCol: '#D99B26' });
+
+      // Chola Flagship bow at x: 970, y: 980 (charX + 90px at arrival)
+      FX.structure3D(g, 970, 980, 260, 220, { kind: 'cholaShip', t: gt });
+      THEME.drawTigerBanner(g, 970, 815, 1.25, gt, { unfurl: 1.0, poleH: 190, seed: 73 });
+
+      // Rajendra Chola I marching from 460 -> 880 to the ship bow at x: 970
+      THEME.drawChar(g, 'RAJENDRA_CHOLA', {
+        moveX: [460, 880, lt, 3.6],
+        y: 980,
+        pose: { preset: 'march', speed: 1.2 },
+        prop: 'flag',
+        eyeMode: 'warm',
+        brows: 'raised',
+        mouth: 'smile',
+        t: gt,
+        seed: 730
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'SOUTHEAST ASIA · THE CHOLA TIGER BANNER REIGNS',
+        x: 960,
+        y: 120,
+        accent: '#F7B928',
+        t0: 0.3
+      });
+      UI.citation(g, 'Nagapattinam Chudamani Vihara Grants & Southeast Asian Guilds (Ainurruvar)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+
+    sfx(k, bt0) {
+      k.bed('ocean', bt0 + 0.0, bt0 + 3.6, { gain: 0.22 });
+      k.play('swish', bt0 + 0.40, { gain: 0.45 });
+      k.play('conchShell', bt0 + 1.80, { gain: 0.58 });
+      k.play('templeBell', bt0 + 2.10, { gain: 0.50 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 074 · [04:06.8 - 04:09.6] — Line Graph: Every Empire That Peaks Must Eventually Decline
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 74,
+    start: 246.8,
+    end: 249.6,
+    duration: 2.8,
+    title: 'Line Graph: Every Empire That Peaks Must Eventually Decline',
+    vo_line: 'ஆனா உச்சத்துக்கு போன எந்த ஒரு சாம்ராஜ்யமும் ஒரு நாள் கீழ வந்துதான் ஆகணும்.',
+    env_id: 'ENV_PALACE_DURBAR + CHART_CHOLA_ARC',
+    chars: 'HOST_PROTAG (walk on y: 980 terrace -> scholarDesk chart console at x: 910)',
+    on_screen_text: 'IMPERIAL CHOLA POWER CURVE (850 CE – 1279 CE)',
+    camera_sfx: 'cam.x = 0, cam.y = 0 (Chart Law) · templeCourtyard bed, counterTick, powerDown',
+
+    draw(g, lt, gt, u) {
+      // Strictly obeys Rule 3: cam.x = 0, cam.y = 0 on 3D chart shots!
+      const cam = { x: 0, y: 0, z: 1.0 };
+
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('ancientInterior')(g);
+        },
+        bgFar: (g) => {
+          FX.storybookScene(g, gt, { preset: 'palaceInterior', y: 980, seed: 74 });
+        },
+        mgBack: (g) => {
+          // Unobstructed Line Chart in upper/center stage (Rule 4)
+          UI.chartLine(g, lt, {
+            x: 960,
+            y: 470,
+            w: 1240,
+            h: 470,
+            title: 'IMPERIAL CHOLA DYNASTIC ARC (850 CE – 1279 CE)',
+            xLabels: ['850 CE', '985 CE', '1025 CE (PEAK)', '1120 CE', '1279 CE (FALL)'],
+            yRange: [0, 100],
+            unit: '%',
+            series: [
+              {
+                name: 'Imperial Territorial & Naval Power',
+                color: '#FFB84D',
+                area: true,
+                values: [22, 84, 98, 68, 12]
+              }
+            ],
+            anomalies: [
+              { idx: 2, label: 'RAJENDRA I APEX (1025 CE)', color: '#38C878' },
+              { idx: 4, label: 'DYNASTIC COLLAPSE (1279 CE)', color: '#FF4D6A' }
+            ],
+            t0: 0.1,
+            dur: 2.1
+          });
+
+          // Mid-Shot Micro-Beat (lt = 1.40s): Downward trajectory warning badge
+          if (lt >= 1.40) {
+            const popP = DK.pop(lt, 1.40, 0.35);
+            g.save();
+            g.translate(1310, 315);
+            g.scale(popP, popP);
+            g.fillStyle = 'rgba(38, 14, 22, 0.94)';
+            g.strokeStyle = '#FF4D6A';
+            g.lineWidth = 2.5;
+            g.beginPath();
+            g.roundRect(-165, -24, 330, 48, 12);
+            g.fill();
+            g.stroke();
+
+            g.fillStyle = '#FF8FA3';
+            g.font = '800 14.5px "Space Mono", monospace';
+            g.textAlign = 'center';
+            g.textBaseline = 'middle';
+            g.fillText('▼ POST-1025 CE: INEVITABLE DECLINE', 0, 0);
+            g.restore();
+          }
+        },
+        mgHero: (g) => {
+          // Low foreground terrace at y = 980 (Rule 4)
+          THEME.drawMapForeTerrace(g, gt, { y: 980, style: 'marbleFloor', baseCol: '#332922', trimCol: '#D99B26' });
+
+          // Chart console desk at x: 910, y: 980 (charX + 90px at arrival)
+          FX.interactiveProp(g, { kind: 'scholarDesk', x: 910, y: 980, lt, gt });
+
+          // Host (HOST_PROTAG) walking from 420 -> 820 to trace the downward curve
+          THEME.drawChar(g, 'HOST_PROTAG', {
+            moveX: [420, 820, lt, 2.8],
+            y: 980,
+            pose: { preset: 'walk', speed: 1.1 },
+            eyeMode: 'warm',
+            brows: lt >= 1.40 ? 'furrowed' : 'neutral',
+            mouth: lt >= 1.40 ? 'frown' : 'neutral',
+            t: gt,
+            seed: 740
+          });
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 8, color: 'rgba(255, 184, 77, 0.14)' });
+        }
+      });
+
+      UI.citation(g, 'Rise and Decline of Dynastic Empires · K.A.N. Sastri', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.28, grain: 0.02 });
+    },
+
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 2.8, { gain: 0.18 });
+      k.play('counterTick', bt0 + 0.40, { gain: 0.42 });
+      k.play('powerDown', bt0 + 1.40, { gain: 0.45 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 075 · [04:09.6 - 04:12.6] — 13th Century CE: Gradual Decline of the Cholas (1279 CE)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 75,
+    start: 249.6,
+    end: 252.6,
+    duration: 3.0,
+    title: '13th Century CE: Gradual Decline of the Cholas (1279 CE)',
+    vo_line: '13-ஆம் நூற்றாண்டுகள்ல சோழப் பேரரசு கொஞ்சம் கொஞ்சமா வீழ்ச்சி அடையுது.',
+    env_id: 'ENV_TEMPLE_COURTYARD',
+    chars: 'CHOLA_KING (walk away 985 -> 520, flipX: true, crumblingPillar at x: 1080)',
+    on_screen_text: '13th CENTURY CE · DECLINE OF THE CHOLAS (1279 CE)',
+    camera_sfx: 'cam.x = 0, cam.y = 0, z: 1.04 · templeCourtyard bed, footstep, stoneCollapse at 1.50s',
+
+    draw(g, lt, gt, u) {
+      // Strictly obeys Rule 3: cam.x = 0, cam.y = 0
+      const shakeOffset = lt >= 1.50 ? DK.shake(lt - 1.50, 5, 14, 75) : { x: 0, y: 0 };
+      const cam = {
+        x: shakeOffset.x,
+        y: shakeOffset.y,
+        z: 1.04
+      };
+
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('goldenHour')(g);
+          FX.sun(g, 1480, 520, 72);
+          FX.clouds(g, { seed: 75, count: 6, y: 180, h: 140, color: '#FDBA74', a: 0.65, t: gt, speed: 8 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'ancientTamil', y: 760, seed: 75 });
+          FX.structure3D(g, 420, 760, 220, 320, { kind: 'gopuram', color: '#9A4B34', t: gt });
+          FX.structure3D(g, 1480, 760, 260, 210, { kind: 'stoneFort', color: '#786252', t: gt });
+        },
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'templeCourtyard', y: 840, seed: 75 });
+          // Tattered, lowered Chola banner in dusk breeze
+          THEME.drawTigerBanner(g, 1240, 840, 0.85, gt, { unfurl: 0.45, poleH: 155, seed: 75 });
+        },
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#5E4B3C', grassCol: '#6E5A46' });
+
+          // Crumbling Chola stone pillar at x: 1080, y: 840 (charX + 95px at start, cutTime: 1.50)
+          FX.interactiveProp(g, {
+            kind: 'crumblingPillar',
+            x: 1080,
+            y: 840,
+            cutTime: 1.50,
+            lt,
+            gt
+          });
+
+          // Deterministic 120Hz stone rubble accent when pillar cracks at lt = 1.50s
+          PHY.shatterWall(g, lt, {
+            id: 'chola_pillar_75',
+            x: 1080,
+            y: 840,
+            w: 110,
+            h: 240,
+            impactTime: 1.50,
+            impactPoint: [1080, 680],
+            force: 520,
+            cols: 4,
+            rows: 6,
+            material: 'stone',
+            floorY: 840,
+            seed: 75
+          });
+
+          // Retreating Chola Monarch (CHOLA_KING) walking away 985 -> 520 with flipX: true
+          THEME.drawChar(g, 'CHOLA_KING', {
+            moveX: [985, 520, lt, 3.0],
+            y: 840,
+            flipX: true,
+            pose: { preset: 'walk', speed: 1.05 },
+            eyeMode: 'halfLidded',
+            brows: 'sad',
+            mouth: 'frown',
+            t: gt,
+            seed: 750
+          });
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 12, color: 'rgba(255, 150, 80, 0.16)' });
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: '13th CENTURY CE · DECLINE OF THE CHOLAS (1279 CE)',
+        x: 960,
+        y: 120,
+        accent: '#FF851B',
+        t0: 0.25
+      });
+      UI.citation(g, 'Reign of Rajendra Chola III (d. 1279 CE) · Pandya Ascendancy', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.30, grain: 0.025 });
+    },
+
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.0, { gain: 0.18 });
+      k.play('footstep', bt0 + 0.55, { gain: 0.35 });
+      k.play('stoneCollapse', bt0 + 1.50, { gain: 0.58 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 076 · [04:12.6 - 04:16.9] — Second Pandyan Empire & Marco Polo's Visit (1292 CE)
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 76,
+    start: 252.6,
+    end: 256.9,
+    duration: 4.3,
+    title: 'Second Pandyan Empire & Marco Polo’s Visit (1292 CE)',
+    vo_line: 'பாண்டியர்கள் மறுபடியும் எழுச்சி பெறுறாங்க. Marco Polo மாதிரி வெளிநாட்டு பயணிகள் எல்லாம் தமிழ்நாட்டுக்கு வராங்க.',
+    env_id: 'ENV_ANCIENT_HARBOR (Kayalpattinam / Korkai)',
+    chars: 'MARCO_POLO (walk 300 -> 780, quill -> merchantStall at 870), PANDYA_KING (x: 960, trade)',
+    on_screen_text: 'SECOND PANDYAN EMPIRE & MARCO POLO (1292 CE)',
+    camera_sfx: 'Pan [-28 -> +28], z: 1.0 -> 1.06 · ancientHarbor bed, footstep, penScratch, pillBadge, coinClink',
+
+    draw(g, lt, gt, u) {
+      // Strictly obeys Rule 3: cam.x centered around 0 (-28 -> +28), cam.y = 0
+      const cam = {
+        x: DK.key(lt, [[0, -28], [4.3, 28]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [4.3, 1.06]], DK.ease.outCubic)
+      };
+
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('coastalDay')(g);
+          FX.sun(g, 1460, 200, 60);
+          FX.clouds(g, { seed: 76, count: 7, y: 145, h: 140, color: '#FFFFFF', a: 0.90, t: gt, speed: 12 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'harbor', y: 745, seed: 76 });
+          FX.waterBody(g, gt, { x: 0, y: 720, w: 1920, h: 130, color: '#2171B5', waves: true });
+          FX.structure3D(g, 380, 730, 195, 165, { kind: 'romanShip', t: gt + 0.5 });
+          FX.structure3D(g, 1480, 730, 210, 175, { kind: 'cholaShip', t: gt + 1.8 });
+        },
+        mgBack: (g) => {
+          FX.envExterior(g, gt, { preset: 'ancientHarbor', y: 840, seed: 76 });
+          // Royal Pandya Twin-Fish Banners flying over Kayalpattinam port
+          THEME.drawPandyaBanner(g, 640, 840, 0.95, gt, 1);
+          THEME.drawPandyaBanner(g, 1180, 840, 0.95, gt, 2);
+          FX.prop3D(g, 1340, 840, 0.95, { kind: 'spiceCrates', t: gt });
+          FX.prop3D(g, 1490, 840, 0.95, { kind: 'amphoraStack', t: gt });
+        },
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#705A46', grassCol: '#8F755D' });
+
+          // Korkai Pearl & Gem Merchant Stall at x: 870, y: 840 (exact ±90px contact for both characters!)
+          FX.interactiveProp(g, {
+            kind: 'merchantStall',
+            x: 870,
+            y: 840,
+            lt,
+            gt
+          });
+
+          // Glowing Korkai pearl oysters & gold coins displayed on the stall counter
+          g.save();
+          g.translate(870, 748);
+          for (let i = -2; i <= 2; i++) {
+            g.fillStyle = '#F8FAFC';
+            g.beginPath();
+            g.arc(i * 18, 0, 7, 0, Math.PI * 2);
+            g.fill();
+            g.fillStyle = '#FFD54F';
+            g.beginPath();
+            g.arc(i * 18 + 6, 4, 5, 0, Math.PI * 2);
+            g.fill();
+          }
+          g.restore();
+
+          // Pandya Monarch (PANDYA_KING) at x: 960, y: 840 (charX - 90px = 870 stall contact)
+          THEME.drawChar(g, 'PANDYA_KING', {
+            x: 960,
+            y: 840,
+            flipX: true,
+            pose: { preset: 'trade', speed: 1.15 },
+            prop: 'sword',
+            eyeMode: 'warm',
+            brows: 'raised',
+            mouth: 'smile',
+            t: gt,
+            seed: 761
+          });
+
+          // Marco Polo (MARCO_POLO) walking 300 -> 780 (charX + 90px = 870 stall contact) with quill
+          THEME.drawChar(g, 'MARCO_POLO', {
+            moveX: [300, 780, lt, 4.3],
+            y: 840,
+            pose: { preset: 'walk', speed: 1.15 },
+            prop: 'quill',
+            eyeMode: 'warm',
+            brows: 'raised',
+            mouth: lt >= 2.15 ? 'smile' : 'o',
+            t: gt,
+            seed: 760
+          });
+
+          // Mid-Shot Micro-Beat (lt = 2.15s): Marco Polo Chronicle Quote Badge
+          if (lt >= 2.15) {
+            const popP = DK.pop(lt, 2.15, 0.38);
+            g.save();
+            g.translate(540, 600);
+            g.scale(popP, popP);
+            g.fillStyle = 'rgba(19, 26, 44, 0.94)';
+            g.strokeStyle = '#FFD54F';
+            g.lineWidth = 2.5;
+            g.beginPath();
+            g.roundRect(-210, -34, 420, 68, 14);
+            g.fill();
+            g.stroke();
+
+            g.fillStyle = '#FFD54F';
+            g.font = '800 13px "Space Mono", monospace';
+            g.textAlign = 'center';
+            g.fillText('MARCO POLO’S CHRONICLE (1292 CE):', 0, -10);
+            g.fillStyle = '#FFFFFF';
+            g.font = 'italic 700 15px "Playfair Display", serif';
+            g.fillText('"The Finest Pearls & Richest Kingdom in the World"', 0, 14);
+            g.restore();
+          }
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 9, color: 'rgba(255, 230, 160, 0.16)' });
+        }
+      });
+
+      UI.techCallout(g, lt, {
+        from: [870, 720],
+        elbow: [1080, 560],
+        to: [1440, 560],
+        title: 'SECOND PANDYAN EMPIRE & MARCO POLO',
+        spec: 'Jatavarman Sundara Pandyan I · Marco Polo Visit (1292 CE)',
+        accent: '#F7B928',
+        t0: 1.8
+      });
+      UI.citation(g, 'The Travels of Marco Polo (c. 1292 CE): Ma’bar / Pandya Kingdom', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+
+    sfx(k, bt0) {
+      k.bed('ancientHarbor', bt0 + 0.0, bt0 + 4.3, { gain: 0.22 });
+      k.play('footstep', bt0 + 0.70, { gain: 0.35 });
+      k.play('penScratch', bt0 + 1.50, { gain: 0.45 });
+      k.play('pillBadge', bt0 + 1.80, { gain: 0.42 });
+      k.play('coinClink', bt0 + 2.15, { gain: 0.52 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 077 · [04:16.9 - 04:20.4] — 1311 CE: Fate Changes Forever
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 77,
+    start: 256.9,
+    end: 260.4,
+    duration: 3.5,
+    title: '1311 CE: Fate Changes Forever',
+    vo_line: 'ஆனா தமிழ்நாட்டோட தலையெழுத்து 1311-ல ஒட்டுமொத்தமா மாறுது.',
+    env_id: 'ENV_BATTLEFIELD_STORM',
+    chars: 'PANDYA_KING (run 1180 -> 740, flipX: true, barring fortress gate at x: 650)',
+    on_screen_text: 'THE TURNING POINT · 1311 CE',
+    camera_sfx: 'Shake at lt = 1.75s · monsoonRain bed (0–1.7s), footstep, jailCellSlam + subDrop at 1.75s',
+
+    draw(g, lt, gt, u) {
+      // Strictly obeys Rule 3: cam.x = 0, cam.y = 0 + impact shake at lt = 1.75s
+      const shk = lt >= 1.75 ? DK.shake(lt - 1.75, 7, 16, 77) : { x: 0, y: 0 };
+      const cam = {
+        x: shk.x,
+        y: shk.y,
+        z: DK.key(lt, [[0, 1.0], [3.5, 1.08]], DK.ease.outCubic)
+      };
+
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('storm')(g);
+          FX.clouds(g, { seed: 77, count: 9, y: 140, h: 170, color: '#1E293B', a: 0.94, t: gt, speed: 28 });
+          // Lightning fork flash at lt = 1.75s
+          if (lt >= 1.73 && lt <= 1.98) {
+            const flashA = DK.clamp(1.0 - (lt - 1.73) * 4.2, 0, 0.85);
+            g.fillStyle = `rgba(255, 240, 245, ${flashA * 0.35})`;
+            g.fillRect(0, 0, 1920, 1080);
+            g.strokeStyle = `rgba(255, 255, 255, ${flashA})`;
+            g.lineWidth = 5;
+            g.beginPath();
+            g.moveTo(680, 0);
+            g.lineTo(640, 210);
+            g.lineTo(710, 260);
+            g.lineTo(620, 520);
+            g.stroke();
+          }
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'fortress', y: 755, seed: 77 });
+          FX.structure3D(g, 1360, 755, 240, 340, { kind: 'gopuram', color: '#47362B', t: gt });
+        },
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'fortRamparts', y: 840, seed: 77 });
+          THEME.drawPandyaBanner(g, 480, 840, 0.92, gt, 77);
+        },
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'cobblestone', baseCol: '#3B332B', grassCol: '#4A4036' });
+
+          // Heavy fortress gate bastion at x: 650, y: 840 (charX - 90px at arrival)
+          FX.structure3D(g, 580, 840, 260, 320, { kind: 'stoneFort', color: '#4B3E35', t: gt });
+          FX.interactiveProp(g, {
+            kind: 'brickWallBuild',
+            x: 650,
+            y: 840,
+            cutTime: 1.75,
+            lt,
+            gt
+          });
+
+          // Iron-bound fortress portcullis slamming down at lt = 1.75s
+          const gateDrop = lt >= 1.75 ? 1.0 : DK.segTime(lt, 1.45, 1.75, DK.ease.inCubic);
+          g.save();
+          g.translate(650, 840);
+          g.fillStyle = '#1E242B';
+          g.strokeStyle = '#64748B';
+          g.lineWidth = 4;
+          const gateH = 210 * gateDrop;
+          g.fillRect(-58, -210, 116, gateH);
+          g.strokeRect(-58, -210, 116, gateH);
+          // Iron studs & crossbar
+          if (gateDrop > 0.5) {
+            g.fillStyle = '#94A3B8';
+            for (let r = -180; r < -210 + gateH - 15; r += 42) {
+              g.beginPath();
+              g.arc(-32, r, 5, 0, Math.PI * 2);
+              g.arc(32, r, 5, 0, Math.PI * 2);
+              g.fill();
+            }
+          }
+          g.restore();
+
+          // Pandya Defender (PANDYA_KING) running from 1180 -> 740 (charX - 90px = 650 gate contact)
+          THEME.drawChar(g, 'PANDYA_KING', {
+            moveX: [1180, 740, lt, 3.5],
+            y: 840,
+            flipX: true,
+            pose: { preset: 'run', speed: 1.35 },
+            prop: 'sword',
+            eyeMode: lt >= 1.75 ? 'panic' : 'warm',
+            brows: 'furrowed',
+            mouth: lt >= 1.75 ? 'gasp' : 'neutral',
+            t: gt,
+            seed: 770
+          });
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: 'rgba(255, 77, 106, 0.15)' });
+        }
+      });
+
+      // Strictly obeys Rule 5: Non-destructive floating HUD Era Chapter Dial Banner at y = 135!
+      THEME.drawEraDialBanner(g, lt, {
+        era: 'THE TURNING POINT',
+        year: '1311 CE',
+        y: 135,
+        t0: 0.15,
+        lockTime: 1.75
+      });
+
+      UI.citation(g, 'Amir Khusrau, Khaza’in ul-Futuh (1311 CE)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.34, grain: 0.03 });
+    },
+
+    sfx(k, bt0) {
+      k.bed('monsoonRain', bt0 + 0.0, bt0 + 1.7, { gain: 0.22 });
+      k.play('footstep', bt0 + 0.60, { gain: 0.42 });
+      k.play('jailCellSlam', bt0 + 1.75, { gain: 0.75 });
+      k.play('subDrop', bt0 + 1.80, { gain: 0.68 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 078 · [04:20.4 - 04:23.1] — Delhi Sultan Alauddin Khalji's General Malik Kafur
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 78,
+    start: 260.4,
+    end: 263.1,
+    duration: 2.7,
+    title: 'Delhi Sultan Alauddin Khalji’s General Malik Kafur',
+    vo_line: 'டெல்லி சுல்தான் அலாவுதீன் கில்ஜியோட தளபதி மாலிக் கபூர்',
+    env_id: 'MAP_MALIK_KAFUR_INVASION',
+    chars: 'MALIK_KAFUR (march 420 -> 780 on y: 980 terrace, sword -> radarTable war-map at x: 870)',
+    on_screen_text: 'DELHI SULTANATE · ALAUDDIN KHALJI & MALIK KAFUR',
+    camera_sfx: 'Unobstructed Tactical Map + y: 980 Terrace · battlefield bed, marchSteps, swordDraw, warHorn',
+
+    draw(g, lt, gt, u) {
+      // Strictly obeys Rule 4: Render UI.strategicMap unobstructed across the canvas!
+      UI.strategicMap(g, lt, {
+        bbox: [68.0, 7.0, 90.0, 31.5],
+        style: 'tactical',
+        title: 'SOUTHERN CAMPAIGN OF MALIK KAFUR (1310–1311 CE)',
+        subTitle: 'DELHI SULTANATE (ALAUDDIN KHALJI) → MA’BAR (TAMILAKAM)',
+        reading: 'INVASION CORRIDOR TRACKING',
+        territories: [
+          { place: 'India', color: 'rgba(255, 77, 106, 0.22)', border: '#FF4D6A', label: 'SUBCONTINENT CORRIDOR', t0: 0.05 },
+          { place: 'Tamil Nadu', color: 'rgba(247, 185, 40, 0.45)', border: '#FFD54F', label: 'PANDYA HEARTLAND (MA’BAR)', t0: 0.25 }
+        ],
+        routes: [
+          { from: [77.21, 28.61], to: [75.22, 19.94], t0: 0.25, dur: 0.8, color: '#FF4D6A' },
+          { from: [75.22, 19.94], to: [75.99, 13.21], t0: 0.90, dur: 0.7, color: '#FF4D6A' },
+          { from: [75.99, 13.21], to: [78.12, 9.92], t0: 1.35, dur: 1.0, color: '#FF4D6A' }
+        ],
+        pins: [
+          { lonLat: [77.21, 28.61], label: 'DELHI (SULTANATE CAPITAL)', diorama: 'pin', t0: 0.10 },
+          { lonLat: [75.22, 19.94], label: 'DEVAGIRI', diorama: 'pin', t0: 0.85 },
+          { lonLat: [75.99, 13.21], label: 'DWARASAMUDRA', diorama: 'pin', t0: 1.30 },
+          { lonLat: [78.12, 9.92], label: 'MADURAI (TARGET · 1311 CE)', diorama: 'gopuram', t0: 1.75 }
+        ]
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.35s): Crimson invasion vector lock & callout badge
+      if (lt >= 1.35) {
+        const popP = DK.pop(lt, 1.35, 0.32);
+        g.save();
+        g.translate(1340, 560);
+        g.scale(popP, popP);
+        g.fillStyle = 'rgba(36, 12, 20, 0.94)';
+        g.strokeStyle = '#FF4D6A';
+        g.lineWidth = 2.5;
+        g.beginPath();
+        g.roundRect(-190, -32, 380, 64, 12);
+        g.fill();
+        g.stroke();
+
+        g.fillStyle = '#FF4D6A';
+        g.font = '800 13px "Space Mono", monospace';
+        g.textAlign = 'center';
+        g.fillText('COMMANDER: GENERAL MALIK KAFUR', 0, -10);
+        g.fillStyle = '#FFFFFF';
+        g.font = '800 15px "Nunito", sans-serif';
+        g.fillText('2,400 km March: Delhi → Madurai (1311 CE)', 0, 14);
+        g.restore();
+      }
+
+      // Low foreground war-room terrace at y = 980 (Rule 4)
+      THEME.drawMapForeTerrace(g, gt, { y: 980, style: 'flagstone', baseCol: '#1F1B24', trimCol: '#FF4D6A' });
+
+      // Tactical war-map table at x: 870, y: 980 (charX + 90px at arrival)
+      FX.prop3D(g, 870, 980, 1.0, { kind: 'radarTable', color: '#FF4D6A', t: gt });
+
+      // General Malik Kafur (MALIK_KAFUR) marching 420 -> 780 along y = 980
+      THEME.drawChar(g, 'MALIK_KAFUR', {
+        moveX: [420, 780, lt, 2.7],
+        y: 980,
+        pose: { preset: 'march', speed: 1.25 },
+        prop: 'sword',
+        eyeMode: 'warm',
+        brows: 'furrowed',
+        mouth: 'neutral',
+        t: gt,
+        seed: 780
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'DELHI SULTANATE · ALAUDDIN KHALJI & MALIK KAFUR',
+        x: 960,
+        y: 120,
+        accent: '#FF4D6A',
+        t0: 0.2
+      });
+      UI.citation(g, 'Ziauddin Barani, Tarikh-i-Firuz Shahi (1357 CE)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.025 });
+    },
+
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 2.7, { gain: 0.20 });
+      k.play('marchSteps', bt0 + 0.40, { gain: 0.42 });
+      k.play('swordDraw', bt0 + 1.35, { gain: 0.58 });
+      k.play('warHorn', bt0 + 1.60, { gain: 0.52 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 079 · [04:23.1 - 04:25.8] — Marching into South India with a Massive Army
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 79,
+    start: 263.1,
+    end: 265.8,
+    duration: 2.7,
+    title: 'Marching into South India with a Massive Army',
+    vo_line: 'ஒரு மாபெரும் படையோடு தென்னிந்தியாவுக்குள்ள வரான்.',
+    env_id: 'ENV_BATTLEFIELD_STORM',
+    chars: 'MALIK_KAFUR (march 220 -> 1085, sword) + WAR_HORSE (360 -> 1225) -> crumblingPillar at x: 1180',
+    on_screen_text: '1311 CE · INVASION OF MA’BAR (TAMILAKAM)',
+    camera_sfx: 'Pan [-35 -> +35], z: 1.05 · battlefield bed, horseGallop, stoneCollapse at 1.35s',
+
+    draw(g, lt, gt, u) {
+      // Strictly obeys Rule 3: cam.x within -35..+35, cam.y = 0
+      const shk = lt >= 1.35 ? DK.shake(lt - 1.35, 6, 15, 79) : { x: 0, y: 0 };
+      const cam = {
+        x: DK.key(lt, [[0, -35], [2.7, 35]], DK.ease.outCubic) + shk.x,
+        y: shk.y,
+        z: 1.05
+      };
+
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('storm')(g);
+          FX.clouds(g, { seed: 79, count: 8, y: 150, h: 160, color: '#262F3F', a: 0.92, t: gt, speed: 32 });
+        },
+        bgFar: (g) => {
+          FX.hills(g, { seed: 79, y: 750, amp: 120, color: '#38322E' });
+          FX.storybookHorizon(g, { style: 'fortress', y: 760, seed: 79 });
+        },
+        mgBack: (g) => {
+          FX.storybookScene(g, gt, { preset: 'battlefield', y: 840, seed: 79 });
+          // Flanking vanguard soldiers marching in background plane (anti-treadmill moveX)
+          for (let i = 0; i < 3; i++) {
+            THEME.drawChar(g, 'MALIK_KAFUR', {
+              moveX: [60 - i * 130, 860 - i * 130, lt, 2.7],
+              y: 810,
+              s: 0.82,
+              topColor: '#374151',
+              pose: { preset: 'march', speed: 1.35 },
+              prop: 'sword',
+              t: gt,
+              seed: 791 + i
+            });
+          }
+        },
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'earthPath', baseCol: '#4B3B2C', grassCol: '#5C4938' });
+
+          // Southern border stone pillar at x: 1180, y: 840 (cutTime: 1.35, charX + 95px at impact)
+          FX.interactiveProp(g, {
+            kind: 'crumblingPillar',
+            x: 1180,
+            y: 840,
+            cutTime: 1.35,
+            lt,
+            gt
+          });
+
+          // 120Hz colliding stone shatter when cavalry smashes the border pillar at lt = 1.35s
+          PHY.shatterWall(g, lt, {
+            id: 'border_pillar_79',
+            x: 1180,
+            y: 840,
+            w: 115,
+            h: 250,
+            impactTime: 1.35,
+            impactPoint: [1150, 700],
+            force: 780,
+            cols: 4,
+            rows: 6,
+            material: 'stone',
+            floorY: 840,
+            seed: 79
+          });
+
+          // Forward-galloping WAR_HORSE (moveX: [360, 1225, lt, 2.7], y: 840)
+          DK.animal(g, {
+            kind: 'horse',
+            moveX: [360, 1225, lt, 2.7],
+            y: 840,
+            s: 1.08,
+            royal: true,
+            expr: 'neutral',
+            t: gt
+          });
+
+          // General Malik Kafur charging alongside from 220 -> 1085 (charX + 95px = 1180 pillar impact)
+          THEME.drawChar(g, 'MALIK_KAFUR', {
+            moveX: [220, 1085, lt, 2.7],
+            y: 840,
+            pose: { preset: 'march', speed: 1.35 },
+            prop: 'sword',
+            eyeMode: 'warm',
+            brows: 'furrowed',
+            mouth: 'scream',
+            t: gt,
+            seed: 790
+          });
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 12, color: 'rgba(255, 110, 90, 0.16)' });
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: '1311 CE · INVASION OF MA’BAR (TAMILAKAM)',
+        x: 960,
+        y: 120,
+        accent: '#FF4D6A',
+        t0: 0.2
+      });
+      UI.citation(g, 'S. Krishnaswami Aiyangar, South India and Her Muhammadan Invaders (1921)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.30, grain: 0.025 });
+    },
+
+    sfx(k, bt0) {
+      k.bed('battlefield', bt0 + 0.0, bt0 + 2.7, { gain: 0.24 });
+      k.play('horseGallop', bt0 + 0.25, { gain: 0.55 });
+      k.play('stoneCollapse', bt0 + 1.35, { gain: 0.62 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 080 · [04:25.8 - 04:28.6] — The Target: Gold, Diamonds & Gems in Tamil Temples
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 80,
+    start: 265.8,
+    end: 268.6,
+    duration: 2.8,
+    title: 'The Target: Gold, Diamonds & Gems in Tamil Temples',
+    vo_line: 'காரணம் என்னன்னா தமிழ்நாட்டு கோயில்கள்ல இருக்குற தங்கங்கள், வைரங்கள், வைடூரியங்கள்',
+    env_id: 'ENV_PALACE_DURBAR (Temple Treasury Vault)',
+    chars: 'THIRUVALLUVAR (Temple Treasurer, walk 460 -> 820, palmLeaf -> merchantStall treasury chest at x: 910)',
+    on_screen_text: 'CENTURIES OF ACCUMULATED TEMPLE WEALTH · GOLD · DIAMONDS · GEMS',
+    camera_sfx: 'cam.x = 0, cam.y = 0, z: 1.0 -> 1.07 · templeCourtyard bed, coinClink, starShimmer at 1.40s',
+
+    draw(g, lt, gt, u) {
+      // Strictly obeys Rule 3: cam.x = 0, cam.y = 0
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0, 1.0], [2.8, 1.07]], DK.ease.outCubic)
+      };
+
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('parchmentGold')(g);
+          FX.godRays(g, 980, 180, { count: 12, color: 'rgba(255, 215, 90, 0.26)', r: 720 });
+        },
+        bgFar: (g) => {
+          FX.storybookScene(g, gt, { preset: 'palaceInterior', y: 840, seed: 80 });
+          FX.structure3D(g, 420, 840, 220, 320, { kind: 'mandapam', color: '#8A5A36', t: gt });
+          FX.structure3D(g, 1480, 840, 220, 320, { kind: 'mandapam', color: '#8A5A36', t: gt });
+        },
+        mgBack: (g) => {
+          // Stacked golden temple treasury coffers in mid-background
+          for (let c = 0; c < 3; c++) {
+            const cx = 1060 + c * 150;
+            g.save();
+            g.translate(cx, 840);
+            g.fillStyle = '#78350F';
+            g.strokeStyle = '#F7B928';
+            g.lineWidth = 3;
+            g.fillRect(-48, -64, 96, 64);
+            g.strokeRect(-48, -64, 96, 64);
+            // Mound of gold coins & jewels
+            g.fillStyle = '#FFD54F';
+            g.beginPath();
+            g.arc(0, -64, 42, Math.PI, 0);
+            g.fill();
+            g.restore();
+          }
+        },
+        mgHero: (g) => {
+          FX.storybookGround(g, 840, { style: 'marbleFloor', baseCol: '#4A3828', grassCol: '#D99B26' });
+
+          // Royal Temple Treasure Pedestal & Chest at x: 910, y: 840 (charX + 90px at arrival)
+          FX.interactiveProp(g, {
+            kind: 'merchantStall',
+            x: 910,
+            y: 840,
+            lt,
+            gt
+          });
+
+          // Overflowing 2.5D Gold, Diamonds & Cat's-Eye Gems on the Treasury Table
+          g.save();
+          g.translate(910, 745);
+          // Gold bars & coins
+          g.fillStyle = '#FFD54F';
+          g.strokeStyle = '#B45309';
+          g.lineWidth = 2;
+          for (let i = -3; i <= 3; i++) {
+            g.beginPath();
+            g.arc(i * 15, 4, 11, 0, Math.PI * 2);
+            g.fill();
+            g.stroke();
+          }
+          // Faceted Diamond & Cat's-Eye Gems
+          g.fillStyle = '#5CE1FF';
+          g.beginPath();
+          g.moveTo(-25, -18); g.lineTo(-13, -6); g.lineTo(-25, 6); g.lineTo(-37, -6);
+          g.closePath();
+          g.fill();
+
+          g.fillStyle = '#38C878';
+          g.beginPath();
+          g.moveTo(25, -18); g.lineTo(37, -6); g.lineTo(25, 6); g.lineTo(13, -6);
+          g.closePath();
+          g.fill();
+          g.restore();
+
+          // Temple Treasurer (THIRUVALLUVAR) hurrying 460 -> 820 (charX + 90px = 910 chest contact)
+          THEME.drawChar(g, 'THIRUVALLUVAR', {
+            moveX: [460, 820, lt, 2.8],
+            y: 840,
+            pose: { preset: 'walk', speed: 1.15 },
+            prop: 'palmLeaf',
+            eyeMode: 'warm',
+            brows: 'raised',
+            mouth: lt >= 1.40 ? 'o' : 'neutral',
+            t: gt,
+            seed: 800
+          });
+
+          // Mid-Shot Micro-Beat (lt = 1.40s): 3 Radiant Jewel Callout Badges flare above the coffers
+          if (lt >= 1.40) {
+            const items = [
+              { x: 760, y: 540, label: 'GOLD (தங்கம்)', col: '#FFD54F', delay: 0.0 },
+              { x: 1020, y: 485, label: 'DIAMONDS (வைரம்)', col: '#5CE1FF', delay: 0.12 },
+              { x: 1280, y: 540, label: 'GEMS (வைடூரியம்)', col: '#38C878', delay: 0.24 }
+            ];
+            items.forEach((it) => {
+              const popP = DK.pop(lt, 1.40 + it.delay, 0.35);
+              if (popP > 0.01) {
+                g.save();
+                g.translate(it.x, it.y);
+                g.scale(popP, popP);
+                g.fillStyle = 'rgba(17, 24, 39, 0.94)';
+                g.strokeStyle = it.col;
+                g.lineWidth = 2.5;
+                g.beginPath();
+                g.roundRect(-115, -22, 230, 44, 22);
+                g.fill();
+                g.stroke();
+
+                g.fillStyle = it.col;
+                g.font = '900 15px "Nunito", sans-serif';
+                g.textAlign = 'center';
+                g.textBaseline = 'middle';
+                g.fillText('✦ ' + it.label, 0, 0);
+                g.restore();
+              }
+            });
+          }
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 16, color: 'rgba(255, 215, 80, 0.24)' });
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'CENTURIES OF ACCUMULATED TEMPLE WEALTH',
+        x: 960,
+        y: 120,
+        accent: '#F7B928',
+        t0: 0.25
+      });
+      UI.citation(g, 'Amir Khusrau’s Inventory of Ma’bar Treasury Plunder (1311 CE)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.02 });
+    },
+
+    sfx(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 2.8, { gain: 0.20 });
+      k.play('coinClink', bt0 + 0.45, { gain: 0.50 });
+      k.play('starShimmer', bt0 + 1.40, { gain: 0.55 });
+      k.play('coinClink', bt0 + 1.85, { gain: 0.52 });
+    }
+  }
+];
+
+window.THEME = THEME;
+if (window.DK && DK.linkShotTransitions) DK.linkShotTransitions(SHOTS, window.THEME);
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const BATCH_START = SHOTS[0].start;
+const BATCH_END = SHOTS[SHOTS.length - 1].end;
+const DURATION = BATCH_END - BATCH_START;
+
+// Auto-runs each shot's attached sfx(k, bt0) if scoreSound(k) is not defined separately
+if (typeof window.scoreSound !== 'function') {
+  window.scoreSound = function scoreSound(k) {
+    SHOTS.forEach((s) => {
+      if (typeof s.sfx === 'function') s.sfx(k, s.start - BATCH_START);
+    });
+  };
+}
+const scoreSound = window.scoreSound;
+
+window.BATCH_START = BATCH_START;
+window.BATCH_END = BATCH_END;
+window.DURATION = DURATION;
+window.SHOTS = SHOTS;
+window.scoreSound = scoreSound;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, activeShotFilter = 'all', voAudio = null;
+
+function findShotAtGlobal(gt) {
+  for (let i = 0; i < SHOTS.length; i++) {
+    if (gt >= SHOTS[i].start && gt <= SHOTS[i].end) return SHOTS[i];
+  }
+  return gt < SHOTS[0].start ? SHOTS[0] : SHOTS[SHOTS.length - 1];
+}
+
+function renderAtLocal(localT) {
+  currentT = DK.clamp(localT, 0, DURATION);
+  const gt = BATCH_START + currentT;
+  const s = findShotAtGlobal(gt);
+  const lt = DK.clamp(gt - s.start, 0, s.duration);
+  const u = s.duration > 0 ? lt / s.duration : 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1920, 1080);
+  ctx.save();
+  if (window.DK && DK.drawShot) DK.drawShot(ctx, s, lt, gt, u);
+  else s.draw(ctx, lt, gt, u);
+  ctx.restore();
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = gt.toFixed(2) + 's (' + currentT.toFixed(2) + 's) · Shot ' + s.shot_number;
+}
+
+window.seek = function (t, opts) {
+  if (playing) pause();
+  const localT = opts && opts.global ? t - BATCH_START : t;
+  renderAtLocal(localT);
+};
+
+function startAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('mixSelect').value;
+  if (mixMode !== 'mute' && window.SOUND) stopSound = SOUND.live(scoreSound, currentT, { mixMode: 'sfxOnly' });
+  if (voAudio) { voAudio.currentTime = BATCH_START + currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (activeShotFilter !== 'all') {
+      const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+      if (s) {
+        const sLocal0 = s.start - BATCH_START, sLocal1 = s.end - BATCH_START;
+        if (nextT >= sLocal1) { nextT = sLocal0; currentT = nextT; startAudio(); }
+      }
+    } else if (nextT >= DURATION) {
+      nextT = 0; currentT = 0; startAudio();
+    }
+    renderAtLocal(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+const shotSelect = document.getElementById('shotSelect');
+SHOTS.forEach((s) => {
+  const opt = document.createElement('option');
+  opt.value = String(s.shot_number);
+  opt.textContent = 'Shot ' + s.shot_number + ': ' + s.title + ' (' + s.start.toFixed(1) + 's-' + s.end.toFixed(1) + 's)';
+  shotSelect.appendChild(opt);
+});
+
+shotSelect.addEventListener('change', () => {
+  activeShotFilter = shotSelect.value;
+  if (activeShotFilter !== 'all') {
+    const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+    if (s) { renderAtLocal(s.start - BATCH_START); if (playing) startAudio(); }
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  renderAtLocal(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('mixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('wavBtn').addEventListener('click', async () => {
+  const res = await SOUND.renderOffline(scoreSound, DURATION, 48000, { mixMode: 'sfxOnly' });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'batch_sfx_' + SHOTS[0].shot_number + '_' + SHOTS[SHOTS.length - 1].shot_number + '.wav';
+  a.click();
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  if (window.MAP && MAP.preloadAll) await MAP.preloadAll(SHOTS);
+  renderAtLocal(0);
+});
+</script>
+</body>
+</html>

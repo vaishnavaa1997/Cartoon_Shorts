@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lumina 2.5D Storybook Studio (16:9) — Shots 111 to 120 (shots_111_120.html)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #05070d; color: #e2e8f0; font-family: 'Nunito', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#stage-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; overflow: hidden; }
+canvas { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; box-shadow: 0 16px 48px rgba(0,0,0,0.75); background: #070b16; }
+#controls { height: 58px; background: #101522; border-top: 1px solid #222b42; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 13px; }
+button, select, label.btn { background: #1c2539; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+button:hover, select:hover, label.btn:hover { background: #283552; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 12px; color: #ffb074; min-width: 230px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><canvas id="stage" width="1920" height="1080"></canvas></div>
+<div id="controls">
+  <button id="playBtn">Play</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.0s / 00.0s · Shot 111</div>
+  <select id="shotSelect"><option value="all">All Shots in Batch (111–120)</option></select>
+  <select id="mixSelect">
+    <option value="sfxOnly" selected>SFX + Ambient Only (No BGM)</option>
+    <option value="mute">Mute</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="wavBtn">Export Batch SFX (.wav)</button>
+</div>
+<script src="../../engine.js"></script>
+<script>
+const THEME = {
+  CHARS: {
+    HOST_PROTAG: {
+      skin: '#D69A72',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'jacket',
+      topColor: '#E86A24',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'neutral',
+      s: 1.0
+    },
+    HOST_SCIENTIST: {
+      skin: '#C88C68',
+      hairStyle: 'sidePart',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'scientist',
+      topColor: '#F1F5F9',
+      bottomColor: '#334155',
+      headwear: 'none',
+      foreheadMark: null,
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'neutral',
+      s: 1.0
+    },
+    BRITISH_OFFICER: {
+      skin: '#F2B892',
+      hairStyle: 'sidePart',
+      hairColor: '#4A2E20',
+      beard: false,
+      mustache: false,
+      wardrobe: 'victorian',
+      topColor: '#B91C1C',
+      bottomColor: '#F8FAFC',
+      headwear: 'topHat',
+      foreheadMark: null,
+      eyeMode: 'warm',
+      brows: 'furrowed',
+      mouth: 'neutral',
+      s: 1.0
+    },
+    TAMIL_FARMER: {
+      skin: '#7A4E38',
+      hairStyle: 'shortCrop',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#D6C7B2',
+      bottomColor: '#E5DEC9',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      eyeMode: 'wince',
+      brows: 'sad',
+      mouth: 'frown',
+      s: 1.0
+    }
+  },
+
+  ANIMALS: {
+    DROUGHT_BULL: {
+      kind: 'bull',
+      s: 0.95,
+      royal: false,
+      expr: 'neutral'
+    }
+  },
+
+  ENVS: {
+    ENV_FORT_ST_GEORGE: function(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('victorianFog')(g);
+          FX.clouds(g, { seed: 111, count: 6, y: 150, h: 130, color: '#CBD5E1', a: 0.55, t: gt, speed: 9 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'colonial', y: 760, seed: 21 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.structure3D(g, 360, 840, 320, 290, { kind: 'colonialHall', color: '#E2E8F0', t: gt });
+          FX.structure3D(g, 1520, 840, 300, 270, { kind: 'stoneFort', color: '#94A3B8', t: gt });
+          FX.storybookGround(g, 840, { style: 'cobblestone', baseCol: '#475569', grassCol: '#64748B' });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: 'rgba(255,210,160,0.12)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_FAMINE_DROUGHT: function(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          const grad = g.createLinearGradient(0, 0, 0, 840);
+          grad.addColorStop(0, '#5C2C16');
+          grad.addColorStop(0.55, '#B46530');
+          grad.addColorStop(1, '#E2A86B');
+          g.fillStyle = grad;
+          g.fillRect(0, 0, 1920, 840);
+          FX.sun(g, 1520, 210, 74);
+          FX.clouds(g, { seed: 112, count: 4, y: 170, h: 95, color: '#E7C496', a: 0.35, t: gt, speed: 6 });
+        },
+        bgFar: (g) => {
+          FX.hills(g, { seed: 34, y: 760, amp: 85, color: '#8A5229' });
+          FX.storybookHorizon(g, { style: 'rural', y: 775, seed: 44 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.structure3D(g, 290, 840, 190, 175, { kind: 'thatchedHut', color: '#8C6239', t: gt });
+          FX.structure3D(g, 1580, 840, 210, 185, { kind: 'brickHouse', color: '#9A5B36', t: gt });
+          FX.tree(g, 520, 840, 0.9, '#6E4726', 'oak');
+          FX.tree(g, 1340, 840, 0.85, '#6E4726', 'palm');
+          FX.storybookGround(g, 840, { style: 'earthPath', baseCol: '#7C4D2B', grassCol: '#9C6B3B' });
+          // Cracked parched earth lines
+          g.save();
+          g.strokeStyle = 'rgba(42, 22, 10, 0.55)';
+          g.lineWidth = 2.5;
+          for (let i = 0; i < 12; i++) {
+            const cx = 140 + i * 150;
+            g.beginPath();
+            g.moveTo(cx, 855);
+            g.lineTo(cx + 28, 895);
+            g.lineTo(cx - 18, 945);
+            g.moveTo(cx + 28, 895);
+            g.lineTo(cx + 64, 925);
+            g.stroke();
+          }
+          g.restore();
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 14, color: 'rgba(235, 165, 95, 0.16)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 7
+      });
+    },
+
+    ENV_ANCIENT_HARBOR: function(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('coastalDay')(g);
+          FX.sun(g, 1460, 195, 58);
+          FX.clouds(g, { seed: 113, count: 6, y: 145, h: 120, color: '#F1F5F9', a: 0.8, t: gt, speed: 12 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'harbor', y: 740, seed: 55 });
+          FX.structure3D(g, 1420, 770, 320, 260, { kind: 'romanShip', color: '#5C3A21', t: gt });
+          FX.structure3D(g, 420, 770, 260, 220, { kind: 'colonialHall', color: '#CBD5E1', t: gt });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.waterBody(g, gt, { x: 0, y: 745, w: 1920, h: 105, color: '#1E6091', waves: true });
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#576574', grassCol: '#475569' });
+          FX.prop3D(g, 1380, 840, 0.95, { kind: 'amphoraStack', color: '#B45309', state: 'active', t: gt });
+          FX.prop3D(g, 220, 840, 0.95, { kind: 'marketCanopy', color: '#991B1B', state: 'active', t: gt });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 8, color: 'rgba(255,255,255,0.12)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_CREATOR_STUDIO: function(g, lt, gt, cam, heroFn) {
+      FX.infographicEnv(g, gt, {
+        preset: 'techStudio',
+        cam: cam,
+        y: 850,
+        seed: 119,
+        hero: (g) => {
+          if (heroFn) heroFn(g);
+        }
+      });
+    },
+
+    ENV_JUSTICE_HALL: function(g, lt, gt, cam, heroFn) {
+      FX.infographicEnv(g, gt, {
+        preset: 'courtroom',
+        cam: cam,
+        y: 840,
+        seed: 120,
+        hero: (g) => {
+          if (heroFn) heroFn(g);
+        }
+      });
+    }
+  },
+
+  INFO: {
+    MAP_MADRAS_PRESIDENCY: function(g, lt, gt, extraOpts) {
+      const o = extraOpts || {};
+      UI.strategicMap(g, lt, {
+        region: 'Tamil Nadu',
+        bbox: [74.5, 7.8, 84.5, 19.5],
+        style: 'terrainHistorical',
+        title: o.title || 'MADRAS PRESIDENCY (1801–1878 CE)',
+        subTitle: o.subTitle || 'BRITISH EAST INDIA COMPANY & CROWN RULE',
+        reading: o.reading || 'COLONIAL REVENUE & FAMINE SURVEY',
+        territories: [
+          {
+            place: 'Tamil Nadu',
+            color: o.territoryColor || 'rgba(220, 38, 38, 0.46)',
+            border: '#FF4D6A',
+            label: o.territoryLabel || 'MADRAS PRESIDENCY',
+            t0: 0.1
+          }
+        ],
+        routes: o.routes || [
+          { from: [80.27, 13.08], to: [76.95, 11.01], t0: 0.2, dur: 1.4, color: '#FF4D6A' },
+          { from: [80.27, 13.08], to: [78.11, 9.92], t0: 0.35, dur: 1.5, color: '#FF851B' }
+        ],
+        pins: o.pins || [
+          { lonLat: [80.27, 13.08], label: 'FORT ST. GEORGE (MADRAS)', diorama: 'stoneFort', t0: 0.15 },
+          { lonLat: [79.13, 10.78], label: 'THANJAVUR', diorama: 'gopuram', t0: 0.30 },
+          { lonLat: [78.11, 9.92], label: 'MADURAI', diorama: 'pin', t0: 0.45 },
+          { lonLat: [77.60, 12.97], label: 'MYSORE / DECCAN', diorama: 'pin', t0: 0.55 }
+        ]
+      });
+    },
+
+    CHART_FAMINE_SPIKE: function(g, lt, gt) {
+      UI.chartLine(g, lt, {
+        x: 1120,
+        y: 470,
+        w: 1080,
+        h: 460,
+        title: 'MADRAS PRESIDENCY FAMINE MORTALITY (*1876–1878 CE)',
+        xLabels: ['1850', '1860', '1866', '*1876–78', '1880'],
+        yRange: [0, 60],
+        unit: 'L',
+        series: [
+          {
+            name: 'Famine Deaths (Lakhs)',
+            color: '#FF4D6A',
+            area: true,
+            values: [2.5, 4.0, 10.0, 55.0, 8.0]
+          }
+        ],
+        anomalies: [
+          { idx: 3, label: '*1876–1878 GREAT FAMINE (55+ LAKHS)', color: '#FF4D6A' }
+        ],
+        t0: 0.1,
+        dur: 1.35
+      });
+    },
+
+    CHART_FAMINE_COMPARISON: function(g, lt, gt, extraOpts) {
+      const o = extraOpts || {};
+      UI.chartBar3D(g, lt, {
+        x: 1160,
+        y: 485,
+        w: 1020,
+        h: 470,
+        title: 'HISTORICAL MORTALITY COMPARISON (IN LAKHS)',
+        unit: 'L',
+        depth3D: 28,
+        data: o.data || [
+          { label: 'WWII Holocaust (1941–45)', value: 60, color: '#64748B', highlight: true }
+        ],
+        t0: 0.15,
+        dur: 1.8
+      });
+    }
+  },
+
+  spawnChar: function(g, id, overrides) {
+    const base = this.CHARS[id] || this.CHARS.HOST_PROTAG;
+    const cfg = Object.assign({}, base, overrides || {});
+    cfg.beard = false;
+    cfg.mustache = false;
+    DK.char(g, cfg);
+  },
+
+  drawEnv: function(id, g, lt, gt, cam, heroFn) {
+    const fn = this.ENVS[id];
+    if (fn) fn(g, lt, gt, cam, heroFn);
+  },
+
+  drawInfo: function(id, g, lt, gt, extraOpts) {
+    const fn = this.INFO[id];
+    if (fn) fn(g, lt, gt, extraOpts);
+  },
+
+  // Rule 4 Helper: Low foreground terrace at y = 980 for Map presenter scenes (Zero dirt wall covering map)
+  drawMapTerrace: function(g, yTerrace) {
+    const yt = yTerrace || 965;
+    g.save();
+    const grad = g.createLinearGradient(0, yt - 35, 0, 1080);
+    grad.addColorStop(0, 'rgba(15, 23, 42, 0.88)');
+    grad.addColorStop(1, 'rgba(7, 11, 22, 0.98)');
+    g.fillStyle = grad;
+    g.fillRect(0, yt - 25, 1920, 1080 - (yt - 25));
+    g.strokeStyle = 'rgba(255, 138, 61, 0.65)';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(0, yt - 25);
+    g.lineTo(1920, yt - 25);
+    g.stroke();
+    g.restore();
+  },
+
+  // Rule 5 Helper: Non-destructive floating HUD Era Chapter Dial banner at y = 115..165
+  hudEraDial: function(g, lt, opts) {
+    const o = opts || {};
+    const p = DK.pop(lt, o.t0 || 0.1, 0.45);
+    const y = o.y || 125;
+    g.save();
+    g.translate(960, y);
+    g.scale(p, p);
+    g.fillStyle = 'rgba(12, 18, 34, 0.92)';
+    g.strokeStyle = o.accent || '#FFB84D';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.roundRect(-390, -44, 780, 88, 16);
+    g.fill();
+    g.stroke();
+
+    g.fillStyle = o.accent || '#FFB84D';
+    g.font = '800 16px "Space Mono", monospace';
+    g.textAlign = 'center';
+    g.fillText(o.era || 'MADRAS PRESIDENCY', 0, -10);
+
+    g.fillStyle = '#FFFFFF';
+    g.font = '900 26px "Fredoka", sans-serif';
+    g.fillText(o.year || '1801 CE · FULL COLONIAL RULE', 0, 24);
+    g.restore();
+  },
+
+  // Rule 5 Helper: Non-destructive floating HUD Title Card banner at y = 155
+  hudTitleBanner: function(g, lt, opts) {
+    const o = opts || {};
+    const t0 = o.t0 !== undefined ? o.t0 : 0.2;
+    if (lt < t0) return;
+    const p = DK.pop(lt, t0, 0.5);
+    const y = o.y || 155;
+    g.save();
+    g.translate(960, y);
+    g.scale(p, p);
+    g.fillStyle = 'rgba(15, 20, 36, 0.92)';
+    g.strokeStyle = o.accent || '#FF4D6A';
+    g.lineWidth = 3.5;
+    g.beginPath();
+    g.roundRect(-470, -54, 940, 108, 18);
+    g.fill();
+    g.stroke();
+
+    g.fillStyle = '#FFE4E6';
+    g.font = '900 30px "Nunito", sans-serif';
+    g.textAlign = 'center';
+    g.fillText(o.title || 'தாது வருடப் பஞ்சம் (1876–1878)', 0, -6);
+
+    g.fillStyle = o.accent || '#FF851B';
+    g.font = '800 18px "Space Mono", monospace';
+    g.fillText(o.sub || 'THE GREAT SOUTHERN INDIA FAMINE', 0, 28);
+    g.restore();
+  }
+};
+
+window.THEME = THEME;
+
+const SHOTS = [
+  // =========================================================================
+  // BATCH 23: SHOTS 111 TO 115 (06:11.4 – 06:27.5 | 371.4s – 387.5s)
+  // =========================================================================
+  {
+    shot_number: 111,
+    title: '1801 Madras Presidency — Full British Rule',
+    start: 371.4,
+    end: 374.4,
+    duration: 3.0,
+    vo_line: 'தமிழ்நாடு பிரிட்டிஷ்காரங்களுக்கு கீழ full-ஆ போகுது.',
+    env_id: 'ENV_FORT_ST_GEORGE + MAP_MADRAS_PRESIDENCY',
+    chars: 'BRITISH_OFFICER (walk -> slam Carnatic Treaty 1801 seal onto desk)',
+    on_screen_text: 'MADRAS PRESIDENCY · 1801 CE · FULL COLONIAL RULE',
+    camera_sfx: 'Map + Low Foreground Terrace · Iron Stamp Shake at 1.50s',
+    transition_id: 'DARK_FOG_DISSOLVE',
+    draw: function(g, lt, gt, u) {
+      const shakeY = lt > 1.45 && lt < 1.95 ? DK.shake(lt, 6, 18, 111) : 0;
+      const camZ = DK.key(lt, [[0.0, 1.00], [1.50, 1.06], [3.0, 1.10]], DK.ease.outCubic);
+
+      g.save();
+      g.translate(960, 540 + shakeY);
+      g.scale(camZ, camZ);
+      g.translate(-960, -540);
+
+      // Rule 4: Unobstructed Strategic Map across the canvas
+      THEME.drawInfo('MAP_MADRAS_PRESIDENCY', g, lt, gt, {
+        title: 'CARNATIC TREATY OF 1801 · MADRAS PRESIDENCY',
+        subTitle: '31 JULY 1801 · ANNEXATION OF TAMIL NADU',
+        territoryColor: lt >= 1.50 ? 'rgba(220, 38, 38, 0.58)' : 'rgba(245, 158, 11, 0.35)',
+        territoryLabel: lt >= 1.50 ? 'DIRECT BRITISH CROWN / EIC RULE' : 'CARNATIC ANNEXATION'
+      });
+
+      // Low foreground terrace so presenter & desk never block the map with a dirt wall
+      THEME.drawMapTerrace(g, 975);
+
+      // Target Prop: Treaty Table at x: 950, y: 975
+      FX.interactiveProp(g, { kind: 'scholarDesk', x: 950, y: 975, lt, gt });
+
+      // Hero 1: BRITISH_OFFICER walking to x: 860 (860 + 90 = 950px target contact)
+      const reach = lt >= 1.50;
+      THEME.spawnChar(g, 'BRITISH_OFFICER', {
+        moveX: [380, 860, lt, 1.55],
+        y: 975,
+        prop: 'hammer',
+        pose: { preset: reach ? 'build' : 'walk', speed: 1.15 },
+        t: gt
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.50s): Heavy iron wax seal stamp on the treaty & map
+      if (lt >= 1.50) {
+        const sp = DK.pop(lt, 1.50, 0.35);
+        g.save();
+        g.translate(1380, 620);
+        g.scale(sp, sp);
+        g.rotate(-0.12);
+        g.fillStyle = 'rgba(185, 28, 28, 0.92)';
+        g.strokeStyle = '#FCA5A5';
+        g.lineWidth = 4;
+        g.beginPath();
+        g.roundRect(-210, -48, 420, 96, 12);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#FFFFFF';
+        g.font = '900 22px "Space Mono", monospace';
+        g.textAlign = 'center';
+        g.fillText('ANNEXED: 31 JULY 1801', 0, -6);
+        g.font = '700 15px "Nunito", sans-serif';
+        g.fillStyle = '#FECACA';
+        g.fillText('DIRECT BRITISH ADMINISTRATION', 0, 22);
+        g.restore();
+      }
+
+      g.restore();
+
+      // Rule 5: Non-destructive floating HUD Era Chapter Dial banner
+      THEME.hudEraDial(g, lt, {
+        era: 'MADRAS PRESIDENCY',
+        year: '1801 CE · FULL COLONIAL RULE',
+        accent: lt >= 1.50 ? '#FF4D6A' : '#FFB84D',
+        y: 118
+      });
+
+      UI.citation(g, 'Carnatic Treaty of 31 July 1801 · Formation of Madras Presidency', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.28, grain: 0.025 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('ancientHarbor', bt0 + 0.0, bt0 + 3.0, { gain: 0.18 });
+      k.play('footstep', bt0 + 0.30, { gain: 0.40 });
+      k.play('jailCellSlam', bt0 + 1.50, { gain: 0.68 });
+      k.play('gavelBang', bt0 + 1.55, { gain: 0.58 });
+    }
+  },
+
+  {
+    shot_number: 112,
+    title: 'Colonial Exploitation — Parched Village Suffering',
+    start: 374.4,
+    end: 377.2,
+    duration: 2.8,
+    vo_line: 'இந்த பிரிட்டிஷ் ஆட்சிக்காலம் தமிழ்நாட்டுக்கு ஒரு நரக வேதனையா இருந்துச்சு.',
+    env_id: 'ENV_FAMINE_DROUGHT',
+    chars: 'TAMIL_FARMER (pulling empty wooden grain cart across parched path)',
+    on_screen_text: '19th CENTURY COLONIAL EXPLOITATION',
+    camera_sfx: 'Slow Pan (-25 to +25) · Wind & Heavy Cart Thud at 1.40s',
+    transition_id: 'CAMERA_PAN_TO_HARBOR_EXPORT',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -25], [2.8, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.40, 1.04], [2.8, 1.07]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FAMINE_DROUGHT', g, lt, gt, cam, (g) => {
+        const cartX = DK.lerp(265, 745, lt / 2.8);
+        const charX = DK.lerp(360, 840, lt / 2.8);
+
+        // Moving Target Prop: Empty Wooden Grain Cart + Plow at charX - 95px
+        FX.interactiveProp(g, { kind: 'plowField', x: cartX, y: 840, lt, gt });
+
+        // Wooden cart body & spoked wheel connected to farmer's hands
+        g.save();
+        g.translate(cartX, 805);
+        g.fillStyle = '#5C3A21';
+        g.strokeStyle = '#3B2313';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.roundRect(-85, -38, 135, 34, 6);
+        g.fill();
+        g.stroke();
+        // Tow shaft reaching charX hands (+95px)
+        g.beginPath();
+        g.moveTo(50, -20);
+        g.lineTo(95, -32);
+        g.stroke();
+        // Rotating wooden wheel
+        g.save();
+        g.translate(-20, 4);
+        g.rotate(lt * 3.2);
+        g.strokeStyle = '#3B2313';
+        g.lineWidth = 5;
+        g.beginPath();
+        g.arc(0, 0, 28, 0, Math.PI * 2);
+        g.stroke();
+        for (let s = 0; s < 4; s++) {
+          g.beginPath();
+          g.moveTo(-26, 0);
+          g.lineTo(26, 0);
+          g.stroke();
+          g.rotate(Math.PI / 4);
+        }
+        g.restore();
+        g.restore();
+
+        // Hero 1: TAMIL_FARMER pulling cart (moveX: [360, 840])
+        THEME.spawnChar(g, 'TAMIL_FARMER', {
+          moveX: [360, 840, lt, 2.8],
+          y: 840,
+          eyeMode: 'wince',
+          brows: 'sad',
+          mouth: 'frown',
+          pose: { preset: 'pull', speed: 0.9 },
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.40s): Tightened drought vignette & badge lock-in
+      if (lt >= 1.40) {
+        UI.pillBadge(g, lt - 1.40, {
+          text: '19th CENTURY COLONIAL EXPLOITATION',
+          x: 960,
+          y: 120,
+          accent: '#FF4D6A'
+        });
+      }
+
+      UI.citation(g, 'Dharma Kumar, Land and Caste in South India (1965)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: lt >= 1.40 ? 0.42 : 0.28, grain: 0.03 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('supersonicWind', bt0 + 0.0, bt0 + 2.8, { gain: 0.18 });
+      k.play('footstep', bt0 + 0.35, { gain: 0.38 });
+      k.play('thud', bt0 + 1.40, { gain: 0.45 });
+      k.play('pillBadge', bt0 + 1.40, { gain: 0.42 });
+    }
+  },
+
+  {
+    shot_number: 113,
+    title: 'Madras Wharf — Grain Exported to London at Rock-Bottom Rates',
+    start: 377.2,
+    end: 381.1,
+    duration: 3.9,
+    vo_line: 'விவசாயிகள் விளைவிக்கிற அத்தனை பொருட்களையும் அடிமாட்டு விலைக்கு வாங்கி கப்பல்ல ஏத்தி லண்டனுக்கு அனுப்புனாங்க.',
+    env_id: 'ENV_ANCIENT_HARBOR',
+    chars: 'TAMIL_FARMER (pushing grain crates) + BRITISH_OFFICER (trading pennies)',
+    on_screen_text: 'COLONIAL DRAIN OF WEALTH · GRAIN TO LONDON vs PENNY WAGE',
+    camera_sfx: 'Harbor Pan (-35 to +35) · Steam Whistle & Coin Clink at 1.95s',
+    transition_id: 'CUT_TO_DROUGHT_FIELD',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -35], [3.9, 35]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.95, 1.05], [3.9, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_ANCIENT_HARBOR', g, lt, gt, cam, (g) => {
+        const crateX = DK.lerp(390, 1010, lt / 3.9);
+
+        // Moving Target Prop: Grain & Cotton Export Crates at charX + 90px
+        FX.prop3D(g, crateX, 840, 1.0, {
+          kind: 'spiceCrates',
+          color: '#D97724',
+          state: 'active',
+          t: gt
+        });
+
+        // Hero 1: TAMIL_FARMER pushing crates (moveX: [300, 920], 920 + 90 = 1010px)
+        THEME.spawnChar(g, 'TAMIL_FARMER', {
+          moveX: [300, 920, lt, 3.9],
+          y: 840,
+          eyeMode: 'wince',
+          brows: 'sad',
+          pose: { preset: 'push', speed: 1.15 },
+          t: gt
+        });
+
+        // Hero 2: BRITISH_OFFICER at weigh-station (1120 - 110 = 1010px crate contact)
+        THEME.spawnChar(g, 'BRITISH_OFFICER', {
+          x: 1120,
+          y: 840,
+          flipX: true,
+          prop: 'coinBag',
+          pose: { preset: 'trade', speed: 1.15 },
+          t: gt
+        });
+
+        // Cutaway Scale in upper-center harbor sky
+        const tiltVal = DK.key(lt, [[0.0, -0.10], [1.95, -0.35], [3.9, -0.38]], DK.ease.outCubic);
+        UI.economicsScale(g, lt, {
+          x: 680,
+          y: 380,
+          s: 0.85,
+          leftLabel: 'GRAIN TO LONDON',
+          rightLabel: 'PENNY WAGE',
+          tilt: tiltVal
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.95s): Orthogonal Leader-Line Technical Callout
+      UI.techCallout(g, lt, {
+        from: [1010, 720],
+        elbow: [1220, 560],
+        to: [1560, 560],
+        title: 'COLONIAL DRAIN OF WEALTH',
+        spec: 'Grain & Cotton Exported to Britain at Rock-Bottom Rates',
+        accent: '#FF4D6A',
+        t0: 1.6
+      });
+
+      UI.citation(g, 'Dadabhai Naoroji, Poverty and Un-British Rule in India (1901)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.025 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('ancientHarbor', bt0 + 0.0, bt0 + 3.9, { gain: 0.20 });
+      k.play('steamWhistle', bt0 + 0.30, { gain: 0.45 });
+      k.play('thud', bt0 + 1.40, { gain: 0.48 });
+      k.play('coinClink', bt0 + 1.95, { gain: 0.50 });
+      k.play('pillBadge', bt0 + 1.95, { gain: 0.45 });
+    }
+  },
+
+  {
+    shot_number: 114,
+    title: 'Harsh Ryotwari Land Tax Even Without Rain',
+    start: 381.1,
+    end: 384.8,
+    duration: 3.7,
+    vo_line: 'கடும் வரி வசூலிச்சிருக்காங்க, மழை பெய்யலைன்னாலும் அந்த வரி கட்டணும்னு impose பண்ணிருக்காங்க.',
+    env_id: 'ENV_FAMINE_DROUGHT',
+    chars: 'BRITISH_OFFICER (serving tax scroll) + TAMIL_FARMER (kneeling by parched plow)',
+    on_screen_text: 'RYOTWARI TAX EXTORTION · ZERO DROUGHT RELIEF',
+    camera_sfx: 'Reverse Pan (+25 to -25) · Paper Tear & Gavel Bang at 1.85s',
+    transition_id: 'DIAL_SLAM_1876',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, 25], [3.7, -25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.85, 1.05], [3.7, 1.09]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FAMINE_DROUGHT', g, lt, gt, cam, (g) => {
+        // Target Prop: Parched Plow & Last Grain Sack at x: 790, y: 840
+        FX.interactiveProp(g, { kind: 'plowField', x: 790, y: 840, lt, gt });
+
+        // Hero 2: TAMIL_FARMER kneeling beside the parched plow (700 + 90 = 790px)
+        THEME.spawnChar(g, 'TAMIL_FARMER', {
+          x: 700,
+          y: 840,
+          eyeMode: 'wince',
+          brows: 'sad',
+          mouth: 'frown',
+          pose: { preset: 'crouch', speed: 1.0 },
+          t: gt
+        });
+
+        // Hero 1: BRITISH_OFFICER walking in to serve mandatory tax notice (880 - 90 = 790px)
+        THEME.spawnChar(g, 'BRITISH_OFFICER', {
+          moveX: [1360, 880, lt, 3.7],
+          y: 840,
+          flipX: true,
+          prop: 'scroll',
+          pose: { preset: 'walk', speed: 1.2 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.85s): Red Colonial Tax Seal Stamp above the plow
+        if (lt >= 1.85) {
+          const sp = DK.pop(lt, 1.85, 0.35);
+          g.save();
+          g.translate(960, 460);
+          g.scale(sp, sp);
+          g.rotate(-0.08);
+          g.fillStyle = 'rgba(153, 27, 27, 0.94)';
+          g.strokeStyle = '#F87171';
+          g.lineWidth = 4;
+          g.beginPath();
+          g.roundRect(-290, -52, 580, 104, 14);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FFFFFF';
+          g.font = '900 22px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.fillText('RYOTWARI LAND TAX: 50%+ MANDATORY', 0, -8);
+          g.fillStyle = '#FECACA';
+          g.font = '800 16px "Nunito", sans-serif';
+          g.fillText('ENFORCED EVEN IN SEVERE MONSOON FAILURE', 0, 24);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'RYOTWARI TAX EXTORTION · ZERO DROUGHT RELIEF',
+        x: 960,
+        y: 120,
+        accent: '#FF4D6A'
+      });
+
+      UI.citation(g, 'Madras Torture Commission Report (1855) & Ryotwari Revenue Records', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.32, grain: 0.028 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('supersonicWind', bt0 + 0.0, bt0 + 3.7, { gain: 0.20 });
+      k.play('footstep', bt0 + 0.40, { gain: 0.40 });
+      k.play('paperTear', bt0 + 1.85, { gain: 0.52 });
+      k.play('gavelBang', bt0 + 1.90, { gain: 0.55 });
+    }
+  },
+
+  {
+    shot_number: 115,
+    title: '1876–1878 Catastrophic Famine Peak Chart',
+    start: 384.8,
+    end: 387.5,
+    duration: 2.7,
+    vo_line: '1976-லதான் இது ரொம்ப உச்சத்தை தொடுது.',
+    env_id: 'ENV_FAMINE_DROUGHT + CHART_FAMINE_SPIKE',
+    chars: 'HOST_PROTAG (walking to chart console at x: 740 -> touching x: 830)',
+    on_screen_text: '*1876–1878 CE · CATASTROPHIC FAMINE PEAK (55+ LAKHS)',
+    camera_sfx: 'Centered 3D Chart Camera (cam.x=0, cam.y=0) · Alarm Beep & Sub Drop at 1.35s',
+    transition_id: 'CUT_TO_FAMINE_LANDSCAPE',
+    draw: function(g, lt, gt, u) {
+      // Rule 3: Strictly cam.x = 0, cam.y = 0 on 3D chart shots
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.35, 1.05], [2.7, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FAMINE_DROUGHT', g, lt, gt, cam, (g) => {
+        // 3D Line Chart rendered cleanly in upper-right/center arena
+        THEME.drawInfo('CHART_FAMINE_SPIKE', g, lt, gt);
+
+        // Target Prop: Chart Control Console at x: 830, y: 850
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 830, y: 850, lt, gt });
+
+        // Hero 1: HOST_PROTAG walking from 380 to 740 (740 + 90 = 830px console contact)
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          moveX: [380, 740, lt, 2.7],
+          y: 850,
+          brows: 'sad',
+          mouth: 'frown',
+          pose: { preset: 'walk', speed: 1.1 },
+          t: gt
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: '*1876–1878 CE · CATASTROPHIC FAMINE PEAK',
+        x: 960,
+        y: 120,
+        accent: '#FF4D6A'
+      });
+
+      UI.citation(g, 'Report of the Indian Famine Commission (1880) · *1876–1878 CE', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.30, grain: 0.025 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('supersonicWind', bt0 + 0.0, bt0 + 2.7, { gain: 0.18 });
+      k.play('counterTick', bt0 + 0.30, { gain: 0.42 });
+      k.play('alarmBeep', bt0 + 1.35, { gain: 0.55 });
+      k.play('subDrop', bt0 + 1.40, { gain: 0.58 });
+    }
+  },
+
+  // =========================================================================
+  // BATCH 24: SHOTS 116 TO 120 (06:27.5 – 06:46.7 | 387.5s – 406.7s)
+  // =========================================================================
+  {
+    shot_number: 116,
+    title: 'Dhatu Varuda Panjam — The Great Famine of 1876–1878',
+    start: 387.5,
+    end: 392.2,
+    duration: 4.7,
+    vo_line: 'அதாவது தாது வருட பஞ்சம், The Great Famine of 1876-ன்னு சொல்லப்படுது.',
+    env_id: 'ENV_FAMINE_DROUGHT',
+    chars: 'TAMIL_FARMER (walking with stick to bone-dry stone well at x: 950)',
+    on_screen_text: 'தாது வருடப் பஞ்சம் (1876–1878) · THE GREAT SOUTHERN INDIA FAMINE',
+    camera_sfx: 'Landscape Pan (-35 to +35) · Solemn Temple Bell at 2.35s',
+    transition_id: 'CAMERA_PAN_TO_MADRAS_ROAD',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -35], [4.7, 35]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [2.35, 1.04], [4.7, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FAMINE_DROUGHT', g, lt, gt, cam, (g) => {
+        // Target Prop: Bone-Dry Stone Well at x: 950, y: 840
+        FX.interactiveProp(g, { kind: 'crumblingPillar', x: 950, y: 840, cutTime: 99, lt, gt });
+
+        // Custom dry stone well rim & wooden pulley arch at x: 950, y: 840
+        g.save();
+        g.translate(950, 840);
+        g.fillStyle = '#64748B';
+        g.strokeStyle = '#334155';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.roundRect(-65, -52, 130, 52, 8);
+        g.fill();
+        g.stroke();
+        // Wooden crossbeam & empty bucket rope
+        g.strokeStyle = '#4A2E20';
+        g.lineWidth = 6;
+        g.beginPath();
+        g.moveTo(-50, -52);
+        g.lineTo(-50, -145);
+        g.lineTo(50, -145);
+        g.lineTo(50, -52);
+        g.stroke();
+        g.strokeStyle = '#A88B68';
+        g.lineWidth = 2.5;
+        g.beginPath();
+        g.moveTo(0, -145);
+        g.lineTo(0, -78);
+        g.stroke();
+        g.restore();
+
+        // Hero 1: TAMIL_FARMER walking from 340 to 860 (860 + 90 = 950px well contact)
+        THEME.spawnChar(g, 'TAMIL_FARMER', {
+          moveX: [340, 860, lt, 4.7],
+          y: 840,
+          eyeMode: 'wince',
+          brows: 'sad',
+          mouth: 'frown',
+          prop: 'walkingStick',
+          pose: { preset: 'walk', speed: 0.85 },
+          t: gt
+        });
+      });
+
+      // Rule 5: Non-destructive floating HUD Title Banner at lt = 2.35s
+      THEME.hudTitleBanner(g, lt, {
+        t0: 2.35,
+        title: 'தாது வருடப் பஞ்சம் (1876–1878)',
+        sub: 'THE GREAT SOUTHERN INDIA FAMINE',
+        accent: '#FF4D6A',
+        y: 155
+      });
+
+      UI.citation(g, 'William Digby, The Famine Campaign in Southern India 1876–1878 (1900)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.34, grain: 0.028 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('supersonicWind', bt0 + 0.0, bt0 + 4.7, { gain: 0.22 });
+      k.play('footstep', bt0 + 0.50, { gain: 0.35 });
+      k.play('footstep', bt0 + 1.60, { gain: 0.35 });
+      k.play('templeBell', bt0 + 2.35, { gain: 0.50 });
+    }
+  },
+
+  {
+    shot_number: 117,
+    title: 'Madras Presidency Map — Zero Rain & Grain Exported by Lytton',
+    start: 392.2,
+    end: 395.3,
+    duration: 3.1,
+    vo_line: 'மழை இல்லாம, சாப்பாடு இல்லாம மெட்ராஸ் மாகாணத்துல மட்டும்',
+    env_id: 'ENV_FAMINE_DROUGHT + MAP_MADRAS_PRESIDENCY',
+    chars: 'HOST_SCIENTIST (walking to famine survey desk at x: 760 -> touching x: 850)',
+    on_screen_text: 'MADRAS PRESIDENCY · ZERO RAIN & GRAIN EXPORTED',
+    camera_sfx: 'Unobstructed Map + Low Terrace · Heartbeat Sub & Badge Pop at 1.55s',
+    transition_id: 'DIVE_TO_RELIEF_ROAD',
+    draw: function(g, lt, gt, u) {
+      const camX = DK.key(lt, [[0.0, -20], [3.1, 20]], DK.ease.inOutSine);
+      const camZ = DK.key(lt, [[0.0, 1.00], [1.55, 1.05], [3.1, 1.08]], DK.ease.outCubic);
+
+      g.save();
+      g.translate(960 + camX, 540);
+      g.scale(camZ, camZ);
+      g.translate(-960, -540);
+
+      // Rule 4: Unobstructed Strategic Map across the canvas
+      THEME.drawInfo('MAP_MADRAS_PRESIDENCY', g, lt, gt, {
+        title: 'MADRAS PRESIDENCY · EPICENTER OF THE 1876–78 FAMINE',
+        subTitle: 'MONSOON FAILURE + CONTINUED COLONIAL GRAIN EXPORT',
+        territoryColor: 'rgba(220, 38, 38, 0.56)',
+        territoryLabel: 'SEVERE FAMINE ZONE (MADRAS PRESIDENCY)'
+      });
+
+      // Low foreground terrace at y = 975 (Zero dirt wall covering the map)
+      THEME.drawMapTerrace(g, 975);
+
+      // Target Prop: Famine Survey Desk at x: 850, y: 975
+      FX.interactiveProp(g, { kind: 'scholarDesk', x: 850, y: 975, lt, gt });
+
+      // Hero 1: HOST_SCIENTIST walking from 360 to 760 (760 + 90 = 850px desk contact)
+      THEME.spawnChar(g, 'HOST_SCIENTIST', {
+        moveX: [360, 760, lt, 3.1],
+        y: 975,
+        brows: 'sad',
+        prop: 'scroll',
+        pose: { preset: 'walk', speed: 1.05 },
+        t: gt
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.55s): Red callout next to Madras Harbour
+      UI.techCallout(g, lt, {
+        from: [1120, 520],
+        elbow: [1290, 420],
+        to: [1640, 420],
+        title: '6.4 MILLION CWT GRAIN EXPORTED',
+        spec: 'Shipped to Britain Under Viceroy Lytton During Famine',
+        accent: '#FF4D6A',
+        t0: 1.55
+      });
+
+      g.restore();
+
+      UI.pillBadge(g, lt, {
+        text: 'MADRAS PRESIDENCY · ZERO RAIN & GRAIN EXPORTED',
+        x: 960,
+        y: 120,
+        accent: '#FF4D6A'
+      });
+
+      UI.citation(g, 'Mike Davis, Late Victorian Holocausts (2001)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.30, grain: 0.025 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('supersonicWind', bt0 + 0.0, bt0 + 3.1, { gain: 0.18 });
+      k.play('heartbeatSub', bt0 + 0.40, { gain: 0.48 });
+      k.play('pillBadge', bt0 + 1.55, { gain: 0.45 });
+      k.play('heartbeatSub', bt0 + 1.80, { gain: 0.50 });
+    }
+  },
+
+  {
+    shot_number: 118,
+    title: '50+ Lakh Lives Lost — Locked Colonial Grain Depot',
+    start: 395.3,
+    end: 398.5,
+    duration: 3.2,
+    vo_line: 'சுமாரா ஒரு 50 லட்சம் மக்கள் எலும்பும் தோலுமா ரோட்டுல செத்து மடியிறாங்க.',
+    env_id: 'ENV_FAMINE_DROUGHT',
+    chars: 'TAMIL_FARMER (walking exhausted to locked grain depot gate at x: 915)',
+    on_screen_text: '50+ LAKH (5.5 MILLION) LIVES LOST (1876–1878)',
+    camera_sfx: 'Slow Push + Diegetic Silence at 1.60s + Solemn Tolling Bell',
+    transition_id: 'CUT_TO_3D_BAR_CHART',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -20], [3.2, 15]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.60, 1.04], [3.2, 1.07]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FAMINE_DROUGHT', g, lt, gt, cam, (g) => {
+        // Target Prop: Locked Colonial Grain Depot Gate at x: 915, y: 840
+        FX.interactiveProp(g, { kind: 'brickWallBuild', x: 915, y: 840, cutTime: 99, lt, gt });
+
+        // Fortified iron colonial grain depot gate & padlock
+        g.save();
+        g.translate(915, 840);
+        g.fillStyle = '#1E293B';
+        g.strokeStyle = '#475569';
+        g.lineWidth = 4;
+        g.beginPath();
+        g.roundRect(-70, -190, 140, 190, 6);
+        g.fill();
+        g.stroke();
+        for (let b = -50; b <= 50; b += 25) {
+          g.beginPath();
+          g.moveTo(b, -185);
+          g.lineTo(b, 0);
+          g.stroke();
+        }
+        // Signboard on gate
+        g.fillStyle = '#991B1B';
+        g.fillRect(-62, -160, 124, 34);
+        g.fillStyle = '#FFFFFF';
+        g.font = '800 13px "Space Mono", monospace';
+        g.textAlign = 'center';
+        g.fillText('GRAIN DEPOT · LOCKED', 0, -138);
+        g.restore();
+
+        // Hero 1: TAMIL_FARMER walking from 280 to 820 (820 + 95 = 915px gate contact)
+        THEME.spawnChar(g, 'TAMIL_FARMER', {
+          moveX: [280, 820, lt, 3.2],
+          y: 840,
+          eyeMode: 'closed',
+          brows: 'sad',
+          mouth: 'frown',
+          prop: 'walkingStick',
+          pose: { preset: 'walk', speed: 0.8 },
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.60s): Solemn 50+ Lakh Lives Lost badge
+      UI.pillBadge(g, lt, {
+        text: '50+ LAKH (5.5 MILLION) LIVES LOST (1876–1878)',
+        x: 960,
+        y: 120,
+        accent: '#FF4D6A'
+      });
+
+      UI.citation(g, 'William Digby (1900) & Famine Commission Mortality Estimates (5.5–8.2M)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: lt >= 1.60 ? 0.45 : 0.32, grain: 0.03 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('supersonicWind', bt0 + 0.0, bt0 + 3.2, { gain: 0.16 });
+      k.play('footstep', bt0 + 0.35, { gain: 0.35 });
+      k.play('templeBell', bt0 + 1.60, { gain: 0.60 });
+    }
+  },
+
+  {
+    shot_number: 119,
+    title: 'Historical Scale Comparison — 60 Lakhs (WWII Holocaust)',
+    start: 398.5,
+    end: 402.8,
+    duration: 4.3,
+    vo_line: 'இது எவ்வளவு மோசம்னா, Hitler வந்து தோராயமா ஒரு 60 லட்சம் Jews-அ கொன்னுருப்பாரு.',
+    env_id: 'ENV_CREATOR_STUDIO + CHART_FAMINE_COMPARISON',
+    chars: 'HOST_PROTAG (walking from 320 to 640 -> touching chart podium at x: 735)',
+    on_screen_text: 'HISTORICAL SCALE COMPARISON: 60 LAKHS (6 MILLION)',
+    camera_sfx: 'Centered 3D Chart Camera (cam.x=0, cam.y=0) · Counter Tick & Heavy Thud at 2.15s',
+    transition_id: 'CAMERA_PUSH_TO_BOOK',
+    draw: function(g, lt, gt, u) {
+      // Rule 3: Strictly cam.x = 0, cam.y = 0 on 3D chart shots
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [2.15, 1.04], [4.3, 1.07]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_CREATOR_STUDIO', g, lt, gt, cam, (g) => {
+        // 3D Bar Chart rendered cleanly in upper-right/center studio arena
+        THEME.drawInfo('CHART_FAMINE_COMPARISON', g, lt, gt, {
+          data: [
+            { label: 'WWII Holocaust (1941–45)', value: 60, color: '#64748B', highlight: true }
+          ]
+        });
+
+        // Target Prop: Chart Podium at x: 735, y: 850
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 735, y: 850, lt, gt });
+
+        // Hero 1: HOST_PROTAG walking from 320 to 640 (640 + 95 = 735px podium contact)
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          moveX: [320, 640, lt, 4.3],
+          y: 850,
+          brows: 'furrowed',
+          mouth: 'neutral',
+          pose: { preset: 'walk', speed: 1.05 },
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 2.15s): Callout locking on the 60 Lakhs bar
+      if (lt >= 2.15) {
+        UI.techCallout(g, lt, {
+          from: [1160, 360],
+          elbow: [1380, 290],
+          to: [1680, 290],
+          title: '60 LAKHS (~6 MILLION)',
+          spec: 'WWII Holocaust Victims (1941–1945)',
+          accent: '#94A3B8',
+          t0: 2.15
+        });
+      }
+
+      UI.pillBadge(g, lt, {
+        text: 'HISTORICAL SCALE COMPARISON: 60 LAKHS (6 MILLION)',
+        x: 960,
+        y: 115,
+        accent: '#94A3B8'
+      });
+
+      UI.citation(g, 'United States Holocaust Memorial Museum (USHMM): ~6 Million Jewish Victims', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('scienceLab', bt0 + 0.0, bt0 + 4.3, { gain: 0.16 });
+      k.play('counterTick', bt0 + 0.40, { gain: 0.40 });
+      k.play('thud', bt0 + 2.15, { gain: 0.48 });
+      k.play('pillBadge', bt0 + 2.15, { gain: 0.42 });
+    }
+  },
+
+  {
+    shot_number: 120,
+    title: 'Documented in World History Textbooks',
+    start: 402.8,
+    end: 406.7,
+    duration: 3.9,
+    vo_line: 'அவரை வந்து உலகத்திலேயே மோசமான வில்லனா portray பண்ணி நம்ம கூட books-ல படிச்சிருப்போம்.',
+    env_id: 'ENV_JUSTICE_HALL',
+    chars: 'HOST_SCIENTIST (reading textbook at x: 640) + HOST_PROTAG (walking to desk at x: 815)',
+    on_screen_text: 'DOCUMENTED IN EVERY WORLD HISTORY TEXTBOOK',
+    camera_sfx: 'Library Hall Pan (+20 to -20) · Page Turn & Badge Pop at 1.95s',
+    transition_id: 'CUT_BACK_TO_3D_CHART',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, 20], [3.9, -20]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.95, 1.05], [3.9, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_JUSTICE_HALL', g, lt, gt, cam, (g) => {
+        // Target Prop: Library Study Desk at x: 725, y: 840
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 725, y: 840, lt, gt });
+
+        // Hero 1: HOST_SCIENTIST at left of desk (640 + 85 = 725px contact)
+        THEME.spawnChar(g, 'HOST_SCIENTIST', {
+          x: 640,
+          y: 840,
+          prop: 'scroll',
+          pose: { preset: 'write', speed: 1.1 },
+          t: gt
+        });
+
+        // Hero 2: HOST_PROTAG walking from 1340 to 815 (815 - 90 = 725px right side of desk)
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          moveX: [1340, 815, lt, 3.9],
+          y: 840,
+          flipX: true,
+          pose: { preset: 'walk', speed: 1.1 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.95s): Highlighted Open World History Textbook Card above desk
+        if (lt >= 1.95) {
+          const bp = DK.pop(lt, 1.95, 0.4);
+          g.save();
+          g.translate(1220, 440);
+          g.scale(bp, bp);
+          g.fillStyle = '#F8FAFC';
+          g.strokeStyle = '#475569';
+          g.lineWidth = 4;
+          g.beginPath();
+          g.roundRect(-240, -120, 480, 240, 12);
+          g.fill();
+          g.stroke();
+          // Spine line
+          g.beginPath();
+          g.moveTo(0, -120);
+          g.lineTo(0, 120);
+          g.stroke();
+          // Textbook headings
+          g.fillStyle = '#0F172A';
+          g.font = '900 18px "Playfair Display", serif';
+          g.textAlign = 'center';
+          g.fillText('WORLD HISTORY', -120, -70);
+          g.fillStyle = '#DC2626';
+          g.font = '800 15px "Space Mono", monospace';
+          g.fillText('CH. 14: WWII ATROCITIES', 120, -70);
+          g.fillStyle = '#334155';
+          g.font = '700 14px "Nunito", sans-serif';
+          g.fillText('Mandated in Global School', -120, -25);
+          g.fillText('Curricula Worldwide', -120, 0);
+          g.fillStyle = 'rgba(254, 202, 202, 0.85)';
+          g.fillRect(25, -38, 190, 56);
+          g.fillStyle = '#991B1B';
+          g.font = '800 14px "Space Mono", monospace';
+          g.fillText('60 LAKH VICTIMS', 120, -12);
+          g.fillText('FULLY DOCUMENTED', 120, 10);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'DOCUMENTED IN EVERY WORLD HISTORY TEXTBOOK',
+        x: 960,
+        y: 120,
+        accent: '#94A3B8'
+      });
+
+      UI.citation(g, 'Global Secondary School History Curricula Comparison', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('scienceLab', bt0 + 0.0, bt0 + 3.9, { gain: 0.18 });
+      k.play('footstep', bt0 + 0.35, { gain: 0.38 });
+      k.play('paperTear', bt0 + 1.95, { gain: 0.45 });
+      k.play('pillBadge', bt0 + 1.95, { gain: 0.42 });
+    }
+  }
+];
+
+if (window.DK && DK.linkShotTransitions) DK.linkShotTransitions(SHOTS, window.THEME);
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const BATCH_START = SHOTS[0].start;
+const BATCH_END = SHOTS[SHOTS.length - 1].end;
+const DURATION = BATCH_END - BATCH_START;
+
+// Auto-runs each shot's attached sfx(k, bt0) if scoreSound(k) is not defined separately
+if (typeof window.scoreSound !== 'function') {
+  window.scoreSound = function scoreSound(k) {
+    SHOTS.forEach((s) => {
+      if (typeof s.sfx === 'function') s.sfx(k, s.start - BATCH_START);
+    });
+  };
+}
+const scoreSound = window.scoreSound;
+
+window.BATCH_START = BATCH_START;
+window.BATCH_END = BATCH_END;
+window.DURATION = DURATION;
+window.SHOTS = SHOTS;
+window.scoreSound = scoreSound;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, activeShotFilter = 'all', voAudio = null;
+
+function findShotAtGlobal(gt) {
+  for (let i = 0; i < SHOTS.length; i++) {
+    if (gt >= SHOTS[i].start && gt <= SHOTS[i].end) return SHOTS[i];
+  }
+  return gt < SHOTS[0].start ? SHOTS[0] : SHOTS[SHOTS.length - 1];
+}
+
+function renderAtLocal(localT) {
+  currentT = DK.clamp(localT, 0, DURATION);
+  const gt = BATCH_START + currentT;
+  const s = findShotAtGlobal(gt);
+  const lt = DK.clamp(gt - s.start, 0, s.duration);
+  const u = s.duration > 0 ? lt / s.duration : 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1920, 1080);
+  ctx.save();
+  if (window.DK && DK.drawShot) DK.drawShot(ctx, s, lt, gt, u);
+  else s.draw(ctx, lt, gt, u);
+  ctx.restore();
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = gt.toFixed(2) + 's (' + currentT.toFixed(2) + 's) · Shot ' + s.shot_number;
+}
+
+window.seek = function (t, opts) {
+  if (playing) pause();
+  const localT = opts && opts.global ? t - BATCH_START : t;
+  renderAtLocal(localT);
+};
+
+function startAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('mixSelect').value;
+  if (mixMode !== 'mute' && window.SOUND) stopSound = SOUND.live(scoreSound, currentT, { mixMode: 'sfxOnly' });
+  if (voAudio) { voAudio.currentTime = BATCH_START + currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (activeShotFilter !== 'all') {
+      const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+      if (s) {
+        const sLocal0 = s.start - BATCH_START, sLocal1 = s.end - BATCH_START;
+        if (nextT >= sLocal1) { nextT = sLocal0; currentT = nextT; startAudio(); }
+      }
+    } else if (nextT >= DURATION) {
+      nextT = 0; currentT = 0; startAudio();
+    }
+    renderAtLocal(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+const shotSelect = document.getElementById('shotSelect');
+SHOTS.forEach((s) => {
+  const opt = document.createElement('option');
+  opt.value = String(s.shot_number);
+  opt.textContent = 'Shot ' + s.shot_number + ': ' + s.title + ' (' + s.start.toFixed(1) + 's-' + s.end.toFixed(1) + 's)';
+  shotSelect.appendChild(opt);
+});
+
+shotSelect.addEventListener('change', () => {
+  activeShotFilter = shotSelect.value;
+  if (activeShotFilter !== 'all') {
+    const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+    if (s) { renderAtLocal(s.start - BATCH_START); if (playing) startAudio(); }
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  renderAtLocal(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('mixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('wavBtn').addEventListener('click', async () => {
+  const res = await SOUND.renderOffline(scoreSound, DURATION, 48000, { mixMode: 'sfxOnly' });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'batch_sfx_' + SHOTS[0].shot_number + '_' + SHOTS[SHOTS.length - 1].shot_number + '.wav';
+  a.click();
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  if (window.MAP && MAP.preloadAll) await MAP.preloadAll(SHOTS);
+  renderAtLocal(0);
+});
+</script>
+</body>
+</html>

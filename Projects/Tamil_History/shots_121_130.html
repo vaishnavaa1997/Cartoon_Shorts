@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Lumina 2.5D Storybook Studio (16:9) — Shots 121 to 130 (shots_121_130.html)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #05070d; color: #e2e8f0; font-family: 'Nunito', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#stage-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; overflow: hidden; }
+canvas { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; box-shadow: 0 16px 48px rgba(0,0,0,0.75); background: #070b16; }
+#controls { height: 58px; background: #101522; border-top: 1px solid #222b42; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 13px; }
+button, select, label.btn { background: #1c2539; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+button:hover, select:hover, label.btn:hover { background: #283552; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 12px; color: #ffb074; min-width: 230px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><canvas id="stage" width="1920" height="1080"></canvas></div>
+<div id="controls">
+  <button id="playBtn">Play</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.0s / 00.0s · Shot 121</div>
+  <select id="shotSelect"><option value="all">All Shots in Batch (121–130)</option></select>
+  <select id="mixSelect">
+    <option value="sfxOnly" selected>SFX + Ambient Only (No BGM)</option>
+    <option value="mute">Mute</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="wavBtn">Export Batch SFX (.wav)</button>
+</div>
+<script src="../../engine.js"></script>
+<script>
+const CHAIN_SNAP_OPTS = {
+  id: 'freedom_chain_124',
+  preset: 'pendulum',
+  anchor: [1015, 340],
+  length: 340,
+  segments: 14,
+  cutTime: 1.65,
+  payload: { kind: 'weight', r: 44, color: '#475569' },
+  wind: 0.25,
+  floorY: 840
+};
+
+const CASTE_WALL_OPTS = {
+  id: 'caste_wall_127',
+  x: 880,
+  y: 840,
+  w: 280,
+  h: 360,
+  impactTime: 1.45,
+  impactPoint: [880, 660],
+  force: 980,
+  cols: 6,
+  rows: 8,
+  material: 'stone',
+  floorY: 840,
+  seed: 127
+};
+
+const THEME = {
+  CHARS: {
+    HOST_PROTAG: {
+      skin: '#D69A72',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'jacket',
+      topColor: '#E86A24',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'neutral',
+      s: 1.0
+    },
+    HOST_SWEATER: {
+      skin: '#D69A72',
+      hairStyle: 'curlyCloud',
+      hairColor: '#261C1A',
+      beard: false,
+      mustache: false,
+      wardrobe: 'sweater',
+      topColor: '#38BDF8',
+      bottomColor: '#1E293B',
+      headwear: 'none',
+      foreheadMark: null,
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'neutral',
+      s: 1.0
+    },
+    SATYAMURTI: {
+      skin: '#C88C68',
+      hairStyle: 'sidePart',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'indianIndependence',
+      topColor: '#F8FAFC',
+      bottomColor: '#E2E8F0',
+      headwear: 'gandhiCap',
+      foreheadMark: 'vibhuti',
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 1.0
+    },
+    VOC_PILLAI: {
+      skin: '#7A4E38',
+      hairStyle: 'scholarBun',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'indianIndependence',
+      topColor: '#D97706',
+      bottomColor: '#F8FAFC',
+      headwear: 'turban',
+      foreheadMark: 'vibhuti',
+      eyeMode: 'warm',
+      brows: 'furrowed',
+      mouth: 'neutral',
+      s: 1.0
+    },
+    BHARATHIYAR: {
+      skin: '#C88C68',
+      hairStyle: 'warriorKnot',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'indianIndependence',
+      topColor: '#1E293B',
+      bottomColor: '#F8FAFC',
+      headwear: 'turban',
+      foreheadMark: 'tilak',
+      eyeMode: 'warm',
+      brows: 'raised',
+      mouth: 'smile',
+      s: 1.0
+    },
+    PERIYAR_EVR: {
+      skin: '#C88C68',
+      hairStyle: 'shoulderFlow',
+      hairColor: '#9EA6B8',
+      beard: false,
+      mustache: false,
+      wardrobe: 'ancientTamil',
+      topColor: '#1E293B',
+      bottomColor: '#F8FAFC',
+      headwear: 'none',
+      foreheadMark: null,
+      eyeMode: 'warm',
+      brows: 'furrowed',
+      mouth: 'neutral',
+      s: 1.0
+    },
+    MODERN_ENG: {
+      skin: '#C88C68',
+      hairStyle: 'braidedCrown',
+      hairColor: '#1A1615',
+      beard: false,
+      mustache: false,
+      wardrobe: 'indianIndependence',
+      topColor: '#4F46E5',
+      bottomColor: '#F8FAFC',
+      headwear: 'none',
+      foreheadMark: 'bindi',
+      eyeMode: 'warm',
+      brows: 'neutral',
+      mouth: 'smile',
+      s: 1.0
+    }
+  },
+
+  ENVS: {
+    ENV_CREATOR_STUDIO: function(g, lt, gt, cam, heroFn) {
+      FX.infographicEnv(g, gt, {
+        preset: 'techStudio',
+        cam: cam,
+        y: 850,
+        seed: 121,
+        hero: (g) => {
+          if (heroFn) heroFn(g);
+        }
+      });
+    },
+
+    ENV_FREEDOM_STREET: function(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('goldenHour')(g);
+          FX.sun(g, 1420, 210, 68);
+          FX.godRays(g, 1420, 210, { count: 7, r: 950, a: 0.18 });
+          FX.clouds(g, { seed: 124, count: 6, y: 150, h: 120, color: '#FFF7ED', a: 0.82, t: gt, speed: 12 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'ancientTamil', y: 755, seed: 64 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.structure3D(g, 340, 840, 280, 250, { kind: 'colonialHall', color: '#E2E8F0', t: gt });
+          FX.structure3D(g, 1540, 840, 270, 260, { kind: 'mandapam', color: '#D97724', t: gt });
+          FX.tree(g, 120, 840, 1.0, '#2E7D32', 'banyan');
+          FX.tree(g, 1780, 840, 0.95, '#2E7D32', 'palm');
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#64748B', grassCol: '#4A8C4A' });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: 'rgba(255, 200, 120, 0.16)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_ANCIENT_HARBOR: function(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('coastalDay')(g);
+          FX.sun(g, 1480, 195, 62);
+          FX.clouds(g, { seed: 125, count: 7, y: 145, h: 125, color: '#FFFFFF', a: 0.88, t: gt, speed: 14 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'harbor', y: 740, seed: 75 });
+          FX.structure3D(g, 320, 770, 260, 220, { kind: 'colonialHall', color: '#E2E8F0', t: gt });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.waterBody(g, gt, { x: 0, y: 740, w: 1920, h: 110, color: '#1D6FA5', waves: true });
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#576574', grassCol: '#475569' });
+          FX.prop3D(g, 1620, 840, 0.95, { kind: 'spiceCrates', color: '#D97724', state: 'active', t: gt });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 8, color: 'rgba(255, 255, 255, 0.14)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_TEMPLE_COURTYARD: function(g, lt, gt, cam, heroFn) {
+      DK.fivePlane(g, cam, {
+        bgSky: (g) => {
+          DK.mood('clearDay')(g);
+          FX.sun(g, 1460, 190, 64);
+          FX.godRays(g, 1460, 190, { count: 6, r: 920, a: 0.16 });
+          FX.clouds(g, { seed: 127, count: 6, y: 145, h: 125, color: '#FFFFFF', a: 0.88, t: gt, speed: 11 });
+        },
+        bgFar: (g) => {
+          FX.storybookHorizon(g, { style: 'ancientTamil', y: 755, seed: 88 });
+        },
+        bgFarDepth: 0.35,
+        bgFarBlur: 1.5,
+        mgBack: (g) => {
+          FX.structure3D(g, 420, 840, 290, 360, { kind: 'gopuram', color: '#C85A32', t: gt });
+          FX.structure3D(g, 1460, 840, 320, 270, { kind: 'mandapam', color: '#D98238', t: gt });
+          FX.tree(g, 160, 840, 0.95, '#2E7D32', 'banyan');
+          FX.tree(g, 1760, 840, 0.95, '#2E7D32', 'palm');
+          FX.storybookGround(g, 840, { style: 'flagstone', baseCol: '#78685A', grassCol: '#4A8C4A' });
+        },
+        mgBackDepth: 0.72,
+        mgHero: (g) => {
+          if (heroFn) heroFn(g);
+        },
+        fgBokeh: (g) => {
+          FX.bokehOrbs(g, gt, { count: 10, color: 'rgba(255, 225, 150, 0.15)' });
+        },
+        fgBokehDepth: 1.45,
+        fgBokehBlur: 8
+      });
+    },
+
+    ENV_JUSTICE_HALL: function(g, lt, gt, cam, heroFn) {
+      FX.infographicEnv(g, gt, {
+        preset: 'courtroom',
+        cam: cam,
+        y: 840,
+        seed: 128,
+        hero: (g) => {
+          if (heroFn) heroFn(g);
+        }
+      });
+    }
+  },
+
+  INFO: {
+    CHART_FAMINE_COMPARISON: function(g, lt, gt, extraOpts) {
+      const o = extraOpts || {};
+      UI.chartBar3D(g, lt, {
+        x: 1180,
+        y: 475,
+        w: 1080,
+        h: 470,
+        title: 'FAMINE DEATHS IN BRITISH INDIA vs WWII HOLOCAUST (IN LAKHS)',
+        unit: 'L',
+        depth3D: 28,
+        data: o.data || [
+          { label: 'WWII Holocaust (1941–45)', value: 60, color: '#64748B' },
+          { label: '1876–78 Great Famine', value: 82, color: '#F97316' },
+          { label: 'British India (>1 Crore)', value: 120, color: '#FF4D6A', highlight: true }
+        ],
+        t0: 0.15,
+        dur: 2.2
+      });
+    },
+
+    GLOBE_SYLLABUS_OMISSION: function(g, lt, gt) {
+      const lon = DK.key(lt, [[0.0, -15.0], [1.6, -2.0], [2.4, 78.6], [4.1, 78.6]], DK.ease.inOutCubic);
+      const lat = DK.key(lt, [[0.0, 42.0], [1.6, 48.0], [2.4, 13.0], [4.1, 13.0]], DK.ease.inOutCubic);
+      UI.geoGlobe(g, lt, {
+        x: 1240,
+        y: 485,
+        r: 310,
+        center: [lon, lat],
+        zoom: 1.08,
+        highlight: ['United Kingdom', 'United States', 'India'],
+        routes: [
+          { from: [-0.12, 51.5], to: [80.27, 13.08], t0: 0.4, dur: 1.6, color: '#FFB84D' }
+        ],
+        pins: [
+          { lonLat: [-0.12, 51.5], label: 'LONDON (OMITTED)', t0: 0.2 },
+          { lonLat: [-77.0, 38.9], label: 'USA (OMITTED)', t0: 0.4 },
+          { lonLat: [80.27, 13.08], label: 'TAMIL NADU (MADRAS)', t0: 1.8 }
+        ]
+      });
+    },
+
+    PHY_FREEDOM_CHAIN_SNAP: Object.assign(
+      function(g, lt, gt) {
+        PHY.ropeSim(g, lt, CHAIN_SNAP_OPTS);
+      },
+      { opts: CHAIN_SNAP_OPTS }
+    ),
+
+    PHY_CASTE_WALL_SHATTER: Object.assign(
+      function(g, lt, gt) {
+        PHY.shatterWall(g, lt, CASTE_WALL_OPTS);
+      },
+      { opts: CASTE_WALL_OPTS }
+    )
+  },
+
+  spawnChar: function(g, id, overrides) {
+    const base = this.CHARS[id] || this.CHARS.HOST_PROTAG;
+    const cfg = Object.assign({}, base, overrides || {});
+    cfg.beard = false;
+    cfg.mustache = false;
+    DK.char(g, cfg);
+  },
+
+  drawEnv: function(id, g, lt, gt, cam, heroFn) {
+    const fn = this.ENVS[id];
+    if (fn) fn(g, lt, gt, cam, heroFn);
+  },
+
+  drawInfo: function(id, g, lt, gt, extraOpts) {
+    const fn = this.INFO[id];
+    if (fn) fn(g, lt, gt, extraOpts);
+  },
+
+  // Rule 5 Helper: Non-destructive floating HUD Era Chapter Dial banner at y = 115..165
+  hudEraDial: function(g, lt, opts) {
+    const o = opts || {};
+    const p = DK.pop(lt, o.t0 || 0.1, 0.45);
+    const y = o.y || 125;
+    g.save();
+    g.translate(960, y);
+    g.scale(p, p);
+    g.fillStyle = 'rgba(12, 18, 34, 0.92)';
+    g.strokeStyle = o.accent || '#FFB84D';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.roundRect(-410, -44, 820, 88, 16);
+    g.fill();
+    g.stroke();
+
+    g.fillStyle = o.accent || '#FFB84D';
+    g.font = '800 16px "Space Mono", monospace';
+    g.textAlign = 'center';
+    g.fillText(o.era || 'THE GREAT AWAKENING', 0, -10);
+
+    g.fillStyle = '#FFFFFF';
+    g.font = '900 25px "Fredoka", sans-serif';
+    g.fillText(o.year || 'EARLY 20th CENTURY (1905–1947)', 0, 24);
+    g.restore();
+  }
+};
+
+window.THEME = THEME;
+
+const SHOTS = [
+  // =========================================================================
+  // BATCH 25: SHOTS 121 TO 125 (06:46.7 – 07:05.4 | 406.7s – 425.4s)
+  // =========================================================================
+  {
+    shot_number: 121,
+    title: '1 Crore+ Famine Deaths in British India — 3D Bar Comparison',
+    start: 406.7,
+    end: 411.6,
+    duration: 4.9,
+    vo_line: 'ஆனா இந்த கொடூர பிரிட்டிஷ் ஆட்சியினால இந்தியால மட்டும் அந்த famine அப்போ ஒரு கோடிக்கும் மேல மக்கள் இறந்திருக்காங்க.',
+    env_id: 'ENV_CREATOR_STUDIO + CHART_FAMINE_COMPARISON',
+    chars: 'HOST_PROTAG (walking from 580 to 1020 -> touching crimson >1 Crore column podium at x: 1115)',
+    on_screen_text: '1 CRORE+ (10 MILLION+) FAMINE DEATHS IN BRITISH INDIA',
+    camera_sfx: 'Centered 3D Chart Camera (cam.x=0, cam.y=0) · Seismic Sub Drop at 2.45s',
+    transition_id: 'CAMERA_PAN_TO_CLASSROOM',
+    draw: function(g, lt, gt, u) {
+      // Rule 3: Strictly cam.x = 0, cam.y = 0 on 3D chart shots
+      const shakeY = lt > 2.40 && lt < 2.90 ? DK.shake(lt, 5, 16, 121) : 0;
+      const cam = {
+        x: 0,
+        y: shakeY,
+        z: DK.key(lt, [[0.0, 1.00], [2.45, 1.06], [4.9, 1.10]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_CREATOR_STUDIO', g, lt, gt, cam, (g) => {
+        // Full 3-Bar 3D Chart rendered cleanly in studio arena
+        THEME.drawInfo('CHART_FAMINE_COMPARISON', g, lt, gt);
+
+        // Target Prop: Right Bar Podium at x: 1115, y: 850
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 1115, y: 850, lt, gt });
+
+        // Hero 1: HOST_PROTAG walking from 580 to 1020 (1020 + 95 = 1115px podium contact)
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          moveX: [580, 1020, lt, 4.9],
+          y: 850,
+          brows: 'furrowed',
+          mouth: 'frown',
+          pose: { preset: 'walk', speed: 1.1 },
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 2.45s): Callout locking onto the >1 Crore column
+      if (lt >= 2.45) {
+        UI.techCallout(g, lt, {
+          from: [1480, 290],
+          elbow: [1580, 235],
+          to: [1790, 235],
+          title: '1 CRORE+ (10M+ DEATHS)',
+          spec: 'Late Victorian Colonial Famines in India',
+          accent: '#FF4D6A',
+          t0: 2.45
+        });
+      }
+
+      UI.pillBadge(g, lt, {
+        text: '1 CRORE+ (10 MILLION+) FAMINE DEATHS IN BRITISH INDIA',
+        x: 960,
+        y: 115,
+        accent: '#FF4D6A'
+      });
+
+      UI.citation(g, 'Mike Davis, Late Victorian Holocausts (2001): 5.5–8.2M (1876–78) & 12–29M Total', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.28, grain: 0.024 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('scienceLab', bt0 + 0.0, bt0 + 4.9, { gain: 0.18 });
+      k.play('counterTick', bt0 + 0.50, { gain: 0.45 });
+      k.play('counterTick', bt0 + 1.30, { gain: 0.48 });
+      k.play('subDrop', bt0 + 2.45, { gain: 0.65 });
+      k.play('pillBadge', bt0 + 2.45, { gain: 0.48 });
+    }
+  },
+
+  {
+    shot_number: 122,
+    title: 'Omitted in Western Textbooks — 3D Globe Rotation',
+    start: 411.6,
+    end: 415.7,
+    duration: 4.1,
+    vo_line: 'இதுல இன்னுமே நடக்குற மோசமான விஷயம் என்னன்னா, இதை வந்து லண்டன்லயோ இல்ல அமெரிக்காலயோ சொல்லித் தரலைன்னா பரவாயில்லை,',
+    env_id: 'ENV_CREATOR_STUDIO + GLOBE_SYLLABUS_OMISSION',
+    chars: 'HOST_PROTAG (walking from 340 to 720 -> spinning globe stand at x: 810)',
+    on_screen_text: 'OMITTED IN WESTERN COLONIAL HISTORY TEXTBOOKS',
+    camera_sfx: 'Studio Pan (-20 to +20) · Globe Whoosh & Badge Pop at 2.05s',
+    transition_id: 'ZOOM_INTO_SCHOOL_DESK',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -20], [4.1, 20]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [2.05, 1.05], [4.1, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_CREATOR_STUDIO', g, lt, gt, cam, (g) => {
+        // Rule 4: 3D Globe rendered unobstructed in right-center arena
+        THEME.drawInfo('GLOBE_SYLLABUS_OMISSION', g, lt, gt);
+
+        // Target Prop: Globe Stand / Console at x: 810, y: 850
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 810, y: 850, lt, gt });
+
+        // Hero 1: HOST_PROTAG walking from 340 to 720 (720 + 90 = 810px stand contact)
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          moveX: [340, 720, lt, 4.1],
+          y: 850,
+          pose: { preset: 'walk', speed: 1.1 },
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 2.05s): Callout as globe locks onto Tamil Nadu
+      if (lt >= 2.05) {
+        UI.techCallout(g, lt, {
+          from: [1240, 485],
+          elbow: [1480, 360],
+          to: [1760, 360],
+          title: 'ROTATING TO TAMIL NADU',
+          spec: 'Even Local School Syllabi Rarely Cover 1876 In Depth',
+          accent: '#FFB84D',
+          t0: 2.05
+        });
+      }
+
+      UI.pillBadge(g, lt, {
+        text: 'OMITTED IN WESTERN COLONIAL HISTORY TEXTBOOKS',
+        x: 960,
+        y: 120,
+        accent: '#FFB84D'
+      });
+
+      UI.citation(g, 'Post-Colonial Historiography & Curriculum Audits', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('scienceLab', bt0 + 0.0, bt0 + 4.1, { gain: 0.18 });
+      k.play('whoosh', bt0 + 0.45, { gain: 0.42 });
+      k.play('pop', bt0 + 1.20, { gain: 0.42 });
+      k.play('whoosh', bt0 + 2.05, { gain: 0.45 });
+      k.play('pillBadge', bt0 + 2.05, { gain: 0.45 });
+    }
+  },
+
+  {
+    shot_number: 123,
+    title: 'Tiny Footnote in Tamil Nadu School Syllabus',
+    start: 415.7,
+    end: 418.7,
+    duration: 3.0,
+    vo_line: 'நம்ம தமிழ்நாடு syllabus-ல கூட இதை பத்தி நம்ம பெருசா படிச்சிருக்க மாட்டோம்.',
+    env_id: 'ENV_CREATOR_STUDIO',
+    chars: 'HOST_SWEATER (examining school textbook footnote at x: 680 -> desk at x: 765)',
+    on_screen_text: 'FORGOTTEN TRAGEDY (1876–1878) · RARELY TAUGHT IN DEPTH',
+    camera_sfx: 'Centered Push (1.00 to 1.10) · Page Turn & Callout Pop at 1.50s',
+    transition_id: 'RISING_SUN_REVOLUTION_WIPE',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: 0,
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.50, 1.06], [3.0, 1.10]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_CREATOR_STUDIO', g, lt, gt, cam, (g) => {
+        // Target Prop: School Textbook Desk at x: 765, y: 840
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 765, y: 840, lt, gt });
+
+        // Hero 1: HOST_SWEATER examining tiny footnote (680 + 85 = 765px contact)
+        THEME.spawnChar(g, 'HOST_SWEATER', {
+          x: 680,
+          y: 840,
+          brows: 'asymmetric',
+          mouth: 'neutral',
+          prop: 'telescope',
+          pose: { preset: 'experiment', speed: 1.2 },
+          t: gt
+        });
+
+        // Open School Textbook Diagram on right-center screen showing tiny 2-line footnote
+        const bp = DK.pop(lt, 0.2, 0.4);
+        g.save();
+        g.translate(1220, 440);
+        g.scale(bp, bp);
+        g.fillStyle = '#FFFBEB';
+        g.strokeStyle = '#64748B';
+        g.lineWidth = 4;
+        g.beginPath();
+        g.roundRect(-230, -135, 460, 270, 12);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#1E293B';
+        g.font = '900 19px "Nunito", sans-serif';
+        g.textAlign = 'center';
+        g.fillText('HISTORY TEXTBOOK · STD X', 0, -90);
+        g.strokeStyle = '#CBD5E1';
+        g.lineWidth = 3;
+        for (let r = -55; r <= 45; r += 25) {
+          g.beginPath();
+          g.moveTo(-180, r);
+          g.lineTo(180, r);
+          g.stroke();
+        }
+        // Highlighted tiny footnote at bottom of page
+        if (lt >= 1.20) {
+          g.fillStyle = 'rgba(254, 202, 202, 0.9)';
+          g.strokeStyle = '#EF4444';
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.roundRect(-190, 68, 380, 48, 6);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#991B1B';
+          g.font = '800 13px "Space Mono", monospace';
+          g.fillText('*Footnote: 1876–78 Famine (2 Lines Only)', 0, 97);
+        }
+        g.restore();
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.50s): Tech Callout highlighting the tiny footnote
+      UI.techCallout(g, lt, {
+        from: [765, 720],
+        elbow: [1020, 560],
+        to: [1420, 560],
+        title: 'FORGOTTEN TRAGEDY (1876–1878)',
+        spec: '50+ Lakh Tamil Lives Lost · Rarely Taught in Depth',
+        accent: '#FF4D6A',
+        t0: 1.2
+      });
+
+      UI.citation(g, 'Tamil Nadu Folk Memory: Thathu Varuda Panjam Ballads & Oral History', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('scienceLab', bt0 + 0.0, bt0 + 3.0, { gain: 0.16 });
+      k.play('paperTear', bt0 + 0.35, { gain: 0.40 });
+      k.play('pillBadge', bt0 + 1.50, { gain: 0.45 });
+    }
+  },
+
+  {
+    shot_number: 124,
+    title: 'Rising from the Abyss — Breaking the Colonial Chain',
+    start: 418.7,
+    end: 422.0,
+    duration: 3.3,
+    vo_line: 'ஆனா இந்த அதல பாதாளத்துல இருந்துதான் ஒரு எழுச்சி பிறக்குது.',
+    env_id: 'ENV_FREEDOM_STREET + PHY_FREEDOM_CHAIN_SNAP',
+    chars: 'SATYAMURTI (marching to x: 920 -> breaking chain at x: 1015) + VOC_PILLAI (marching to x: 810)',
+    on_screen_text: 'THE GREAT AWAKENING · EARLY 20th CENTURY (1905–1947)',
+    camera_sfx: 'Dynamic Pan (-35 to +35) · Verlet Chain Snap & Conch Shell at 1.65s',
+    transition_id: 'WHIP_PAN_TO_FREEDOM_FIGHTERS',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -35], [3.3, 35]], DK.ease.outCubic),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.65, 1.06], [3.3, 1.10]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FREEDOM_STREET', g, lt, gt, cam, (g) => {
+        // Physics Chain Barrier at anchor [1015, 340], cutTime: 1.65s
+        THEME.drawInfo('PHY_FREEDOM_CHAIN_SNAP', g, lt, gt);
+
+        // Colonial barrier posts framing x: 1015
+        g.save();
+        g.fillStyle = '#334155';
+        g.strokeStyle = '#1E293B';
+        g.lineWidth = 3;
+        g.fillRect(1003, 660, 24, 180);
+        g.strokeRect(1003, 660, 24, 180);
+        g.restore();
+
+        // Hero 2: VOC_PILLAI marching alongside (moveX: [210, 810])
+        THEME.spawnChar(g, 'VOC_PILLAI', {
+          moveX: [210, 810, lt, 3.3],
+          y: 840,
+          pose: { preset: 'march', speed: 1.25 },
+          t: gt
+        });
+
+        // Hero 1: SATYAMURTI marching forward (moveX: [320, 920], 920 + 95 = 1015px chain contact)
+        THEME.spawnChar(g, 'SATYAMURTI', {
+          moveX: [320, 920, lt, 3.3],
+          y: 840,
+          pose: { preset: 'march', speed: 1.25 },
+          t: gt
+        });
+      });
+
+      // Rule 5: Non-destructive floating HUD Era Chapter Dial banner
+      THEME.hudEraDial(g, lt, {
+        era: 'THE GREAT AWAKENING',
+        year: 'EARLY 20th CENTURY (1905–1947)',
+        accent: lt >= 1.65 ? '#38C878' : '#FFB84D',
+        y: 120
+      });
+
+      UI.citation(g, 'Swadeshi & Social Reform Movements in Madras Presidency', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.3, { gain: 0.20 });
+      if (window.PHY && PHY.scheduleImpacts) {
+        PHY.scheduleImpacts(k, 'rope', THEME.INFO.PHY_FREEDOM_CHAIN_SNAP.opts, 418.7, BATCH_START);
+      }
+      k.play('marchSteps', bt0 + 0.30, { gain: 0.45 });
+      k.play('ropeSnap', bt0 + 1.65, { gain: 0.65 });
+      k.play('conchShell', bt0 + 1.70, { gain: 0.55 });
+    }
+  },
+
+  {
+    shot_number: 125,
+    title: 'Mahakavi Bharathiyar & V.O. Chidambaram Pillai (1906)',
+    start: 422.0,
+    end: 425.4,
+    duration: 3.4,
+    vo_line: 'இந்திய சுதந்திரப் போராட்டம் மிகப்பெருசா வெடிக்குது. பாரதியார், வ.உ.சி,',
+    env_id: 'ENV_ANCIENT_HARBOR',
+    chars: 'BHARATHIYAR (writing at press desk x: 560) + VOC_PILLAI (launching Swadeshi ship at x: 960)',
+    on_screen_text: 'MAHAKAVI BHARATHIYAR & V.O. CHIDAMBARAM PILLAI (1906)',
+    camera_sfx: 'Harbor Pan (-30 to +30) · Pen Scratch & Steamship Whistle at 1.70s',
+    transition_id: 'CAMERA_PAN_TO_RALLY',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -30], [3.4, 30]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.70, 1.05], [3.4, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_ANCIENT_HARBOR', g, lt, gt, cam, (g) => {
+        // Right Target Prop: Swadeshi Steamship S.S. Gallia at x: 870, y: 780
+        FX.structure3D(g, 870, 780, 260, 220, { kind: 'cholaShip', color: '#C85A32', t: gt });
+
+        // Left Target Prop: Printing Press Desk at x: 645, y: 840
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 645, y: 840, lt, gt });
+
+        // Hero 1: BHARATHIYAR writing patriotic songs (560 + 85 = 645px contact)
+        THEME.spawnChar(g, 'BHARATHIYAR', {
+          x: 560,
+          y: 840,
+          prop: 'scroll',
+          pose: { preset: 'write', speed: 1.25 },
+          t: gt
+        });
+
+        // Hero 2: VOC_PILLAI marching with flag to launch Swadeshi ship (960 - 90 = 870px contact)
+        THEME.spawnChar(g, 'VOC_PILLAI', {
+          moveX: [1380, 960, lt, 3.4],
+          y: 840,
+          flipX: true,
+          prop: 'flag',
+          pose: { preset: 'march', speed: 1.2 },
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.70s): Badge pop & Swadeshi ship callout
+      UI.pillBadge(g, lt, {
+        text: 'MAHAKAVI BHARATHIYAR & V.O. CHIDAMBARAM PILLAI (1906)',
+        x: 960,
+        y: 120,
+        accent: '#FF851B'
+      });
+
+      UI.citation(g, 'V.O.C. Swadeshi Steam Navigation Company (16 Oct 1906) & Bharathi’s India Journal', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('ancientHarbor', bt0 + 0.0, bt0 + 3.4, { gain: 0.22 });
+      k.play('penScratch', bt0 + 0.35, { gain: 0.42 });
+      k.play('steamWhistle', bt0 + 1.70, { gain: 0.58 });
+      k.play('pillBadge', bt0 + 1.70, { gain: 0.45 });
+    }
+  },
+
+  // =========================================================================
+  // BATCH 26: SHOTS 126 TO 130 (07:05.4 – 07:22.1 | 425.4s – 442.1s)
+  // =========================================================================
+  {
+    shot_number: 126,
+    title: 'S. Satyamurti & Periyar E.V. Ramasamy — Freedom & Reform',
+    start: 425.4,
+    end: 428.8,
+    duration: 3.4,
+    vo_line: 'சத்தியமூர்த்தி, பெரியார் இந்த மாதிரி நிறைய பேரு பிரிட்டிஷை எதிர்த்து போராடுறாங்க.',
+    env_id: 'ENV_FREEDOM_STREET',
+    chars: 'SATYAMURTI (speaking at left podium x: 580) + PERIYAR_EVR (marching to right podium x: 960)',
+    on_screen_text: 'S. SATYAMURTI & PERIYAR E.V. RAMASAMY · FREEDOM & REFORM',
+    camera_sfx: 'Civic Square Pan (-25 to +25) · Gavel Bang & Badge Pop at 1.70s',
+    transition_id: 'CUT_TO_CASTE_BARRIER',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -25], [3.4, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.70, 1.05], [3.4, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_FREEDOM_STREET', g, lt, gt, cam, (g) => {
+        // Left Speaker Podium at x: 665, y: 840
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 665, y: 840, lt, gt });
+
+        // Hero 1: SATYAMURTI speaking at left podium (580 + 85 = 665px contact)
+        THEME.spawnChar(g, 'SATYAMURTI', {
+          x: 580,
+          y: 840,
+          prop: 'flag',
+          pose: { preset: 'trade', speed: 1.25 },
+          t: gt
+        });
+
+        // Right Reform Podium at x: 870, y: 840
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 870, y: 840, lt, gt });
+
+        // Hero 2: PERIYAR_EVR marching from 1360 to 960 (960 - 90 = 870px podium contact)
+        THEME.spawnChar(g, 'PERIYAR_EVR', {
+          moveX: [1360, 960, lt, 3.4],
+          y: 840,
+          flipX: true,
+          prop: 'walkingStick',
+          pose: { preset: 'march', speed: 1.15 },
+          t: gt
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'S. SATYAMURTI & PERIYAR E.V. RAMASAMY · FREEDOM & REFORM',
+        x: 960,
+        y: 120,
+        accent: '#38C878'
+      });
+
+      UI.citation(g, 'Madras Presidency Freedom Struggle & Vaikom / Self-Respect Movements', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.4, { gain: 0.20 });
+      k.play('marchSteps', bt0 + 0.30, { gain: 0.42 });
+      k.play('gavelBang', bt0 + 1.70, { gain: 0.52 });
+      k.play('pillBadge', bt0 + 1.70, { gain: 0.45 });
+    }
+  },
+
+  {
+    shot_number: 127,
+    title: 'Shattering Centuries of Caste Oppression (120Hz Physics Wall)',
+    start: 428.8,
+    end: 431.7,
+    duration: 2.9,
+    vo_line: 'இந்த time-லதான் ஆயிரக்கணக்கான வருஷமா நம்ம சமூகத்துல இருந்த ஜாதிங்கிற நோய்க்கு எதிரா',
+    env_id: 'ENV_TEMPLE_COURTYARD + PHY_CASTE_WALL_SHATTER',
+    chars: 'PERIYAR_EVR (marching to x: 780 -> shattering wall at x: 880) + SATYAMURTI (marching to x: 660)',
+    on_screen_text: 'SHATTERING CENTURIES OF CASTE OPPRESSION',
+    camera_sfx: 'Impact Camera Shake at 1.45s · Hammer Hit & Stone Collapse',
+    transition_id: 'WALL_SHATTER_REVEAL',
+    draw: function(g, lt, gt, u) {
+      const shakeY = lt > 1.40 && lt < 2.00 ? DK.shake(lt, 7, 18, 127) : 0;
+      const cam = {
+        x: DK.key(lt, [[0.0, -30], [2.9, 25]], DK.ease.outCubic),
+        y: shakeY,
+        z: DK.key(lt, [[0.0, 1.00], [1.45, 1.06], [2.9, 1.10]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_TEMPLE_COURTYARD', g, lt, gt, cam, (g) => {
+        // Physics Shatter Wall at x: 880, impactTime: 1.45s
+        THEME.drawInfo('PHY_CASTE_WALL_SHATTER', g, lt, gt);
+
+        // Label on intact wall before impactTime: 1.45s
+        if (lt < 1.45) {
+          g.save();
+          g.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          g.strokeStyle = '#EF4444';
+          g.lineWidth = 2.5;
+          g.beginPath();
+          g.roundRect(765, 595, 230, 56, 8);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FCA5A5';
+          g.font = '900 17px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.fillText('CASTE EXCLUSION', 880, 629);
+          g.restore();
+        }
+
+        // Hero 2: SATYAMURTI marching alongside (moveX: [220, 660])
+        THEME.spawnChar(g, 'SATYAMURTI', {
+          moveX: [220, 660, lt, 2.9],
+          y: 840,
+          pose: { preset: 'march', speed: 1.25 },
+          t: gt
+        });
+
+        // Hero 1: PERIYAR_EVR marching from 340 to 780 (780 + 100 = 880px wall impact contact)
+        THEME.spawnChar(g, 'PERIYAR_EVR', {
+          moveX: [340, 780, lt, 2.9],
+          y: 840,
+          prop: 'hammer',
+          pose: { preset: lt >= 1.35 && lt <= 1.75 ? 'build' : 'march', speed: 1.25 },
+          t: gt
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'SHATTERING CENTURIES OF CASTE OPPRESSION',
+        x: 960,
+        y: 120,
+        accent: '#FF4D6A'
+      });
+
+      UI.citation(g, 'Eugene F. Irschick, Politics and Social Conflict in South India (1969)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.26, grain: 0.024 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 2.9, { gain: 0.20 });
+      if (window.PHY && PHY.scheduleImpacts) {
+        PHY.scheduleImpacts(k, 'shatter', THEME.INFO.PHY_CASTE_WALL_SHATTER.opts, 428.8, BATCH_START);
+      }
+      k.play('hammerHit', bt0 + 1.42, { gain: 0.60 });
+      k.play('stoneCollapse', bt0 + 1.45, { gain: 0.68 });
+      k.play('pillBadge', bt0 + 1.50, { gain: 0.45 });
+    }
+  },
+
+  {
+    shot_number: 128,
+    title: 'Justice Party (1916) & Self-Respect Movement (1925)',
+    start: 431.7,
+    end: 434.7,
+    duration: 3.0,
+    vo_line: 'Justice Party உருவாகுது, சுயமரியாதை இயக்கங்கள் உருவாகுது.',
+    env_id: 'ENV_JUSTICE_HALL',
+    chars: 'VOC_PILLAI as Justice Party Founder (signing at x: 560) + PERIYAR_EVR (walking to lectern at x: 980)',
+    on_screen_text: 'JUSTICE PARTY (1916) & SELF-RESPECT MOVEMENT (1925)',
+    camera_sfx: 'Legislative Hall Pan (-20 to +20) · Pen Scratch & Gavel Bang at 1.50s',
+    transition_id: 'CAMERA_PAN_TO_TEMPLE_AND_SCHOOL',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -20], [3.0, 20]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.50, 1.05], [3.0, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_JUSTICE_HALL', g, lt, gt, cam, (g) => {
+        // Left Bench (judgeBench) at x: 650, y: 840
+        FX.prop3D(g, 650, 840, 1.0, { kind: 'judgeBench', color: '#8C583A', state: 'active', t: gt });
+
+        // Hero 1: Justice Party Founder signing Non-Brahmin Manifesto (560 + 90 = 650px contact)
+        THEME.spawnChar(g, 'VOC_PILLAI', {
+          x: 560,
+          y: 840,
+          headwear: 'none',
+          prop: 'scroll',
+          pose: { preset: 'write', speed: 1.2 },
+          t: gt
+        });
+
+        // Right Lectern (witnessStand) at x: 890, y: 840
+        FX.prop3D(g, 890, 840, 1.0, { kind: 'witnessStand', color: '#8C583A', state: 'active', t: gt });
+
+        // Hero 2: PERIYAR_EVR walking from 1380 to 980 (980 - 90 = 890px lectern contact)
+        THEME.spawnChar(g, 'PERIYAR_EVR', {
+          moveX: [1380, 980, lt, 3.0],
+          y: 840,
+          flipX: true,
+          prop: 'scroll',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+      });
+
+      // Mid-Shot Micro-Beat (lt = 1.50s): Tech Callout highlighting 1916 & 1925 milestones
+      UI.techCallout(g, lt, {
+        from: [650, 700],
+        elbow: [920, 540],
+        to: [1360, 540],
+        title: 'JUSTICE PARTY (1916) & SELF-RESPECT MOVEMENT (1925)',
+        spec: 'Foundations of the Dravidian Social Justice Model',
+        accent: '#38C878',
+        t0: 1.2
+      });
+
+      UI.citation(g, 'Formation of SILF / Justice Party (1916) & Self-Respect Movement (1925)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('scienceLab', bt0 + 0.0, bt0 + 3.0, { gain: 0.18 });
+      k.play('penScratch', bt0 + 0.35, { gain: 0.42 });
+      k.play('gavelBang', bt0 + 1.50, { gain: 0.55 });
+      k.play('pillBadge', bt0 + 1.50, { gain: 0.45 });
+    }
+  },
+
+  {
+    shot_number: 129,
+    title: 'Temple Entry (1939), Education & Reservation Rights',
+    start: 434.7,
+    end: 438.4,
+    duration: 3.7,
+    vo_line: 'கோயிலுக்குள்ள வரக்கூடாதுன்னு சொன்னவங்களுக்கு எல்லாம் கல்வி உரிமை, இட ஒதுக்கீடு,',
+    env_id: 'ENV_TEMPLE_COURTYARD',
+    chars: 'MODERN_ENG (walking to degree desk at x: 880) + HOST_PROTAG (walking alongside to x: 770)',
+    on_screen_text: 'TEMPLE ENTRY (1939) · EDUCATION · RESERVATION RIGHTS',
+    camera_sfx: 'Courtyard Pan (-35 to +35) · Temple Bell & Badge Pop at 1.85s',
+    transition_id: 'CONTINUOUS_PAN_RIGHT',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -35], [3.7, 35]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.85, 1.05], [3.7, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_TEMPLE_COURTYARD', g, lt, gt, cam, (g) => {
+        // Target Prop: Admission & Communal G.O. Desk at x: 970, y: 840
+        FX.interactiveProp(g, { kind: 'scholarDesk', x: 970, y: 840, lt, gt });
+
+        // Hero 2: HOST_PROTAG walking with palm leaf / books (moveX: [170, 770])
+        THEME.spawnChar(g, 'HOST_PROTAG', {
+          moveX: [170, 770, lt, 3.7],
+          y: 840,
+          prop: 'palmLeaf',
+          pose: { preset: 'walk', speed: 1.2 },
+          t: gt
+        });
+
+        // Hero 1: MODERN_ENG receiving university degree scroll (880 + 90 = 970px desk contact)
+        THEME.spawnChar(g, 'MODERN_ENG', {
+          moveX: [280, 880, lt, 3.7],
+          y: 840,
+          prop: 'scroll',
+          pose: { preset: 'walk', speed: 1.2 },
+          t: gt
+        });
+
+        // Mid-Shot Micro-Beat (lt = 1.85s): Golden Communal G.O. & Temple Entry Seal
+        if (lt >= 1.85) {
+          const sp = DK.pop(lt, 1.85, 0.38);
+          g.save();
+          g.translate(1220, 470);
+          g.scale(sp, sp);
+          g.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          g.strokeStyle = '#F7B928';
+          g.lineWidth = 3.5;
+          g.beginPath();
+          g.roundRect(-230, -48, 460, 96, 14);
+          g.fill();
+          g.stroke();
+          g.fillStyle = '#FDE047';
+          g.font = '900 19px "Space Mono", monospace';
+          g.textAlign = 'center';
+          g.fillText('COMMUNAL G.O. (1921) & ACT OF 1939', 0, -8);
+          g.fillStyle = '#FFFFFF';
+          g.font = '700 15px "Nunito", sans-serif';
+          g.fillText('Doors Opened to Temples, Schools & Civil Service', 0, 22);
+          g.restore();
+        }
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'TEMPLE ENTRY (1939) · EDUCATION · RESERVATION RIGHTS',
+        x: 960,
+        y: 120,
+        accent: '#F7B928'
+      });
+
+      UI.citation(g, 'Communal G.O. No. 613 (1921) & Madurai Temple Entry (A. Vaidyanatha Iyer, 1939)', { align: 'right' });
+      DK.finishFrame(g, gt, { vignette: 0.24, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('templeCourtyard', bt0 + 0.0, bt0 + 3.7, { gain: 0.20 });
+      k.play('footstep', bt0 + 0.30, { gain: 0.40 });
+      k.play('templeBell', bt0 + 1.85, { gain: 0.55 });
+      k.play('pillBadge', bt0 + 1.85, { gain: 0.45 });
+    }
+  },
+
+  {
+    shot_number: 130,
+    title: 'Women’s Property Rights & Social Justice Balance (1929)',
+    start: 438.4,
+    end: 442.1,
+    duration: 3.7,
+    vo_line: 'பெண்களுக்கான சொத்துரிமை, ஒரு சமூக நீதிக்கான போராட்டம் எல்லாமே இந்த time-லதான் வருது.',
+    env_id: 'ENV_JUSTICE_HALL',
+    chars: 'MODERN_ENG (walking to bench at x: 820) + PERIYAR_EVR (endorsing resolution at x: 1010)',
+    on_screen_text: 'WOMEN’S RIGHTS · CHENGALPATTU RESOLUTION (1929) · SOCIAL JUSTICE',
+    camera_sfx: 'Justice Hall Pan (-25 to +25) · Resonant Balance Ding at 1.85s',
+    transition_id: 'FLAG_HOIST_WIPE',
+    draw: function(g, lt, gt, u) {
+      const cam = {
+        x: DK.key(lt, [[0.0, -25], [3.7, 25]], DK.ease.inOutSine),
+        y: 0,
+        z: DK.key(lt, [[0.0, 1.00], [1.85, 1.05], [3.7, 1.08]], DK.ease.outCubic)
+      };
+
+      THEME.drawEnv('ENV_JUSTICE_HALL', g, lt, gt, cam, (g) => {
+        // Target Prop: Judge Bench at x: 915, y: 840
+        FX.prop3D(g, 915, 840, 1.0, { kind: 'judgeBench', color: '#8C583A', state: 'active', t: gt });
+
+        // Equality Scale locking into 0.0 horizontal balance at lt = 1.85s
+        const scaleTilt = DK.key(lt, [[0.0, -0.22], [1.85, 0.0], [3.7, 0.0]], DK.ease.outBack);
+        UI.economicsScale(g, lt, {
+          x: 915,
+          y: 480,
+          s: 0.90,
+          leftLabel: 'WOMEN’S RIGHTS',
+          rightLabel: 'SOCIAL JUSTICE',
+          tilt: scaleTilt
+        });
+
+        // Hero 1: MODERN_ENG (Dr. Muthulakshmi Reddy / Women's Rights Reformer) walking to 820 (820 + 95 = 915px contact)
+        THEME.spawnChar(g, 'MODERN_ENG', {
+          moveX: [340, 820, lt, 3.7],
+          y: 840,
+          wardrobe: 'indianIndependence',
+          topColor: '#38C878',
+          prop: 'scroll',
+          pose: { preset: 'walk', speed: 1.15 },
+          t: gt
+        });
+
+        // Hero 2: PERIYAR_EVR endorsing Chengalpattu Resolution on right of bench (1010 - 95 = 915px contact)
+        THEME.spawnChar(g, 'PERIYAR_EVR', {
+          x: 1010,
+          y: 840,
+          flipX: true,
+          pose: { preset: 'trade', speed: 1.15 },
+          t: gt
+        });
+      });
+
+      UI.pillBadge(g, lt, {
+        text: 'WOMEN’S RIGHTS · CHENGALPATTU RESOLUTION (1929) · SOCIAL JUSTICE',
+        x: 960,
+        y: 120,
+        accent: '#38C878'
+      });
+
+      UI.citation(g, 'Chengalpattu Self-Respect Conference (1929) & TN Hindu Succession Amendment (1989)', { align: 'left' });
+      DK.finishFrame(g, gt, { vignette: 0.25, grain: 0.022 });
+    },
+    sfx: function(k, bt0) {
+      k.bed('scienceLab', bt0 + 0.0, bt0 + 3.7, { gain: 0.18 });
+      k.play('footstep', bt0 + 0.35, { gain: 0.38 });
+      k.play('ding', bt0 + 1.85, { gain: 0.52 });
+      k.play('pillBadge', bt0 + 1.85, { gain: 0.45 });
+    }
+  }
+];
+
+if (window.DK && DK.linkShotTransitions) DK.linkShotTransitions(SHOTS, window.THEME);
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const BATCH_START = SHOTS[0].start;
+const BATCH_END = SHOTS[SHOTS.length - 1].end;
+const DURATION = BATCH_END - BATCH_START;
+
+// Auto-runs each shot's attached sfx(k, bt0) if scoreSound(k) is not defined separately
+if (typeof window.scoreSound !== 'function') {
+  window.scoreSound = function scoreSound(k) {
+    SHOTS.forEach((s) => {
+      if (typeof s.sfx === 'function') s.sfx(k, s.start - BATCH_START);
+    });
+  };
+}
+const scoreSound = window.scoreSound;
+
+window.BATCH_START = BATCH_START;
+window.BATCH_END = BATCH_END;
+window.DURATION = DURATION;
+window.SHOTS = SHOTS;
+window.scoreSound = scoreSound;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, activeShotFilter = 'all', voAudio = null;
+
+function findShotAtGlobal(gt) {
+  for (let i = 0; i < SHOTS.length; i++) {
+    if (gt >= SHOTS[i].start && gt <= SHOTS[i].end) return SHOTS[i];
+  }
+  return gt < SHOTS[0].start ? SHOTS[0] : SHOTS[SHOTS.length - 1];
+}
+
+function renderAtLocal(localT) {
+  currentT = DK.clamp(localT, 0, DURATION);
+  const gt = BATCH_START + currentT;
+  const s = findShotAtGlobal(gt);
+  const lt = DK.clamp(gt - s.start, 0, s.duration);
+  const u = s.duration > 0 ? lt / s.duration : 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1920, 1080);
+  ctx.save();
+  if (window.DK && DK.drawShot) DK.drawShot(ctx, s, lt, gt, u);
+  else s.draw(ctx, lt, gt, u);
+  ctx.restore();
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = gt.toFixed(2) + 's (' + currentT.toFixed(2) + 's) · Shot ' + s.shot_number;
+}
+
+window.seek = function (t, opts) {
+  if (playing) pause();
+  const localT = opts && opts.global ? t - BATCH_START : t;
+  renderAtLocal(localT);
+};
+
+function startAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('mixSelect').value;
+  if (mixMode !== 'mute' && window.SOUND) stopSound = SOUND.live(scoreSound, currentT, { mixMode: 'sfxOnly' });
+  if (voAudio) { voAudio.currentTime = BATCH_START + currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio() {
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (activeShotFilter !== 'all') {
+      const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+      if (s) {
+        const sLocal0 = s.start - BATCH_START, sLocal1 = s.end - BATCH_START;
+        if (nextT >= sLocal1) { nextT = sLocal0; currentT = nextT; startAudio(); }
+      }
+    } else if (nextT >= DURATION) {
+      nextT = 0; currentT = 0; startAudio();
+    }
+    renderAtLocal(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+const shotSelect = document.getElementById('shotSelect');
+SHOTS.forEach((s) => {
+  const opt = document.createElement('option');
+  opt.value = String(s.shot_number);
+  opt.textContent = 'Shot ' + s.shot_number + ': ' + s.title + ' (' + s.start.toFixed(1) + 's-' + s.end.toFixed(1) + 's)';
+  shotSelect.appendChild(opt);
+});
+
+shotSelect.addEventListener('change', () => {
+  activeShotFilter = shotSelect.value;
+  if (activeShotFilter !== 'all') {
+    const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+    if (s) { renderAtLocal(s.start - BATCH_START); if (playing) startAudio(); }
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  renderAtLocal(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('mixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('wavBtn').addEventListener('click', async () => {
+  const res = await SOUND.renderOffline(scoreSound, DURATION, 48000, { mixMode: 'sfxOnly' });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'batch_sfx_' + SHOTS[0].shot_number + '_' + SHOTS[SHOTS.length - 1].shot_number + '.wav';
+  a.click();
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  if (window.MAP && MAP.preloadAll) await MAP.preloadAll(SHOTS);
+  renderAtLocal(0);
+});
+</script>
+</body>
+</html>
