@@ -1,11 +1,72 @@
 /**
- * MODULE 05: UNIVERSAL COMPOSABLE ENVIRONMENT CREATOR — 9:16 EDITION (engine/05_env.js)
- * Upgraded with "Paper Billions" 3-Layer Interior Rooms, Soft Radial Wall Shading,
- * Overhead Lamp Light Cones, Full-Width Animated Oceans, and Spaceport Horizons.
+ * MODULE 05: UNIVERSAL COMPOSABLE ENVIRONMENT CREATOR — 9:16 PAPER BILLIONS EDITION (engine/05_env.js)
+ * Upgraded with "Paper Billions" 3-Layer Interior Rooms, Boxed Room Corner Shading,
+ * Editorial Matte Wall/Sky Harmonization, Situation-Adaptive Lighting Auto-Detection,
+ * Overhead Lamp Light Cones, Full-Width Animated Oceans, and Multi-Layer Horizons.
  * Built for 1080x1920 vertical screens with raised floor (floorY = 1320).
  */
 (function () {
   const C = window.CORE;
+
+  /**
+   * Helper: Harmonizes sky/wall colors so skies and rooms never look neon or blindingly bright
+   */
+  function toneEnvColor(hex, role) {
+    if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) return hex;
+    if (C.harmonizeColor) return C.harmonizeColor(hex, role || 'wall');
+    return hex;
+  }
+
+  /**
+   * Helper: Automatically detects the story situation from an `ENV.create` recipe
+   * and sets the Situation-Adaptive Lighting in `01_core.js`.
+   */
+  function detectAndApplySceneLighting(r) {
+    if (!C.setLighting) return;
+    if (r.lighting || r.brightness !== undefined) {
+      C.setLighting(Object.assign(
+        {},
+        typeof r.lighting === 'string' ? (C.LIGHTING_PRESETS[r.lighting] || C.LIGHTING_PRESETS.editorial) : (r.lighting || {}),
+        r.brightness !== undefined ? { brightness: r.brightness } : {}
+      ));
+      return;
+    }
+
+    const p = String(r.preset || '').toLowerCase();
+    if (p === 'server' || p === 'datacenter' || p === 'vault') {
+      C.setLighting('server');
+      return;
+    }
+    if (p === 'office' || p === 'breakroom' || p === 'kitchen' || p === 'lab' || p === 'controlroom') {
+      const isDarkWall = r.wall && r.wall.color && C.isDarkColor(r.wall.color);
+      C.setLighting(isDarkWall ? 'night' : 'indoor');
+      return;
+    }
+
+    if (r.sky) {
+      const topC = r.sky.topColor || r.sky.color || '';
+      const botC = r.sky.botColor || '';
+      if (r.sky.stars && C.isDarkColor(topC || '#0F172A') && !botC.match(/#(F97316|FB923C|EA580C|EF4444|F59E0B)/i)) {
+        C.setLighting(r.ground === false ? 'space' : 'night');
+        return;
+      }
+      // Detect sunset / dusk warm horizon colors
+      if (botC && /#(F97316|FB923C|EA580C|F59E0B|D97706|EF4444|C86D51|E5A93C)/i.test(botC)) {
+        C.setLighting('dusk');
+        return;
+      }
+      C.setLighting('day');
+      return;
+    }
+
+    if (r.wall) {
+      const wc = typeof r.wall === 'string' ? r.wall : (r.wall.color || '#DCD5C7');
+      C.setLighting(C.isDarkColor(wc) ? 'night' : 'indoor');
+      return;
+    }
+
+    C.setLighting('editorial');
+  }
 
   /**
    * Helper: Draws a soft Paper Billions overhead conical/radial light beam
@@ -15,14 +76,14 @@
     const x = o.x !== undefined ? o.x : C.SAFE.cx;
     const topY = o.topY !== undefined ? o.topY : 0;
     const botY = o.botY !== undefined ? o.botY : (o.floorY !== undefined ? o.floorY : C.FLOOR_Y);
-    const topW = o.topW !== undefined ? o.topW : 70;
-    const botW = o.botW !== undefined ? o.botW : 640;
-    const col = o.color || 'rgba(255, 250, 220, 0.16)';
+    const topW = o.topW !== undefined ? o.topW : 76;
+    const botW = o.botW !== undefined ? o.botW : 620;
+    const col = o.color || 'rgba(255, 246, 210, 0.11)';
 
     g.save();
     const grd = g.createLinearGradient(x, topY, x, botY);
     grd.addColorStop(0, col);
-    grd.addColorStop(0.75, C.rgba ? C.rgba('#FEF9C3', 0.07) : 'rgba(254, 249, 195, 0.07)');
+    grd.addColorStop(0.72, 'rgba(254, 245, 200, 0.045)');
     grd.addColorStop(1, 'rgba(255, 255, 255, 0)');
     g.fillStyle = grd;
     g.beginPath();
@@ -34,12 +95,12 @@
     g.fill();
 
     // Soft floor pool ellipse
-    const poolGrd = g.createRadialGradient(x, botY, 10, x, botY, botW * 0.48);
-    poolGrd.addColorStop(0, 'rgba(255, 252, 230, 0.14)');
-    poolGrd.addColorStop(1, 'rgba(255, 252, 230, 0)');
+    const poolGrd = g.createRadialGradient(x, botY, 10, x, botY, botW * 0.45);
+    poolGrd.addColorStop(0, 'rgba(255, 248, 220, 0.10)');
+    poolGrd.addColorStop(1, 'rgba(255, 248, 220, 0)');
     g.fillStyle = poolGrd;
     g.beginPath();
-    g.ellipse(x, botY + 12, botW * 0.48, 38, 0, 0, Math.PI * 2);
+    g.ellipse(x, botY + 12, botW * 0.45, 34, 0, 0, Math.PI * 2);
     g.fill();
     g.restore();
   }
@@ -47,61 +108,83 @@
   /**
    * 1. THE SIGNATURE 9:16 STUDIO CURVE (`ENV.studio(g, opts)`)
    * Minimalist curved horizon backdrop used for metaphors, charts, and skits.
-   * Upgraded with Paper Billions soft depth vignette & floor rim shading.
-   * Default `floorY = 1320` (C.FLOOR_Y).
+   * Tuned with Paper Billions muted editorial matte tones (never icy or blinding).
    */
   function studio(g, opts) {
     const o = opts || {};
     const palettes = {
-      warm:      { wall: '#DFD9CD', floor: '#A69F91', dark: false },
-      paper:     { wall: '#F2EFE9', floor: '#CFC9BC', dark: false },
-      parchment: { wall: '#EAE1CA', floor: '#BCA98B', dark: false },
-      cool:      { wall: '#D5E0EC', floor: '#73859B', dark: false },
-      mint:      { wall: '#D1FAE5', floor: '#6EE7B7', dark: false },
-      rose:      { wall: '#FFE4E6', floor: '#FDA4AF', dark: false },
-      amber:     { wall: '#FEF3C7', floor: '#FCD34D', dark: false },
-      office:    { wall: '#E2E8F0', floor: '#94A3B8', dark: false },
-      lab:       { wall: '#E0F2FE', floor: '#7DD3FC', dark: false },
-      slate:     { wall: '#334155', floor: '#1E293B', dark: true },
-      noir:      { wall: '#18181B', floor: '#09090B', dark: true },
-      danger:    { wall: '#450A0A', floor: '#280505', dark: true },
-      space:     { wall: '#0B101E', floor: '#060913', dark: true },
-      blueprint: { wall: '#1E3A8A', floor: '#172554', grid: true, dark: true }
+      warm:      { wall: '#DCD5C7', floor: '#9E9687', dark: false, mode: 'editorial' },
+      paper:     { wall: '#E8E2D5', floor: '#C2B9A7', dark: false, mode: 'paper'     },
+      parchment: { wall: '#E2D8C1', floor: '#B29F82', dark: false, mode: 'editorial' },
+      cool:      { wall: '#C6D1DC', floor: '#6E7F91', dark: false, mode: 'editorial' },
+      mint:      { wall: '#C5DDD1', floor: '#689F86', dark: false, mode: 'editorial' },
+      rose:      { wall: '#E4CDD0', floor: '#B87D87', dark: false, mode: 'editorial' },
+      amber:     { wall: '#E8DAB8', floor: '#C4A25E', dark: false, mode: 'editorial' },
+      office:    { wall: '#D3DCE4', floor: '#8796A6', dark: false, mode: 'indoor'    },
+      lab:       { wall: '#CBD8E3', floor: '#788EA1', dark: false, mode: 'lab'       },
+      slate:     { wall: '#2B3648', floor: '#18202C', dark: true,  mode: 'night'     },
+      noir:      { wall: '#181C24', floor: '#0D1017', dark: true,  mode: 'noir'      },
+      danger:    { wall: '#3B1012', floor: '#220809', dark: true,  mode: 'danger'    },
+      space:     { wall: '#0C1220', floor: '#070B14', dark: true,  mode: 'space'     },
+      blueprint: { wall: '#1B325F', floor: '#122244', grid: true,  dark: true, mode: 'night' }
     };
     const pal = palettes[o.theme || 'warm'] || palettes.warm;
-    const wallCol = o.wall || pal.wall;
-    const floorCol = o.floor || pal.floor;
+    const rawWall = o.wall || pal.wall;
+    const wallCol = pal.dark ? rawWall : toneEnvColor(rawWall, 'wall');
+    const rawFloor = o.floor || pal.floor;
+    const floorCol = pal.dark ? rawFloor : toneEnvColor(rawFloor, 'wall');
     const fy = o.floorY !== undefined ? o.floorY : C.FLOOR_Y;
     const curve = o.curve !== undefined ? o.curve : -22;
 
+    if (C.setLighting) {
+      C.setLighting(Object.assign(
+        {},
+        C.LIGHTING_PRESETS[o.lighting || pal.mode] || C.LIGHTING_PRESETS.editorial,
+        o.brightness !== undefined ? { brightness: o.brightness } : {}
+      ));
+    }
+
     g.save();
 
-    // Base Wall with subtle Paper Billions vertical gradient
+    // Base Wall with subtle Paper Billions vertical tonal depth
     const wGrd = g.createLinearGradient(0, 0, 0, fy);
-    wGrd.addColorStop(0, C.shadeColor(wallCol, pal.dark ? -8 : -4));
+    wGrd.addColorStop(0, C.shadeColor(wallCol, pal.dark ? -10 : -5));
     wGrd.addColorStop(0.55, wallCol);
-    wGrd.addColorStop(1, C.shadeColor(wallCol, pal.dark ? -12 : -7));
+    wGrd.addColorStop(1, C.shadeColor(wallCol, pal.dark ? -14 : -8));
     g.fillStyle = wGrd;
     g.fillRect(0, 0, C.W, C.H);
 
+    // Subtle left & right vertical edge shading (gives Paper Billions boxed studio depth)
+    const leftEdge = g.createLinearGradient(0, 0, 130, 0);
+    leftEdge.addColorStop(0, pal.dark ? 'rgba(0,0,0,0.28)' : 'rgba(15,20,30,0.07)');
+    leftEdge.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = leftEdge;
+    g.fillRect(0, 0, 130, fy);
+
+    const rightEdge = g.createLinearGradient(C.W - 130, 0, C.W, 0);
+    rightEdge.addColorStop(0, 'rgba(0,0,0,0)');
+    rightEdge.addColorStop(1, pal.dark ? 'rgba(0,0,0,0.28)' : 'rgba(15,20,30,0.07)');
+    g.fillStyle = rightEdge;
+    g.fillRect(C.W - 130, 0, 130, fy);
+
     // Optional Grid (Blueprint / Editorial graph paper)
     if (o.grid || pal.grid) {
-      const gCol = o.gridColor || (pal.grid ? 'rgba(255,255,255,0.11)' : 'rgba(0,0,0,0.045)');
-      const step = o.gridStep || 60;
+      const gCol = o.gridColor || (pal.grid ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.04)');
+      const step = o.gridStep || 64;
       for (let x = 0; x < C.W; x += step) C.line(g, x, 0, x, C.H, { lw: 1.2, color: gCol });
       for (let y = 0; y < C.H; y += step) C.line(g, 0, y, C.W, y, { lw: 1.2, color: gCol });
     }
 
     // Optional Wallpaper Stripes
     if (o.stripes) {
-      g.fillStyle = o.stripeColor || (pal.dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.032)');
+      g.fillStyle = o.stripeColor || (pal.dark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.028)');
       for (let x = 0; x < C.W; x += 90) g.fillRect(x, 0, 45, fy + 20);
     }
 
-    // Soft Radial Spotlight in Safe Zone Center (500, 860)
+    // Controlled Warm Editorial Center Glow (never harsh white glare!)
     if (o.spotlight !== false) {
-      const grd = g.createRadialGradient(C.SAFE.cx, fy - 450, 40, C.SAFE.cx, fy - 380, 800);
-      grd.addColorStop(0, o.glowColor || (pal.dark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.28)'));
+      const grd = g.createRadialGradient(C.SAFE.cx, fy - 460, 40, C.SAFE.cx, fy - 380, 740);
+      grd.addColorStop(0, o.glowColor || (pal.dark ? 'rgba(255, 250, 235, 0.09)' : 'rgba(255, 250, 238, 0.12)'));
       grd.addColorStop(1, 'rgba(255, 255, 255, 0)');
       g.fillStyle = grd;
       g.fillRect(0, 0, C.W, C.H);
@@ -114,14 +197,12 @@
 
     // Curved Studio Floor (y = 1320..1920)
     if (o.showFloor !== false) {
-      // Soft ambient contact shadow just above the horizon line
-      const ambGrd = g.createLinearGradient(0, fy - 36, 0, fy + 6);
+      const ambGrd = g.createLinearGradient(0, fy - 38, 0, fy + 6);
       ambGrd.addColorStop(0, 'rgba(0,0,0,0)');
-      ambGrd.addColorStop(1, pal.dark ? 'rgba(0,0,0,0.32)' : 'rgba(0,0,0,0.08)');
+      ambGrd.addColorStop(1, pal.dark ? 'rgba(0,0,0,0.34)' : 'rgba(15,20,30,0.09)');
       g.fillStyle = ambGrd;
-      g.fillRect(0, fy - 36, C.W, 42);
+      g.fillRect(0, fy - 38, C.W, 44);
 
-      // Top-to-bottom floor shading so bottom captions read cleanly
       const fGrd = g.createLinearGradient(0, fy, 0, C.H);
       fGrd.addColorStop(0, floorCol);
       fGrd.addColorStop(1, C.shadeColor(floorCol, -16));
@@ -135,8 +216,7 @@
       g.closePath();
       g.fill();
 
-      // Subtle highlight rim right below the horizon stroke
-      g.strokeStyle = pal.dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.28)';
+      g.strokeStyle = pal.dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.20)';
       g.lineWidth = 3;
       g.beginPath();
       g.moveTo(-20, fy + 4);
@@ -153,29 +233,30 @@
   }
 
   /**
-   * Helper: Built-in Paper Billions 3-Layer Interior Room Presets
-   * Can be triggered via `ENV.room(g, { preset: 'office', t: gt })` or `ENV.create(g, { preset: 'office' })`
+   * Helper: Universal Paper Billions 3-Layer Interior Room Archetypes
    */
   function getPresetRecipe(presetName, fy) {
     const p = String(presetName || '').toLowerCase();
-    if (p === 'office' || p === 'google') {
+    if (p === 'office') {
       return {
-        wall: { color: '#E6E2D8', pattern: 'officeStripe', stripeColor: '#3B82F6', accentStripe: '#EF4444' },
+        lighting: 'indoor',
+        wall: { color: '#DED8CA', pattern: 'stripe', stripeColor: '#3B6E9C', accentStripe: '#C83E37' },
         structures: [
           { type: 'window', x: 260, y: 660, w: 260, h: 320, view: 'day', trees: true },
-          { type: 'shelf', x: 690, y: 580, w: 240, items: ['books', 'lavaLamp', 'mug'] },
+          { type: 'shelf', x: 690, y: 580, w: 240 },
           { type: 'clock', x: 510, y: 420, r: 42 },
           { type: 'plant', x: 140, y: fy }
         ],
-        ground: { color: '#9C8D7C', style: 'planks' }
+        ground: { color: '#948574', style: 'planks' }
       };
     }
     if (p === 'breakroom' || p === 'kitchen') {
       return {
-        wall: { color: '#DFDBD2', pattern: 'tile', step: 70 },
+        lighting: 'indoor',
+        wall: { color: '#D8D3C8', pattern: 'tile', step: 70 },
         structures: [
           { type: 'window', x: 260, y: 640, w: 250, h: 300, view: 'night', buildings: true },
-          { type: 'shelf', x: 680, y: 560, w: 250, items: ['mugs', 'plant'] },
+          { type: 'shelf', x: 680, y: 560, w: 250 },
           { type: 'counter', x: 680, y: fy, w: 320, h: 190 },
           { type: 'lamp', x: 480, y: 240, lightCone: true }
         ],
@@ -184,35 +265,50 @@
     }
     if (p === 'server' || p === 'datacenter') {
       return {
-        wall: { color: '#1E293B', pattern: 'metal', baseboardColor: '#0F172A' },
+        lighting: 'server',
+        wall: { color: '#1B2434', pattern: 'metal', baseboardColor: '#0F1622' },
         structures: [
           { type: 'serverRack', x: 220, y: fy, w: 170, h: 520 },
           { type: 'serverRack', x: 440, y: fy, w: 170, h: 520 },
           { type: 'serverRack', x: 660, y: fy, w: 170, h: 520 },
-          { type: 'lamp', x: 440, y: 240, lightCone: true, coneColor: 'rgba(56, 189, 248, 0.12)' }
+          { type: 'lamp', x: 440, y: 240, lightCone: true, coneColor: 'rgba(56, 189, 248, 0.10)' }
         ],
-        ground: { color: '#0F172A', style: 'tiles' }
+        ground: { color: '#0F1622', style: 'tiles' }
       };
     }
     if (p === 'vault') {
       return {
-        wall: { color: '#334155', pattern: 'metal', baseboardColor: '#1E293B' },
+        lighting: 'night',
+        wall: { color: '#2D3748', pattern: 'metal', baseboardColor: '#1A202C' },
         structures: [
           { type: 'vaultDoor', x: 500, y: fy, r: 220 },
           { type: 'lamp', x: 500, y: 240, lightCone: true }
         ],
-        ground: { color: '#1E293B', style: 'solid' }
+        ground: { color: '#1A202C', style: 'solid' }
       };
     }
-    if (p === 'lab' || p === 'missioncontrol') {
+    if (p === 'lab' || p === 'controlroom') {
       return {
-        wall: { color: '#1E293B', pattern: 'grid', patternColor: 'rgba(148,163,184,0.12)' },
+        lighting: 'night',
+        wall: { color: '#1E2838', pattern: 'grid', patternColor: 'rgba(148,163,184,0.10)' },
         structures: [
-          { type: 'whiteboard', x: 310, y: 660, w: 310, h: 240, dark: true, title: 'TELEMETRY' },
+          { type: 'whiteboard', x: 310, y: 660, w: 310, h: 240, dark: true },
           { type: 'serverRack', x: 700, y: fy, w: 165, h: 480 },
           { type: 'clock', x: 700, y: 460, r: 40 }
         ],
-        ground: { color: '#0F172A', style: 'tiles' }
+        ground: { color: '#111824', style: 'tiles' }
+      };
+    }
+    if (p === 'industrial' || p === 'warehouse') {
+      return {
+        lighting: 'night',
+        wall: { color: '#252F3F', pattern: 'metal', baseboardColor: '#161D28' },
+        structures: [
+          { type: 'window', x: 260, y: 580, w: 220, h: 180, view: 'night', shape: 'barred' },
+          { type: 'shelf', x: 700, y: 640, w: 250 },
+          { type: 'lamp', x: 480, y: 240, lightCone: true }
+        ],
+        ground: { color: '#1B222E', style: 'concrete' }
       };
     }
     return null;
@@ -228,7 +324,6 @@
     const fy = r.floorY !== undefined ? r.floorY : C.FLOOR_Y;
     const t = r.t !== undefined ? r.t : 0;
 
-    // Merge preset if specified
     if (r.preset) {
       const pre = getPresetRecipe(r.preset, fy);
       if (pre) {
@@ -236,7 +331,9 @@
       }
     }
 
-    // Detect if this is a pure deep-space scene (stars + dark sky + no terrestrial structures)
+    // Automatically configure Situation-Adaptive Lighting for this scene
+    detectAndApplySceneLighting(r);
+
     const isDeepSpace = Boolean(
       r.sky && r.sky.stars && !r.wall && !r.horizon && !r.structures &&
       (r.ground === false || r.space === true)
@@ -264,12 +361,10 @@
       structures(g, r.structures, fy, t);
     }
 
-    // Layer 5: Custom Declarative Background Parts (with Ocean Cliff Bug Sanitizer!)
+    // Layer 5: Custom Declarative Background Parts (with Full-Width Water Band Normalization)
     if (Array.isArray(r.parts) && window.CHAR && typeof window.CHAR.renderParts === 'function') {
       const sanitizedParts = r.parts.map((pt) => {
         if (!pt) return pt;
-        // Fix for the half-screen blue water block bug (e.g., x: 0, w: 540 blue rect in ocean shots):
-        // Stretch partial-width ocean water rectangles across the full 1080px width with a wave top!
         const isBlueWaterRect =
           pt.type === 'rect' &&
           typeof pt.fill === 'string' &&
@@ -312,10 +407,10 @@
   }
 
   /**
-   * Helper: Draws a seamless full-width animated ocean water band (fixes half-cliff water bugs)
+   * Helper: Draws a seamless full-width animated water band
    */
   function drawOceanBand(g, topY, botY, color, t) {
-    const baseCol = color || '#0284C7';
+    const baseCol = toneEnvColor(color || '#1D6FA5', 'sky');
     g.save();
     const grd = g.createLinearGradient(0, topY, 0, botY);
     grd.addColorStop(0, baseCol);
@@ -333,7 +428,6 @@
     g.closePath();
     g.fill();
 
-    // Foam highlight + crisp ink outline along the wave crest
     C.inkStyle(g, 3.8, C.PAL.ink);
     g.beginPath();
     g.moveTo(-40, topY);
@@ -343,8 +437,7 @@
     }
     g.stroke();
 
-    // Subtle secondary wave lines inside the water
-    g.strokeStyle = 'rgba(255,255,255,0.22)';
+    g.strokeStyle = 'rgba(255,255,255,0.20)';
     g.lineWidth = 2.5;
     for (let row = 1; row <= 3; row++) {
       const ry = topY + row * ((botY - topY) / 4);
@@ -362,6 +455,7 @@
 
   /**
    * 3. SKY, SPACE, UNDERWATER & CELESTIAL LAYER (`ENV.sky`)
+   * Harmonizes sky colors so sunset/daytime skies have rich Paper Billions editorial tones.
    */
   function sky(g, opts) {
     const o = opts || {};
@@ -370,14 +464,17 @@
 
     g.save();
     if (o.topColor && o.botColor) {
+      const topC = C.isDarkColor(o.topColor) ? o.topColor : toneEnvColor(o.topColor, 'sky');
+      const botC = toneEnvColor(o.botColor, 'sky');
       const grd = g.createLinearGradient(0, 0, 0, fy);
-      grd.addColorStop(0, o.topColor);
-      grd.addColorStop(1, o.botColor);
+      grd.addColorStop(0, topC);
+      grd.addColorStop(1, botC);
       g.fillStyle = grd;
     } else {
-      const base = o.color || o.topColor || '#E0F2FE';
+      const rawBase = o.color || o.topColor || '#BDD2E2';
+      const base = C.isDarkColor(rawBase) ? rawBase : toneEnvColor(rawBase, 'sky');
       const grd = g.createLinearGradient(0, 0, 0, fy);
-      grd.addColorStop(0, C.shadeColor(base, -6));
+      grd.addColorStop(0, C.shadeColor(base, -8));
       grd.addColorStop(1, base);
       g.fillStyle = grd;
     }
@@ -385,74 +482,72 @@
 
     // Stars (Twinkling + soft nebula glow in deep space)
     if (o.stars) {
-      const count = typeof o.stars === 'number' ? o.stars : 75;
+      const count = typeof o.stars === 'number' ? o.stars : 70;
       const rand = C.rng(o.seed || 17);
       for (let i = 0; i < count; i++) {
         const sx = rand() * C.W;
-        const sy = rand() * fy;
-        const sr = 1.2 + rand() * 2.2;
-        const alpha = 0.35 + 0.65 * Math.abs(Math.sin(t * 2.5 + i));
-        g.fillStyle = 'rgba(255,255,255,' + alpha + ')';
+        const sy = rand() * (fy * 0.85);
+        const sr = 1.2 + rand() * 2.0;
+        const alpha = 0.28 + 0.55 * Math.abs(Math.sin(t * 2.4 + i));
+        g.fillStyle = 'rgba(246,243,236,' + alpha.toFixed(3) + ')';
         g.beginPath();
         g.arc(sx, sy, sr, 0, Math.PI * 2);
         g.fill();
       }
     }
 
-    // Light Rays / Underwater Sunbeams
+    // Soft Diffused Atmospheric Rays (replaces harsh white stripes!)
     if (o.rays) {
-      g.fillStyle = o.rayColor || 'rgba(255,255,255,0.09)';
-      for (let rx = 110; rx < 980; rx += 260) {
-        g.beginPath();
-        g.moveTo(rx, 0); g.lineTo(rx + 85, 0);
-        g.lineTo(rx + 210, fy); g.lineTo(rx - 40, fy);
-        g.closePath(); g.fill();
-      }
+      const rayGrd = g.createRadialGradient(C.SAFE.cx, 120, 40, C.SAFE.cx, fy * 0.6, 820);
+      rayGrd.addColorStop(0, o.rayColor || 'rgba(255, 245, 215, 0.11)');
+      rayGrd.addColorStop(1, 'rgba(255, 245, 215, 0)');
+      g.fillStyle = rayGrd;
+      g.fillRect(0, 0, C.W, fy);
     }
 
-    // Sun / Moon / Distant Planet in Sky (Default x=720, y=360 inside Safe Zone)
+    // Sun / Moon / Distant Planet in Sky (Default x=730, y=380 inside Safe Zone)
     if (o.celestial || o.sun || o.moon) {
       const cel = typeof (o.celestial || o.sun || o.moon) === 'object'
         ? (o.celestial || o.sun || o.moon)
-        : { x: 720, y: 360, r: 54, color: o.moon ? '#F8FAFC' : '#FACC15' };
-      const cx = cel.x !== undefined ? cel.x : 720;
-      const cy = cel.y !== undefined ? cel.y : 360;
-      const cr = cel.r || 54;
-      const cCol = cel.color || (o.moon ? '#F8FAFC' : '#FACC15');
+        : { x: 730, y: 380, r: 52, color: o.moon ? '#F4F0E6' : '#E5B53B' };
+      const cx = cel.x !== undefined ? cel.x : 730;
+      const cy = cel.y !== undefined ? cel.y : 380;
+      const cr = cel.r || 52;
+      const rawCol = cel.color || (o.moon ? '#F4F0E6' : '#E5B53B');
+      const cCol = toneEnvColor(rawCol);
 
-      // Soft outer atmospheric glow
-      const glow = g.createRadialGradient(cx, cy, cr * 0.6, cx, cy, cr * 2.1);
-      glow.addColorStop(0, C.rgba ? C.rgba(cCol, 0.26) : 'rgba(250, 204, 21, 0.22)');
+      const glow = g.createRadialGradient(cx, cy, cr * 0.6, cx, cy, cr * 1.9);
+      glow.addColorStop(0, C.rgba ? C.rgba(cCol, 0.20) : 'rgba(229, 181, 59, 0.18)');
       glow.addColorStop(1, 'rgba(255,255,255,0)');
       g.fillStyle = glow;
       g.beginPath();
-      g.arc(cx, cy, cr * 2.1, 0, Math.PI * 2);
+      g.arc(cx, cy, cr * 1.9, 0, Math.PI * 2);
       g.fill();
 
       C.circle(g, cx, cy, cr, { fill: cCol, shade: true, lw: 3.5 });
       if (cel.rings) {
-        g.strokeStyle = cel.ringColor || '#FDE68A';
-        g.lineWidth = 10;
+        g.strokeStyle = cel.ringColor || '#E8C97A';
+        g.lineWidth = 9;
         g.beginPath();
         g.ellipse(cx, cy, cr * 1.75, cr * 0.35, -0.2, 0, Math.PI * 2);
         g.stroke();
       }
     }
 
-    // Drifting Cartoon Clouds (Placed in Safe Upper Zone y: 320..460)
+    // Drifting Cartoon Clouds (Warm editorial cream `#F4F0E6`, never blinding pure white)
     if (o.clouds) {
       const count = typeof o.clouds === 'number' ? o.clouds : 3;
-      const cCol = o.cloudColor || '#FFFFFF';
+      const cCol = toneEnvColor(o.cloudColor || '#F4F0E6');
       for (let i = 0; i < count; i++) {
         const cx = ((i * 390 + 180 + t * (12 + i * 3)) % (C.W + 240)) - 120;
-        const cy = 330 + (i % 2) * 75;
+        const cy = 340 + (i % 2) * 75;
         const sc = 0.85 + (i % 3) * 0.12;
         g.save();
         g.translate(cx, cy);
         g.scale(sc, sc);
-        C.roundRect(g, -65, -18, 130, 38, 19, { fill: cCol, lw: 3.2 });
-        C.circle(g, -22, -22, 24, { fill: cCol, lw: 3.2 });
-        C.circle(g, 18, -26, 28, { fill: cCol, lw: 3.2 });
+        C.roundRect(g, -65, -18, 130, 38, 19, { fill: cCol, lw: 3.2, grad: false });
+        C.circle(g, -22, -22, 24, { fill: cCol, shade: false, lw: 3.2 });
+        C.circle(g, 18, -26, 28, { fill: cCol, shade: false, lw: 3.2 });
         g.fillStyle = cCol;
         g.fillRect(-58, -15, 116, 30);
         g.restore();
@@ -463,14 +558,14 @@
 
   /**
    * 4. PARAMETRIC 9:16 HORIZON SILHOUETTE GENERATOR (`ENV.horizon`)
-   * Supports: 'hills' | 'peaks' | 'skyline' | 'stepped' | 'tankFarm' | 'waves' | 'craters' | 'stalactites' | 'poly'
    */
   function horizon(g, layers, floorY, t) {
     const fy = floorY !== undefined ? floorY : C.FLOOR_Y;
     (layers || []).forEach((l) => {
       if (!l) return;
       const type = l.type || 'hills';
-      const col = l.color || '#94A3B8';
+      const rawCol = l.color || '#7E8F9F';
+      const col = C.isDarkColor(rawCol) ? rawCol : toneEnvColor(rawCol, 'sky');
       const base = l.y !== undefined ? l.y : fy;
 
       g.save();
@@ -478,11 +573,11 @@
 
       if (type === 'waves' || type === 'ocean' || type === 'water') {
         const topY = l.topY !== undefined ? l.topY : base - (l.amp || 220);
-        drawOceanBand(g, topY, base, col || '#0284C7', t);
+        drawOceanBand(g, topY, base, col || '#1D6FA5', t);
       } else if (type === 'hills' || type === 'dunes') {
         const amp = l.amp || 180;
         const grd = g.createLinearGradient(0, base - amp * 1.2, 0, base);
-        grd.addColorStop(0, C.shadeColor(col, 8));
+        grd.addColorStop(0, C.shadeColor(col, 6));
         grd.addColorStop(1, C.shadeColor(col, -10));
         g.fillStyle = grd;
         g.beginPath();
@@ -509,7 +604,7 @@
           g.fill(); g.stroke();
 
           if (l.snow) {
-            g.fillStyle = '#F8FAFC';
+            g.fillStyle = '#F4F0E6';
             g.beginPath();
             g.moveTo(mx, base - ph);
             g.lineTo(mx - (x1 - x0) * 0.14, base - ph * 0.72);
@@ -534,7 +629,7 @@
               for (let wy = base - bh + 32; wy < base - 50; wy += 60) {
                 const lit = ((wx + wy + i) % 3) !== 0;
                 C.roundRect(g, wx, wy, 24, 34, 3, {
-                  fill: lit ? (l.windowColor || '#FEF08A') : C.shadeColor(bCol, -18),
+                  fill: lit ? (l.windowColor || '#F4DC7A') : C.shadeColor(bCol, -18),
                   lw: 2
                 });
               }
@@ -545,25 +640,19 @@
             C.circle(g, bx + 41 + Math.sin((t || 0) * 2 + i) * 14, base - bh - 150, 24, { fill: '#64748B', lw: 2.5 });
           }
         }
-      } else if (type === 'tankFarm' || type === 'starbase' || type === 'spaceport') {
-        // Gleaming cylindrical Starbase cryogenic tank farm + domes (replaces Mayan stepped blocks!)
+      } else if (type === 'tanks' || type === 'silos' || type === 'industrial') {
         const spots = l.positions || [150, 265, 680, 795, 910];
         spots.forEach((tx, idx) => {
           const tw = l.tankW || 86;
           const th = (l.tankH || 210) + (idx % 2) * 35;
-          const tCol = l.color || '#E2E8F0';
-          // Dome top
-          C.circle(g, tx, base - th, tw / 2, { fill: C.shadeColor(tCol, 8), lw: 3.2 });
-          // Cylinder body
+          const tCol = toneEnvColor(l.color || '#DCE3EA', 'wall');
+          C.circle(g, tx, base - th, tw / 2, { fill: C.shadeColor(tCol, 6), lw: 3.2 });
           C.roundRect(g, tx - tw / 2, base - th, tw, th, 6, { fill: tCol, lw: 3.2 });
-          // Vertical shading stripe
-          g.fillStyle = 'rgba(255,255,255,0.35)';
+          g.fillStyle = 'rgba(255,255,255,0.22)';
           g.fillRect(tx - tw * 0.28, base - th + 6, tw * 0.18, th - 12);
-          // Horizontal pipe ring
           C.line(g, tx - tw / 2, base - th * 0.45, tx + tw / 2, base - th * 0.45, { lw: 2.5 });
         });
       } else if (type === 'stepped') {
-        // Upgraded industrial/architectural stepped silhouette (cleanly grounded, no weird floating misalignment)
         const spots = l.positions || [210, 520, 810];
         spots.forEach((sx, idx) => {
           const tiers = l.tiers || (idx === 1 ? 4 : 3);
@@ -600,24 +689,25 @@
 
   /**
    * 5. PROCEDURAL INTERIOR WALL CREATOR (`ENV.wall`)
-   * Upgraded with Paper Billions soft edge vignette & office stripe patterns.
+   * Upgraded with Paper Billions boxed room corner shading & matte wall textures.
    */
   function wall(g, opts) {
     const o = opts || {};
     const fy = o.floorY !== undefined ? o.floorY : C.FLOOR_Y;
-    const col = o.color || '#DFD9CD';
+    const rawCol = o.color || '#DCD5C7';
+    const isDark = C.isDarkColor(rawCol);
+    const col = isDark ? rawCol : toneEnvColor(rawCol, 'wall');
     const pat = o.pattern || 'plain';
 
     g.save();
-    // Soft vertical gradient on wall
     const wGrd = g.createLinearGradient(0, 0, 0, fy);
-    wGrd.addColorStop(0, C.shadeColor(col, -6));
+    wGrd.addColorStop(0, C.shadeColor(col, isDark ? -8 : -5));
     wGrd.addColorStop(0.5, col);
-    wGrd.addColorStop(1, C.shadeColor(col, -8));
+    wGrd.addColorStop(1, C.shadeColor(col, isDark ? -12 : -8));
     g.fillStyle = wGrd;
     g.fillRect(0, 0, C.W, fy);
 
-    const lineCol = o.patternColor || 'rgba(0,0,0,0.12)';
+    const lineCol = o.patternColor || (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,20,30,0.10)');
 
     if (pat === 'stone') {
       for (let y = 80; y < fy; y += 85) {
@@ -641,26 +731,25 @@
       for (let x = 220; x < C.W; x += 220) {
         C.line(g, x, 0, x, fy, { lw: 3, color: lineCol });
         for (let y = 80; y < fy; y += 130) {
-          C.circle(g, x - 12, y, 3, { fill: 'rgba(255,255,255,0.25)', stroke: false });
-          C.circle(g, x + 12, y, 3, { fill: 'rgba(255,255,255,0.25)', stroke: false });
+          C.circle(g, x - 12, y, 3, { fill: 'rgba(255,255,255,0.18)', stroke: false });
+          C.circle(g, x + 12, y, 3, { fill: 'rgba(255,255,255,0.18)', stroke: false });
         }
       }
-    } else if (pat === 'officeStripe' || pat === 'stripe') {
-      // Paper Billions Google Breakroom / Tech Office horizontal wall stripe
+    } else if (pat === 'stripe') {
       const sy = o.stripeY || (fy - 390);
       const sh = o.stripeH || 36;
-      g.fillStyle = o.stripeColor || '#3B82F6';
+      g.fillStyle = toneEnvColor(o.stripeColor || '#3B6E9C');
       g.fillRect(0, sy, C.W, sh);
       C.line(g, 0, sy, C.W, sy, { lw: 3 });
       C.line(g, 0, sy + sh, C.W, sy + sh, { lw: 3 });
       if (o.accentStripe) {
-        g.fillStyle = o.accentStripe;
+        g.fillStyle = toneEnvColor(o.accentStripe);
         g.fillRect(0, sy + sh, C.W, 14);
         C.line(g, 0, sy + sh + 14, C.W, sy + sh + 14, { lw: 2.5 });
       }
     } else if (pat === 'wainscot') {
       const wy = fy - 250;
-      g.fillStyle = o.wainscotColor || '#78350F';
+      g.fillStyle = o.wainscotColor || '#6B3410';
       g.fillRect(0, wy, C.W, 250);
       C.line(g, 0, wy, C.W, wy, { lw: 4 });
       for (let x = 60; x < C.W; x += 240) {
@@ -669,7 +758,7 @@
     } else if (pat === 'acoustic') {
       for (let ax = 110; ax < 860; ax += 150) {
         for (let ay = 280; ay < 960; ay += 150) {
-          C.roundRect(g, ax, ay, 115, 115, 6, { fill: C.shadeColor(col, -12), hatch: true, hatchColor: 'rgba(255,255,255,0.06)', lw: 2.5 });
+          C.roundRect(g, ax, ay, 115, 115, 6, { fill: C.shadeColor(col, -12), hatch: true, hatchColor: 'rgba(255,255,255,0.05)', lw: 2.5 });
         }
       }
     } else if (pat === 'bio') {
@@ -679,16 +768,30 @@
       }
     }
 
-    // Soft Paper Billions radial room spotlight
-    const rGrd = g.createRadialGradient(C.SAFE.cx, fy - 480, 60, C.SAFE.cx, fy - 420, 760);
-    rGrd.addColorStop(0, 'rgba(255,255,255,0.18)');
-    rGrd.addColorStop(1, 'rgba(0,0,0,0.08)');
+    // Boxed Room Corner Shading (Left & Right wall-corner depth like Paper Billions rooms)
+    const cornerAlpha = isDark ? 0.30 : 0.08;
+    const lCorner = g.createLinearGradient(0, 0, 120, 0);
+    lCorner.addColorStop(0, 'rgba(10,14,22,' + cornerAlpha + ')');
+    lCorner.addColorStop(1, 'rgba(10,14,22,0)');
+    g.fillStyle = lCorner;
+    g.fillRect(0, 0, 120, fy);
+
+    const rCorner = g.createLinearGradient(C.W - 120, 0, C.W, 0);
+    rCorner.addColorStop(0, 'rgba(10,14,22,0)');
+    rCorner.addColorStop(1, 'rgba(10,14,22,' + cornerAlpha + ')');
+    g.fillStyle = rCorner;
+    g.fillRect(C.W - 120, 0, 120, fy);
+
+    // Subtle warm room center light
+    const rGrd = g.createRadialGradient(C.SAFE.cx, fy - 480, 60, C.SAFE.cx, fy - 420, 740);
+    rGrd.addColorStop(0, isDark ? 'rgba(255,250,235,0.07)' : 'rgba(255,252,240,0.11)');
+    rGrd.addColorStop(1, 'rgba(0,0,0,0.06)');
     g.fillStyle = rGrd;
     g.fillRect(0, 0, C.W, fy);
 
     if (o.baseboard !== false && pat !== 'bio') {
       C.roundRect(g, -10, fy - 22, C.W + 20, 22, 0, {
-        fill: o.baseboardColor || C.shadeColor(col, -28),
+        fill: o.baseboardColor || C.shadeColor(col, -26),
         lw: 3.5
       });
     }
@@ -697,8 +800,6 @@
 
   /**
    * 6. ARCHITECTURAL & MIDGROUND STRUCTURE PLACER (`ENV.structures`)
-   * Includes Paper Billions interior details: 'shelf', 'clock', 'serverRack',
-   * 'vaultDoor', 'whiteboard', 'poster', 'lamp', 'counter', 'plant', 'cryoTank'
    */
   function structures(g, list, floorY, t) {
     const fy = floorY !== undefined ? floorY : C.FLOOR_Y;
@@ -706,7 +807,7 @@
       if (!s) return;
       const type = s.type || 'pillar';
       const x = s.x !== undefined ? s.x : C.SAFE.cx;
-      const col = s.color || '#94A3B8';
+      const col = toneEnvColor(s.color || '#8D9AA8');
 
       if (type === 'pillar') {
         const w = s.w || 74;
@@ -722,42 +823,36 @@
       } else if (type === 'door') {
         const w = s.w || 210, h = s.h || 440;
         C.roundRect(g, x - w / 2, fy - h, w, h, s.arched ? w / 2 : 6, { fill: col, lw: 4, shadow: true });
-        C.circle(g, x + w * 0.32, fy - h * 0.45, 7, { fill: '#FACC15', lw: 2.5 });
+        C.circle(g, x + w * 0.32, fy - h * 0.45, 7, { fill: '#E3B330', lw: 2.5 });
       } else if (type === 'shelf' || type === 'bookshelf') {
-        // Paper Billions Floating Wall Shelf with Books, Mugs & Lava Lamp
         const y = s.y || 620;
         const w = s.w || 240;
-        C.roundRect(g, x - w / 2, y, w, 18, 4, { fill: s.color || '#A16207', lw: 3.5, shadow: true });
-        // Books on left
-        C.roundRect(g, x - w * 0.38, y - 54, 22, 54, 2, { fill: '#EF4444', lw: 2.8 });
-        C.roundRect(g, x - w * 0.38 + 24, y - 62, 24, 62, 2, { fill: '#3B82F6', lw: 2.8 });
-        C.roundRect(g, x - w * 0.38 + 50, y - 48, 20, 48, 2, { fill: '#FACC15', lw: 2.8 });
-        // Coffee mug in middle
-        C.roundRect(g, x + 10, y - 34, 28, 34, 4, { fill: '#F8FAFC', lw: 2.8 });
-        // Lava lamp or small plant on right
-        C.roundRect(g, x + w * 0.26, y - 68, 28, 68, 12, { fill: '#FB923C', lw: 2.8 });
+        C.roundRect(g, x - w / 2, y, w, 18, 4, { fill: s.color || '#925B18', lw: 3.5, shadow: true });
+        C.roundRect(g, x - w * 0.38, y - 54, 22, 54, 2, { fill: '#C83E37', lw: 2.8 });
+        C.roundRect(g, x - w * 0.38 + 24, y - 62, 24, 62, 2, { fill: '#3B6E9C', lw: 2.8 });
+        C.roundRect(g, x - w * 0.38 + 50, y - 48, 20, 48, 2, { fill: '#E3B330', lw: 2.8 });
+        C.roundRect(g, x + 10, y - 34, 28, 34, 4, { fill: '#F4F0E6', lw: 2.8 });
+        C.roundRect(g, x + w * 0.26, y - 68, 28, 68, 12, { fill: '#DD7B30', lw: 2.8 });
         C.roundRect(g, x + w * 0.26 - 4, y - 16, 36, 16, 3, { fill: '#475569', lw: 2.8 });
       } else if (type === 'clock') {
         const y = s.y || 460;
         const r = s.r || 42;
         C.circle(g, x, y, r + 5, { fill: '#334155', lw: 3.5, shadow: true });
-        C.circle(g, x, y, r, { fill: '#F8FAFC', lw: 3 });
+        C.circle(g, x, y, r, { fill: '#F4F0E6', shade: false, lw: 3 });
         C.line(g, x, y, x, y - r * 0.58, { lw: 3.5, color: C.PAL.ink });
-        C.line(g, x, y, x + r * 0.45, y + r * 0.15, { lw: 3, color: '#EF4444' });
+        C.line(g, x, y, x + r * 0.45, y + r * 0.15, { lw: 3, color: '#C83E37' });
         C.circle(g, x, y, 4, { fill: C.PAL.ink, stroke: false });
       } else if (type === 'whiteboard' || type === 'poster' || type === 'frame') {
         const y = s.y || 660;
         const w = s.w || 280, h = s.h || 200;
-        const bg = s.dark ? '#0F172A' : (s.fill || '#F8FAFC');
+        const bg = s.dark ? '#111824' : (s.fill || '#F4F0E6');
         C.roundRect(g, x - w / 2, y - h / 2, w, h, 8, { fill: bg, lw: 4, shadow: true });
-        // Chart squiggle & sticky note inside board
-        const lineCol = s.dark ? '#38BDF8' : '#3B82F6';
+        const lineCol = s.dark ? '#38BDF8' : '#2B6CB0';
         C.line(g, x - w * 0.35, y + h * 0.2, x - w * 0.1, y - h * 0.05, { lw: 4, color: lineCol });
         C.line(g, x - w * 0.1, y - h * 0.05, x + w * 0.15, y + h * 0.1, { lw: 4, color: lineCol });
-        C.line(g, x + w * 0.15, y + h * 0.1, x + w * 0.35, y - h * 0.25, { lw: 4, color: '#22C55E' });
-        C.roundRect(g, x - w * 0.38, y - h * 0.36, 46, 46, 2, { fill: '#FEF08A', lw: 2.5 });
+        C.line(g, x + w * 0.15, y + h * 0.1, x + w * 0.35, y - h * 0.25, { lw: 4, color: '#1F9D55' });
+        C.roundRect(g, x - w * 0.38, y - h * 0.36, 46, 46, 2, { fill: '#F4DC7A', lw: 2.5 });
       } else if (type === 'serverRack') {
-        // Paper Billions Data Center Server Rack with Blinking LEDs
         const w = s.w || 170, h = s.h || 500;
         const topY = (s.y || fy) - h;
         C.roundRect(g, x - w / 2, topY, w, h, 8, { fill: '#1E293B', lw: 4, shadow: true });
@@ -769,7 +864,6 @@
           C.line(g, x + 4, sy + 21, x + w * 0.3, sy + 21, { lw: 3, color: '#334155' });
         }
       } else if (type === 'vaultDoor') {
-        // Paper Billions Circular Steel Vault Door
         const r = s.r || 210;
         const cy = (s.y || fy) - r - 10;
         C.circle(g, x, cy, r + 22, { fill: '#64748B', lw: 4.5, shadow: true });
@@ -777,9 +871,9 @@
         C.circle(g, x, cy, r * 0.38, { fill: '#475569', lw: 3.5 });
         for (let a = 0; a < 6; a++) {
           const ang = (a * Math.PI) / 3 + (t || 0) * 0.15;
-          C.line(g, x, cy, x + Math.cos(ang) * r * 0.34, cy + Math.sin(ang) * r * 0.34, { lw: 5, color: '#F8FAFC' });
+          C.line(g, x, cy, x + Math.cos(ang) * r * 0.34, cy + Math.sin(ang) * r * 0.34, { lw: 5, color: '#F4F0E6' });
         }
-        C.circle(g, x, cy, 18, { fill: '#FACC15', lw: 3 });
+        C.circle(g, x, cy, 18, { fill: '#E3B330', lw: 3 });
       } else if (type === 'lamp' || type === 'ceilingLight') {
         const ly = s.y || 250;
         if (s.lightCone !== false) {
@@ -787,52 +881,50 @@
         }
         C.line(g, x, 0, x, ly - 18, { lw: 4, color: C.PAL.ink });
         C.roundRect(g, x - 48, ly - 20, 96, 32, 16, { fill: s.color || '#334155', lw: 3.5 });
-        C.circle(g, x, ly + 14, 14, { fill: '#FEF08A', lw: 2.5 });
+        C.circle(g, x, ly + 14, 14, { fill: '#F4DC7A', lw: 2.5 });
       } else if (type === 'counter' || type === 'desk') {
         const w = s.w || 320, h = s.h || 185;
         const by = s.y || fy;
-        C.roundRect(g, x - w / 2, by - h, w, h, 4, { fill: s.color || '#94A3B8', lw: 3.8, shadow: true });
-        C.roundRect(g, x - w / 2 - 10, by - h - 16, w + 20, 20, 4, { fill: s.topColor || '#F8FAFC', lw: 3.8 });
+        C.roundRect(g, x - w / 2, by - h, w, h, 4, { fill: s.color || '#8D9AA8', lw: 3.8, shadow: true });
+        C.roundRect(g, x - w / 2 - 10, by - h - 16, w + 20, 20, 4, { fill: s.topColor || '#F4F0E6', lw: 3.8 });
       } else if (type === 'plant') {
         const by = s.y || fy;
-        C.roundRect(g, x - 28, by - 64, 56, 64, 6, { fill: '#B45309', lw: 3.5 });
-        C.circle(g, x - 20, by - 95, 28, { fill: '#16A34A', lw: 3 });
-        C.circle(g, x + 18, by - 90, 26, { fill: '#22C55E', lw: 3 });
-        C.circle(g, x, by - 115, 32, { fill: '#15803D', lw: 3 });
-      } else if (type === 'cryoTank') {
+        C.roundRect(g, x - 28, by - 64, 56, 64, 6, { fill: '#A85518', lw: 3.5 });
+        C.circle(g, x - 20, by - 95, 28, { fill: '#228B4E', lw: 3 });
+        C.circle(g, x + 18, by - 90, 26, { fill: '#2BA35E', lw: 3 });
+        C.circle(g, x, by - 115, 32, { fill: '#1B733E', lw: 3 });
+      } else if (type === 'tank' || type === 'silo' || type === 'storagetank') {
         const w = s.w || 96, h = s.h || 250;
         const by = s.y || fy;
-        C.circle(g, x, by - h, w / 2, { fill: '#F8FAFC', lw: 3.5 });
-        C.roundRect(g, x - w / 2, by - h, w, h, 6, { fill: '#E2E8F0', lw: 3.5 });
+        C.circle(g, x, by - h, w / 2, { fill: '#EAE6DD', lw: 3.5 });
+        C.roundRect(g, x - w / 2, by - h, w, h, 6, { fill: '#DCE2E8', lw: 3.5 });
       } else if (type === 'tree') {
         const kind = s.style || 'oak';
         if (kind === 'pine') {
-          C.roundRect(g, x - 12, fy - 70, 24, 70, 2, { fill: '#78350F', lw: 3.5 });
+          C.roundRect(g, x - 12, fy - 70, 24, 70, 2, { fill: '#6B3410', lw: 3.5 });
           if (window.CHAR) {
-            window.CHAR.renderParts(g, [{ type: 'poly', pts: [[x - 65, fy - 60], [x, fy - 240], [x + 65, fy - 60]], fill: s.color || '#15803D' }], t);
+            window.CHAR.renderParts(g, [{ type: 'poly', pts: [[x - 65, fy - 60], [x, fy - 240], [x + 65, fy - 60]], fill: s.color || '#1F7A44' }], t);
           }
         } else if (kind === 'palm') {
-          C.roundRect(g, x - 12, fy - 180, 24, 180, 6, { fill: '#92400E', lw: 3.5 });
-          C.roundRect(g, x - 75, fy - 195, 70, 20, 10, { fill: '#16A34A', lw: 3 });
-          C.roundRect(g, x + 5, fy - 195, 70, 20, 10, { fill: '#16A34A', lw: 3 });
+          C.roundRect(g, x - 12, fy - 180, 24, 180, 6, { fill: '#824012', lw: 3.5 });
+          C.roundRect(g, x - 75, fy - 195, 70, 20, 10, { fill: '#228B4E', lw: 3 });
+          C.roundRect(g, x + 5, fy - 195, 70, 20, 10, { fill: '#228B4E', lw: 3 });
         } else {
-          C.roundRect(g, x - 14, fy - 130, 28, 130, 4, { fill: '#78350F', lw: 3.5 });
-          C.circle(g, x, fy - 170, s.r || 68, { fill: s.color || '#22C55E', lw: 3.5 });
+          C.roundRect(g, x - 14, fy - 130, 28, 130, 4, { fill: '#6B3410', lw: 3.5 });
+          C.circle(g, x, fy - 170, s.r || 68, { fill: s.color || '#279654', lw: 3.5 });
         }
       } else if (type === 'torch') {
         const ty = s.y || 680;
-        C.roundRect(g, x - 8, ty, 16, 58, 4, { fill: '#78350F', lw: 3 });
-        C.circle(g, x, ty - 16, 85, { fill: 'rgba(251, 146, 60, 0.18)', stroke: false });
-        C.circle(g, x, ty - 14 + Math.sin(t * 14 + x) * 3, 18, { fill: '#F97316', lw: 2.5 });
-        C.circle(g, x, ty - 12, 9, { fill: '#FACC15', stroke: false });
+        C.roundRect(g, x - 8, ty, 16, 58, 4, { fill: '#6B3410', lw: 3 });
+        C.circle(g, x, ty - 16, 80, { fill: 'rgba(235, 135, 55, 0.14)', stroke: false });
+        C.circle(g, x, ty - 14 + Math.sin(t * 14 + x) * 3, 18, { fill: '#DD6B20', lw: 2.5 });
+        C.circle(g, x, ty - 12, 9, { fill: '#E3B330', stroke: false });
       }
     });
   }
 
   /**
    * 7. UNIVERSAL WINDOW BUILDER (`ENV.window`)
-   * Upgraded with Paper Billions outdoor trees, lit night buildings & glass reflections.
-   * 9:16 Safe-Zone Defaults: `x = 500, y = 680, w = 320, h = 340`.
    */
   function drawWindow(g, opts) {
     const o = opts || {};
@@ -842,7 +934,7 @@
     const h = o.h || 340;
     const shape = o.shape || 'rect';
     const isNight = o.view === 'night' || o.view === 'space';
-    const skyCol = o.skyColor || (isNight ? '#0F172A' : '#BAE6FD');
+    const skyCol = o.skyColor || (isNight ? '#111927' : '#A9C7DC');
 
     g.save();
     if (shape === 'porthole') {
@@ -861,31 +953,27 @@
     g.fill();
     g.clip();
 
-    // Night stars or Moon inside window
     if (isNight) {
-      C.circle(g, left + w * 0.76, top + h * 0.24, 18, { fill: '#FEF08A', lw: 2.5 });
+      C.circle(g, left + w * 0.76, top + h * 0.24, 18, { fill: '#F4DC7A', lw: 2.5 });
     } else {
-      // Soft cloud puff
-      C.roundRect(g, left + 35, top + 40, 85, 24, 12, { fill: '#FFFFFF', lw: 2 });
+      C.roundRect(g, left + 35, top + 40, 85, 24, 12, { fill: '#F4F0E6', lw: 2 });
     }
 
     if (o.buildings) {
-      const bCol = isNight ? '#1E293B' : '#94A3B8';
+      const bCol = isNight ? '#1E293B' : '#8D9AA8';
       [[left + 18, top + 120, 68, h], [left + 96, top + 72, 88, h], [left + 196, top + 132, 74, h]].forEach((b) => {
         C.roundRect(g, b[0], b[1], b[2], b[3], 2, { fill: bCol, lw: 2.5 });
         if (isNight) {
-          C.roundRect(g, b[0] + 14, b[1] + 20, 14, 18, 2, { fill: '#FEF08A', lw: 1.5 });
-          C.roundRect(g, b[0] + 38, b[1] + 50, 14, 18, 2, { fill: '#FEF08A', lw: 1.5 });
+          C.roundRect(g, b[0] + 14, b[1] + 20, 14, 18, 2, { fill: '#F4DC7A', lw: 1.5 });
+          C.roundRect(g, b[0] + 38, b[1] + 50, 14, 18, 2, { fill: '#F4DC7A', lw: 1.5 });
         }
       });
     } else if (o.trees !== false && !isNight) {
-      // Paper Billions green outdoor foliage silhouette at bottom of window
-      C.circle(g, left + w * 0.25, top + h - 10, 58, { fill: '#22C55E', lw: 2.8 });
-      C.circle(g, left + w * 0.72, top + h - 5, 66, { fill: '#16A34A', lw: 2.8 });
+      C.circle(g, left + w * 0.25, top + h - 10, 58, { fill: '#279654', lw: 2.8 });
+      C.circle(g, left + w * 0.72, top + h - 5, 66, { fill: '#1F7A44', lw: 2.8 });
     }
 
-    // Diagonal glass reflection streaks
-    g.strokeStyle = 'rgba(255,255,255,0.28)';
+    g.strokeStyle = 'rgba(255,255,255,0.22)';
     g.lineWidth = 8;
     g.beginPath();
     g.moveTo(left + 28, top + h - 24);
@@ -903,27 +991,27 @@
     g.restore();
 
     C.roundRect(g, left, top, w, h, rad, { fill: false, lw: 4.5 });
-    C.roundRect(g, left - 12, top + h - 6, w + 24, 16, 4, { fill: o.sillColor || '#F8FAFC', lw: 3.5 });
+    C.roundRect(g, left - 12, top + h - 6, w + 24, 16, 4, { fill: o.sillColor || '#EAE5D9', lw: 3.5 });
   }
 
   /**
    * 8. PROCEDURAL GROUND / FLOOR / WATER / STRATA BUILDER (`ENV.ground`)
-   * Default `y = 1320` down to `1920` (600px vertical ground/strata section).
    */
   function ground(g, opts) {
     const o = opts || {};
     const fy = o.y !== undefined ? o.y : C.FLOOR_Y;
-    const col = o.color || '#8C7A6B';
+    const rawCol = o.color || '#8C7D6E';
+    const col = C.isDarkColor(rawCol) ? rawCol : toneEnvColor(rawCol, 'wall');
     const style = o.style || 'solid';
     const t = o.t || 0;
 
     g.save();
     if (style === 'water' || style === 'ocean') {
-      drawOceanBand(g, fy, C.H, col || '#0284C7', t);
+      drawOceanBand(g, fy, C.H, col || '#1D6FA5', t);
     } else if (style === 'seafloor' || style === 'underwater') {
       const fGrd = g.createLinearGradient(0, fy, 0, C.H);
-      fGrd.addColorStop(0, o.color || '#D97706');
-      fGrd.addColorStop(1, C.shadeColor(o.color || '#D97706', -22));
+      fGrd.addColorStop(0, o.color || '#C47B2B');
+      fGrd.addColorStop(1, C.shadeColor(o.color || '#C47B2B', -22));
       g.fillStyle = fGrd;
       g.beginPath();
       g.moveTo(-20, fy);
@@ -936,30 +1024,29 @@
       C.inkStyle(g, 3.8, C.PAL.ink);
       g.stroke();
     } else if (style === 'road') {
-      g.fillStyle = o.sidewalkColor || '#CBD5E1';
+      g.fillStyle = toneEnvColor(o.sidewalkColor || '#C4CDD6', 'wall');
       g.fillRect(0, fy, C.W, 70);
       C.line(g, 0, fy, C.W, fy, { lw: 4 });
-      g.fillStyle = col || '#475569';
+      g.fillStyle = col || '#3F4B5B';
       g.fillRect(0, fy + 70, C.W, C.H - fy - 70);
       C.line(g, 0, fy + 70, C.W, fy + 70, { lw: 4 });
-      C.line(g, 0, fy + 180, C.W, fy + 180, { lw: 5, color: o.stripeColor || '#FACC15', dash: [48, 36] });
-    } else if (style === 'launchPad' || style === 'tarmac') {
+      C.line(g, 0, fy + 180, C.W, fy + 180, { lw: 5, color: o.stripeColor || '#E3B330', dash: [48, 36] });
+    } else if (style === 'tarmac' || style === 'concrete') {
       const fGrd = g.createLinearGradient(0, fy, 0, C.H);
       fGrd.addColorStop(0, col || '#475569');
       fGrd.addColorStop(1, C.shadeColor(col || '#475569', -20));
       g.fillStyle = fGrd;
       g.fillRect(0, fy, C.W, C.H - fy);
       C.line(g, 0, fy, C.W, fy, { lw: 4 });
-      // Yellow hazard apron stripe
-      g.fillStyle = '#FACC15';
+      g.fillStyle = '#E3B330';
       g.fillRect(0, fy + 4, C.W, 14);
       C.line(g, 0, fy + 18, C.W, fy + 18, { lw: 3 });
     } else if (style === 'strata') {
       const bands = o.bands || [
-        { h: 90, color: '#65A30D' },
-        { h: 160, color: '#A16207' },
-        { h: 180, color: '#78350F' },
-        { h: 300, color: '#44403C' }
+        { h: 90, color: '#5E8C2A' },
+        { h: 160, color: '#945B18' },
+        { h: 180, color: '#6B3410' },
+        { h: 300, color: '#3F3B37' }
       ];
       let curY = fy;
       bands.forEach((b) => {
@@ -1016,24 +1103,24 @@
       const py = ((r() * C.H + t * vy) % C.H + C.H) % C.H;
 
       if (shape === 'rain') {
-        C.line(g, px, py, px - 10, py + 28, { lw: 2, color: o.color || 'rgba(147, 197, 253, 0.55)' });
+        C.line(g, px, py, px - 10, py + 28, { lw: 2, color: o.color || 'rgba(147, 197, 253, 0.50)' });
       } else if (shape === 'paper') {
         g.save();
         g.translate(px, py);
         g.rotate(Math.sin(t * 3 + i) * 0.6);
-        C.roundRect(g, -12, -8, 24, 16, 2, { fill: o.color || '#FFFFFF', lw: 2 });
+        C.roundRect(g, -12, -8, 24, 16, 2, { fill: o.color || '#F4F0E6', lw: 2 });
         g.restore();
       } else if (shape === 'confetti') {
-        const cols = ['#EF4444', '#3B82F6', '#10B981', '#FACC15', '#EC4899'];
+        const cols = ['#C83E37', '#2B6CB0', '#1F9D55', '#E3B330', '#C45B7C'];
         g.save();
         g.translate(px, py);
         g.rotate(t * 4 + i);
         C.roundRect(g, -7, -4, 14, 8, 2, { fill: cols[i % cols.length], lw: 1.5 });
         g.restore();
       } else if (shape === 'bubbles') {
-        C.circle(g, px, py, 6 + (i % 8), { fill: 'rgba(255,255,255,0.22)', stroke: 'rgba(255,255,255,0.6)', lw: 2 });
+        C.circle(g, px, py, 6 + (i % 8), { fill: 'rgba(255,255,255,0.20)', stroke: 'rgba(255,255,255,0.55)', lw: 2 });
       } else {
-        const col = o.color || (shape === 'embers' ? '#F97316' : (shape === 'cells' ? '#EF4444' : '#FFFFFF'));
+        const col = o.color || (shape === 'embers' ? '#DD6B20' : (shape === 'cells' ? '#C83E37' : '#F4F0E6'));
         C.circle(g, px, py, o.r || (shape === 'cells' ? 10 : 3.5), {
           fill: col,
           stroke: shape === 'cells' ? C.PAL.ink : false,

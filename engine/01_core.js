@@ -1,9 +1,9 @@
 /**
- * MODULE 01: CORE — 9:16 VERTICAL SHORTS & REELS EDITION (engine/01_core.js)
+ * MODULE 01: CORE — 9:16 VERTICAL SHORTS & REELS PAPER BILLIONS EDITION (engine/01_core.js)
  * 1080x1920 Vertical Stage, UI Safe-Zone constants (C.SAFE), raised floor (y=1320),
- * camera-aware safe clamping, auto-contrast background detection, math, easing,
- * deterministic RNG, Paper Billions color palettes, bold ink outlines,
- * diagonal hatching, and hand-drawn vector primitives.
+ * camera-aware safe clamping, auto-contrast background detection,
+ * Paper Billions Editorial Matte Color Harmonizer, Situation-Adaptive Lighting & Brightness
+ * Controller, Even-Odd Crescent Rim Shadow helper, and vector primitives.
  */
 (function () {
   const W = 1080;
@@ -11,10 +11,6 @@
   const FLOOR_Y = 1320;
 
   // --- 0. YouTube Shorts / Instagram Reels / TikTok UI Safe-Zone Box ---
-  // Keeps all key animations & text away from:
-  //   - Top Status/Search Bar (y: 0..220)
-  //   - Right Like/Comment/Share/Audio Column (x: 880..1080, y: 820..1700)
-  //   - Bottom Channel Handle/Title/Caption/Audio Bar (y: 1450..1920)
   const SAFE = {
     left: 90,
     right: 860,
@@ -27,10 +23,29 @@
     floorY: FLOOR_Y
   };
 
-  // Live camera & scene state tracked across modules
   let _activeCam = null;
   let _inSplitPanel = false;
   let _sceneIsDark = false;
+
+  // --- 0B. Universal Situation-Adaptive Lighting Presets ---
+  const LIGHTING_PRESETS = {
+    editorial: { mode: 'editorial', brightness: 0.94, vignette: 0.22, warmth: 0.03, desat: 0.12, spotlightAlpha: 0.11, dark: false },
+    paper:     { mode: 'paper',     brightness: 0.94, vignette: 0.20, warmth: 0.04, desat: 0.12, spotlightAlpha: 0.10, dark: false },
+    day:       { mode: 'day',       brightness: 0.96, vignette: 0.18, warmth: 0.02, desat: 0.10, spotlightAlpha: 0.10, dark: false },
+    indoor:    { mode: 'indoor',    brightness: 0.92, vignette: 0.25, warmth: 0.03, desat: 0.14, spotlightAlpha: 0.11, dark: false },
+    office:    { mode: 'office',    brightness: 0.92, vignette: 0.25, warmth: 0.02, desat: 0.14, spotlightAlpha: 0.11, dark: false },
+    lab:       { mode: 'lab',       brightness: 0.93, vignette: 0.24, warmth: 0.00, desat: 0.14, spotlightAlpha: 0.11, dark: false },
+    dusk:      { mode: 'dusk',      brightness: 0.90, vignette: 0.30, warmth: 0.06, desat: 0.16, spotlightAlpha: 0.09, dark: false },
+    sunset:    { mode: 'sunset',    brightness: 0.90, vignette: 0.30, warmth: 0.06, desat: 0.16, spotlightAlpha: 0.09, dark: false },
+    night:     { mode: 'night',     brightness: 0.86, vignette: 0.36, warmth: 0.00, desat: 0.14, spotlightAlpha: 0.12, dark: true  },
+    server:    { mode: 'server',    brightness: 0.85, vignette: 0.38, warmth: 0.00, desat: 0.12, spotlightAlpha: 0.12, dark: true  },
+    noir:      { mode: 'noir',      brightness: 0.83, vignette: 0.42, warmth: 0.01, desat: 0.18, spotlightAlpha: 0.13, dark: true  },
+    danger:    { mode: 'danger',    brightness: 0.84, vignette: 0.40, warmth: 0.02, desat: 0.16, spotlightAlpha: 0.12, dark: true  },
+    space:     { mode: 'space',     brightness: 0.88, vignette: 0.34, warmth: 0.00, desat: 0.10, spotlightAlpha: 0.08, dark: true  }
+  };
+
+  let _activeLighting = Object.assign({}, LIGHTING_PRESETS.editorial);
+  let _lightingAppliedThisShot = false;
 
   // --- 1. Easing Functions ---
   const ease = {
@@ -59,7 +74,6 @@
     return Math.max(min, Math.min(max, v));
   }
 
-  // Returns current visible safe horizontal bounds in world coordinates
   function getSafeBoundsX() {
     let minX = SAFE.left;
     let maxX = SAFE.right;
@@ -77,7 +91,6 @@
     return { minX, maxX, cx: (minX + maxX) / 2 };
   }
 
-  // Returns current visible safe vertical bounds in world coordinates
   function getSafeBoundsY() {
     let minY = SAFE.top;
     let maxY = SAFE.bottom;
@@ -95,7 +108,6 @@
     return { minY, maxY, cy: (minY + maxY) / 2 };
   }
 
-  // Clamps a center X coordinate so an element of `halfW` stays inside visible C.SAFE
   function safeX(x, halfW) {
     const hw = halfW || 0;
     const b = getSafeBoundsX();
@@ -105,7 +117,6 @@
     return clamp(x !== undefined ? x : SAFE.cx, minX, maxX);
   }
 
-  // Clamps a center Y coordinate so an element of `halfH` stays inside visible C.SAFE
   function safeY(y, halfH) {
     const hh = halfH || 0;
     const b = getSafeBoundsY();
@@ -129,7 +140,6 @@
     return (easeFn || ease.outCubic)(p);
   }
 
-  // Multi-point keyframe evaluator: C.key(lt, [[0, 100], [1.5, 500], [3.0, 500]], C.ease.outCubic)
   function key(t, frames, easeFn) {
     if (!frames || !frames.length) return 0;
     if (t <= frames[0][0]) return frames[0][1];
@@ -145,14 +155,12 @@
     return frames[frames.length - 1][1];
   }
 
-  // Snappy pop-in scale helper for Shorts (0 -> 1.12 -> 1.0)
   function pop(t, t0, dur) {
     const d = dur || 0.24;
     if (t < t0) return 0;
     return ease.outBack(prog(t, t0, t0 + d));
   }
 
-  // Gentle continuous sine bobbing/pulsing
   function pulse(t, speed, amp, phase) {
     return Math.sin(t * (speed || 3) + (phase || 0)) * (amp || 1);
   }
@@ -181,28 +189,29 @@
     return { x: dx, y: dy };
   }
 
-  // --- 4. Editorial Cartoon Color Palettes & Auto-Contrast Helpers ---
+  // --- 4. Paper Billions Editorial Matte Color Palettes & Harmonizer ---
   const PAL = {
-    ink: '#18181B',         // Signature bold black/charcoal outline
-    paper: '#F5F2EB',       // Warm editorial paper white
-    studioWall: '#D8D2C5',  // Classic warm beige studio wall
-    studioFloor: '#9E9789', // Classic curved studio floor
-    coolWall: '#CBD5E1',    // Cool grey-blue studio wall
-    coolFloor: '#64748B',
-    darkWall: '#1E293B',    // Night / Server / Noir wall
-    darkFloor: '#0F172A',
-    red: '#DC2626',         // Loss / Alert / Stamp red
-    redSoft: '#FCA5A5',
-    green: '#16A34A',       // Profit / Growth / Money green
-    greenSoft: '#86EFAC',
-    blue: '#2563EB',        // Tech / Science blue
-    blueSoft: '#93C5FD',
-    yellow: '#EAB308',      // Gold / Coins / Warning
-    highlighter: 'rgba(253, 224, 71, 0.55)',
-    orange: '#EA580C',
-    purple: '#7C3AED',
-    grey: '#6B7280',
-    lightGrey: '#E5E7EB'
+    ink: '#18181B',         // Signature bold charcoal-black outline
+    paper: '#F4F0E6',       // Warm Paper Billions editorial cream (never blinding #FFFFFF)
+    paperPure: '#FAF8F3',   // Crisp highlight white for sclera/teeth
+    studioWall: '#DCD5C7',  // Muted warm oatmeal studio wall
+    studioFloor: '#9E9687', // Warm muted taupe studio floor
+    coolWall: '#C5D0DA',    // Muted editorial slate-blue wall
+    coolFloor: '#6C7D8E',
+    darkWall: '#1B2434',    // Paper Billions moody night/server navy-slate
+    darkFloor: '#0F1622',
+    red: '#D93829',         // Editorial crimson red
+    redSoft: '#F4A69E',
+    green: '#1F9D55',       // Editorial money green
+    greenSoft: '#8CE0AE',
+    blue: '#2B6CB0',        // Editorial tech blue
+    blueSoft: '#90CDF4',
+    yellow: '#E3B330',      // Warm editorial gold
+    highlighter: 'rgba(246, 216, 78, 0.52)',
+    orange: '#DD6B20',
+    purple: '#6B46C1',
+    grey: '#64748B',
+    lightGrey: '#E2E6EC'
   };
 
   function hexToRgb(hex) {
@@ -216,6 +225,89 @@
     return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
   }
 
+  function rgbToHex(r, g, b) {
+    const cr = clamp(Math.round(r), 0, 255);
+    const cg = clamp(Math.round(g), 0, 255);
+    const cb = clamp(Math.round(b), 0, 255);
+    return '#' + ((1 << 24) + (cr << 16) + (cg << 8) + cb).toString(16).slice(1);
+  }
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return { h, s, l };
+  }
+
+  function hslToRgb(h, s, l) {
+    let r, g, b;
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1 / 3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1 / 3);
+    }
+    return { r: r * 255, g: g * 255, b: b * 255 };
+  }
+
+  /**
+   * Harmonizes raw hex colors into Paper Billions Editorial Matte tones:
+   * - Softens blinding #FFFFFF card/wall surfaces into warm editorial paper (#F5F2EA)
+   * - Gently desaturates overly neon colors so scenes never look harsh or blown-out
+   */
+  function harmonizeColor(col, role) {
+    if (!col || typeof col !== 'string' || !col.startsWith('#')) return col;
+    const upper = col.toUpperCase().trim();
+
+    // Keep ink black and crisp sclera/teeth white untouched
+    if (upper === '#18181B' || upper === '#000000' || role === 'eye' || role === 'ink') return col;
+
+    // Soften blinding #FFFFFF on surfaces/cards/props into warm editorial cream
+    if ((upper === '#FFFFFF' || upper === '#F8FAFC') && role !== 'pureWhite') {
+      return role === 'wall' ? '#E4DFD3' : '#F6F3EC';
+    }
+
+    const rgb = hexToRgb(col);
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    const desatAmt = (_activeLighting && _activeLighting.desat !== undefined) ? _activeLighting.desat : 0.12;
+
+    // Tame neon saturation (> 0.76) and overly bright pastel walls (> 0.90 lightness)
+    if (hsl.s > 0.72) {
+      hsl.s = Math.min(0.76, hsl.s * (1 - desatAmt));
+    }
+    if (role === 'wall' || role === 'sky') {
+      hsl.s = Math.min(0.58, hsl.s * 0.85);
+      if (hsl.l > 0.86) hsl.l = 0.84;
+    } else if (hsl.l > 0.94 && hsl.s < 0.25) {
+      hsl.l = 0.93;
+    }
+
+    const out = hslToRgb(hsl.h, hsl.s, hsl.l);
+    return rgbToHex(out.r, out.g, out.b);
+  }
+
   function luminance(hex) {
     const c = hexToRgb(hex);
     return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255;
@@ -226,7 +318,6 @@
     return luminance(hex) < 0.42;
   }
 
-  // Samples the rendered canvas pixel at world coordinate (x, y) to detect dark backgrounds
   function isCanvasDarkAt(g, x, y) {
     if (_sceneIsDark) return true;
     if (!g || typeof g.getImageData !== 'function') return false;
@@ -243,7 +334,6 @@
     }
   }
 
-  // Draws text with an automatic subtle contrast halo so it never disappears on dark or busy backgrounds
   function drawContrastText(g, text, x, y, opts) {
     const o = opts || {};
     const str = String(text || '');
@@ -252,10 +342,10 @@
     const darkBg = o.darkBg !== undefined ? o.darkBg : isCanvasDarkAt(g, x, y);
     let fillCol = o.fill || PAL.ink;
     if ((fillCol === PAL.ink || fillCol === '#18181B' || fillCol === '#0F172A') && darkBg) {
-      fillCol = '#F8FAFC';
+      fillCol = '#F6F3EC';
     }
     const fillDark = isDarkColor(fillCol);
-    const haloCol = o.haloColor || (fillDark ? 'rgba(255,255,255,0.88)' : 'rgba(15,23,42,0.88)');
+    const haloCol = o.haloColor || (fillDark ? 'rgba(246,243,236,0.90)' : 'rgba(15,23,42,0.88)');
     if (o.halo !== false) {
       g.lineJoin = 'round';
       g.lineCap = 'round';
@@ -284,7 +374,83 @@
     return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
   }
 
-  // --- 5. Editorial Cartoon Drawing Primitives ---
+  // --- 4B. Universal Situation-Adaptive Lighting Controller ---
+  function setLighting(cfg) {
+    if (!cfg) {
+      _activeLighting = Object.assign({}, LIGHTING_PRESETS.editorial);
+    } else if (typeof cfg === 'string') {
+      const keyName = cfg.toLowerCase().trim();
+      _activeLighting = Object.assign({}, LIGHTING_PRESETS[keyName] || LIGHTING_PRESETS.editorial);
+    } else if (typeof cfg === 'object') {
+      const baseKey = String(cfg.mode || cfg.preset || cfg.theme || 'editorial').toLowerCase().trim();
+      const base = LIGHTING_PRESETS[baseKey] || LIGHTING_PRESETS.editorial;
+      _activeLighting = Object.assign({}, base, cfg);
+    }
+
+    // Apply optional global video override (`window.VIDEO_LIGHTING`)
+    if (typeof window !== 'undefined' && window.VIDEO_LIGHTING) {
+      const vl = window.VIDEO_LIGHTING;
+      if (vl.brightness !== undefined) _activeLighting.brightness = vl.brightness;
+      if (vl.vignette !== undefined) _activeLighting.vignette = vl.vignette;
+      if (vl.desat !== undefined) _activeLighting.desat = vl.desat;
+    }
+
+    _sceneIsDark = Boolean(_activeLighting.dark);
+    return _activeLighting;
+  }
+
+  function getLighting() {
+    return _activeLighting;
+  }
+
+  /**
+   * Applies the Paper Billions final atmospheric lighting pass:
+   * - Controls overall brightness so bright daytime/studio scenes never look washed-out
+   * - Adds soft peripheral vignette framing the 9:16 Safe Zone
+   * - Adds subtle situational warmth (dusk/editorial) or cool noir depth (night/server)
+   */
+  function applyLightingPass(g, overrides) {
+    if (_lightingAppliedThisShot) return;
+    _lightingAppliedThisShot = true;
+
+    const L = Object.assign({}, _activeLighting, overrides || {});
+    const br = clamp(L.brightness !== undefined ? L.brightness : 0.94, 0.65, 1.15);
+    const vig = clamp(L.vignette !== undefined ? L.vignette : 0.22, 0, 0.65);
+
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+
+    // 1. Situational brightness control (prevents over-exposed / blinding backgrounds)
+    if (br < 0.99) {
+      const dimAlpha = clamp((1.0 - br) * 0.72, 0.02, 0.28);
+      g.fillStyle = L.dark ? 'rgba(6, 10, 18, ' + (dimAlpha * 0.65).toFixed(3) + ')' : 'rgba(20, 18, 15, ' + dimAlpha.toFixed(3) + ')';
+      g.fillRect(0, 0, W, H);
+    } else if (br > 1.01) {
+      const liftAlpha = clamp((br - 1.0) * 0.45, 0.01, 0.14);
+      g.fillStyle = 'rgba(255, 250, 240, ' + liftAlpha.toFixed(3) + ')';
+      g.fillRect(0, 0, W, H);
+    }
+
+    // 2. Subtle warm editorial paper glaze
+    if (L.warmth && L.warmth > 0.005) {
+      g.fillStyle = 'rgba(245, 215, 165, ' + clamp(L.warmth, 0, 0.08).toFixed(3) + ')';
+      g.fillRect(0, 0, W, H);
+    }
+
+    // 3. Soft Paper Billions peripheral vignette centered on the Safe Action Zone (500, 840)
+    if (vig > 0.01) {
+      const vGrd = g.createRadialGradient(SAFE.cx, 840, 360, 540, 960, 1180);
+      vGrd.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vGrd.addColorStop(0.62, 'rgba(10, 14, 22, ' + (vig * 0.28).toFixed(3) + ')');
+      vGrd.addColorStop(1, 'rgba(8, 11, 18, ' + vig.toFixed(3) + ')');
+      g.fillStyle = vGrd;
+      g.fillRect(0, 0, W, H);
+    }
+
+    g.restore();
+  }
+
+  // --- 5. Editorial Cartoon Drawing Primitives & Crescent Shadow Helper ---
 
   function inkStyle(g, lw, stroke, fill) {
     g.lineWidth = lw !== undefined ? lw : 3.5;
@@ -294,7 +460,6 @@
     if (fill) g.fillStyle = fill;
   }
 
-  // Rounded rectangle path helper
   function pathRoundRect(g, x, y, w, h, r) {
     const rad = Math.min(r || 0, Math.abs(w) / 2, Math.abs(h) / 2);
     g.beginPath();
@@ -307,8 +472,36 @@
   }
 
   /**
+   * Authentic Paper Billions Even-Odd Crescent Rim Shadow for Ellipses / Heads / Circles.
+   * Draws a razor-clean cel-shaded crescent moon shadow along the rim of an ellipse `(cx, cy, rx, ry)`.
+   */
+  function drawCrescentShadow(g, cx, cy, rx, ry, opts) {
+    const o = opts || {};
+    const dir = o.dir !== undefined ? o.dir : 1; // +1 = facing right (shadow on left/back + bottom jaw)
+    const alpha = o.alpha !== undefined ? o.alpha : 0.135;
+    const shiftX = o.shiftX !== undefined ? o.shiftX : dir * rx * 0.20;
+    const shiftY = o.shiftY !== undefined ? o.shiftY : -ry * 0.14;
+    const innerScaleX = o.innerScaleX !== undefined ? o.innerScaleX : 0.96;
+    const innerScaleY = o.innerScaleY !== undefined ? o.innerScaleY : 0.93;
+
+    g.save();
+    g.beginPath();
+    g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    g.clip();
+
+    g.fillStyle = o.color || ('rgba(15, 20, 32, ' + alpha + ')');
+    g.beginPath();
+    // Outer ellipse covering full shape
+    g.ellipse(cx, cy, rx + 2, ry + 2, 0, 0, Math.PI * 2);
+    // Offset inner lit ellipse subtracted via even-odd winding
+    g.ellipse(cx + shiftX, cy + shiftY, rx * innerScaleX, ry * innerScaleY, 0, 0, Math.PI * 2);
+    g.fill('evenodd');
+    g.restore();
+  }
+
+  /**
    * Draws an editorial cartoon rounded rectangle with optional shadow,
-   * Paper Billions soft 2-tone shading, diagonal hatching, and bold ink outline.
+   * harmonized matte fill, subtle rim shading, diagonal hatching, and bold ink outline.
    */
   function roundRect(g, x, y, w, h, r, opts) {
     const o = opts || {};
@@ -319,21 +512,24 @@
       const sx = o.shadowX !== undefined ? o.shadowX : 5;
       const sy = o.shadowY !== undefined ? o.shadowY : 6;
       pathRoundRect(g, x + sx, y + sy, w, h, rad);
-      g.fillStyle = o.shadowColor || 'rgba(0,0,0,0.20)';
+      g.fillStyle = o.shadowColor || 'rgba(15, 20, 30, 0.20)';
       g.fill();
     }
 
     pathRoundRect(g, x, y, w, h, rad);
 
     if (o.fill !== false) {
-      const fillStr = String(o.fill || '#FFFFFF');
-      if (o.grad !== false && fillStr.startsWith('#') && h > 16) {
+      const rawFill = o.fill || PAL.paper;
+      const fillStr = o.pureWhite ? String(rawFill) : String(harmonizeColor(rawFill, o.role));
+      if (o.grad !== false && fillStr.startsWith('#') && h > 24) {
+        // Subtle Paper Billions matte tonal shift (never shiny plastic)
         const grd = g.createLinearGradient(x, y, x, y + h);
-        grd.addColorStop(0, shadeColor(fillStr, o.grad ? 8 : 4));
-        grd.addColorStop(1, shadeColor(fillStr, o.grad ? -10 : -5));
+        grd.addColorStop(0, shadeColor(fillStr, o.grad ? 4 : 2));
+        grd.addColorStop(0.7, fillStr);
+        grd.addColorStop(1, shadeColor(fillStr, o.grad ? -7 : -4));
         g.fillStyle = grd;
       } else {
-        g.fillStyle = o.fill || '#FFFFFF';
+        g.fillStyle = fillStr;
       }
       g.fill();
     }
@@ -341,9 +537,9 @@
     if (o.hatch) {
       hatchRect(g, x, y, w, h, {
         rad: rad,
-        color: o.hatchColor || 'rgba(0,0,0,0.20)',
-        spacing: o.hatchSpacing || 12,
-        lw: o.hatchLw || 2.5,
+        color: o.hatchColor || 'rgba(24, 24, 27, 0.16)',
+        spacing: o.hatchSpacing || 13,
+        lw: o.hatchLw || 2.2,
         angle: o.hatchAngle || -45
       });
     }
@@ -358,7 +554,7 @@
   }
 
   /**
-   * Draws a circle with optional 2-tone soft radial shading and bold ink outline.
+   * Draws a circle with Paper Billions matte fill + clean crescent rim shadow and bold ink outline.
    */
   function circle(g, x, y, r, opts) {
     const o = opts || {};
@@ -368,7 +564,7 @@
     if (o.shadow) {
       g.beginPath();
       g.arc(x + (o.shadowX || 4), y + (o.shadowY || 5), r, 0, Math.PI * 2);
-      g.fillStyle = o.shadowColor || 'rgba(0,0,0,0.20)';
+      g.fillStyle = o.shadowColor || 'rgba(15, 20, 30, 0.20)';
       g.fill();
     }
 
@@ -376,18 +572,23 @@
     g.arc(x, y, r, 0, Math.PI * 2);
 
     if (o.fill !== false) {
-      if (o.shade !== false && String(o.fill || '').startsWith('#')) {
-        const grd = g.createRadialGradient(x - r * 0.28, y - r * 0.28, r * 0.1, x, y, r);
-        grd.addColorStop(0, shadeColor(o.fill, 10));
-        grd.addColorStop(1, shadeColor(o.fill, -8));
-        g.fillStyle = grd;
-      } else {
-        g.fillStyle = o.fill || '#FFFFFF';
-      }
+      const rawFill = o.fill || PAL.paper;
+      const fillStr = o.pureWhite ? String(rawFill) : String(harmonizeColor(rawFill, o.role));
+      g.fillStyle = fillStr;
       g.fill();
+
+      // Authentic Paper Billions crescent shadow on shaded circles (r >= 9)
+      if (o.shade !== false && r >= 9 && fillStr.startsWith('#')) {
+        drawCrescentShadow(g, x, y, r, r, {
+          dir: o.shadeDir || -1,
+          alpha: o.shadeAlpha || 0.13
+        });
+      }
     }
 
     if (o.stroke !== false) {
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
       inkStyle(g, o.lw !== undefined ? o.lw : 3.5, o.stroke || PAL.ink);
       g.stroke();
     }
@@ -401,7 +602,7 @@
     const o = opts || {};
     const spacing = o.spacing || 12;
     const lw = o.lw || 2.5;
-    const col = o.color || 'rgba(24,24,27,0.26)';
+    const col = o.color || 'rgba(24,24,27,0.22)';
 
     g.save();
     pathRoundRect(g, x, y, w, h, o.rad || 0);
@@ -506,8 +707,27 @@
     _activeCam = null;
     _inSplitPanel = false;
     _sceneIsDark = false;
+    _lightingAppliedThisShot = false;
+
+    // Initialize shot lighting (can be overridden inside s.draw by ENV.studio / ENV.create)
+    if (s.lighting || s.brightness !== undefined) {
+      setLighting(Object.assign(
+        {},
+        typeof s.lighting === 'string' ? (LIGHTING_PRESETS[s.lighting] || LIGHTING_PRESETS.editorial) : (s.lighting || {}),
+        s.brightness !== undefined ? { brightness: s.brightness } : {}
+      ));
+    } else {
+      setLighting('editorial');
+    }
+
     g.save();
     s.draw(g, lt, gt, u);
+
+    // Apply Paper Billions situational lighting & brightness balance
+    if (s.lighting !== false) {
+      applyLightingPass(g, s.brightness !== undefined ? { brightness: s.brightness } : null);
+    }
+
     if (s.transition && window.CAM && typeof window.CAM.transition === 'function') {
       window.CAM.transition(g, lt, s.duration, s.transition);
     }
@@ -525,6 +745,7 @@
     H,
     FLOOR_Y,
     SAFE,
+    LIGHTING_PRESETS,
     ease,
     clamp,
     getSafeBoundsX,
@@ -542,14 +763,22 @@
     shake,
     PAL,
     hexToRgb,
+    rgbToHex,
+    rgbToHsl,
+    hslToRgb,
+    harmonizeColor,
     luminance,
     isDarkColor,
     isCanvasDarkAt,
     drawContrastText,
     rgba,
     shadeColor,
+    setLighting,
+    getLighting,
+    applyLightingPass,
     inkStyle,
     pathRoundRect,
+    drawCrescentShadow,
     roundRect,
     circle,
     hatchRect,
