@@ -1,57 +1,55 @@
 /**
  * MODULE 07: UNIVERSAL 9:16 HAND-DRAWN CHARTS, COUNTERS, RECEIPTS & TIMELINES (engine/07_charts.js)
  * 100% Data-Driven Vertical Editorial Cartoon Visualizations for YouTube Shorts & Instagram Reels.
- * - Auto-positions and clamps all charts inside the Golden UI Safe Box (x: 90..860, y: 260..1300)
- *   so zero bars, numbers, pie labels, or timeline cards are ever blocked by Like/Comment buttons or Titles.
- * - Snappier default animation timings (t0: 0.06s–0.08s, dur: 0.75s–0.85s) tuned for 1s–4s Shorts pacing.
+ * - Auto-positions and clamps all charts inside the camera-aware Golden UI Safe Box (x: 90..860)
+ * - Auto-detects dark backgrounds ('blueprint', 'slate', 'noir', 'danger', 'space') and switches
+ *   titles, category labels, and axes to high-contrast white with ink halos so labels are NEVER invisible.
  */
 (function () {
   const C = window.CORE;
   const SAFE = C.SAFE || { left: 90, right: 860, top: 240, bottom: 1340, cx: 485, cy: 820, floorY: 1320 };
 
-  // Helper: Normalize X/Y/W so charts never collide with right-side UI buttons (x > 860)
+  // Helper: Normalize X/Y/W inside the visible camera-aware Safe Box
   function safeChartBox(o, defW, defH, defY) {
-    let w = Math.min(o.w || defW, SAFE.right - SAFE.left - 20);
-    let h = o.h || defH;
-    let cx = o.x !== undefined ? (o.x === 960 ? SAFE.cx : o.x) : SAFE.cx;
-    let cy = o.y !== undefined ? o.y : (defY || SAFE.cy);
+    const sbX = C.getSafeBoundsX ? C.getSafeBoundsX() : { minX: SAFE.left, maxX: SAFE.right };
+    const availW = Math.max(360, sbX.maxX - sbX.minX - 24);
+    const w = Math.min(o.w || defW, availW);
+    const h = o.h || defH;
+    const rawX = o.x !== undefined ? (o.x === 960 ? SAFE.cx : o.x) : SAFE.cx;
+    const rawY = o.y !== undefined ? o.y : (defY || SAFE.cy);
 
-    if (cx - w / 2 < SAFE.left) cx = SAFE.left + w / 2;
-    if (cx + w / 2 > SAFE.right) cx = SAFE.right - w / 2;
-    if (cy - h / 2 < SAFE.top + 40) cy = SAFE.top + 40 + h / 2;
-    if (cy + h / 2 > SAFE.bottom - 30) cy = SAFE.bottom - 30 - h / 2;
+    const cx = C.safeX(rawX, w / 2 + 10);
+    const cy = C.safeY(rawY, h / 2 + 24);
 
     return { cx, cy, w, h, left: cx - w / 2, top: cy - h / 2, bottom: cy + h / 2 };
   }
 
+  // Helper: Detect dark background and return high-contrast theme colors
+  function getChartContrast(g, cx, cy, o) {
+    const darkBg = o.dark !== undefined ? o.dark : (C.isCanvasDarkAt ? C.isCanvasDarkAt(g, cx, cy) : false);
+    return {
+      darkBg,
+      ink: darkBg ? '#F8FAFC' : C.PAL.ink,
+      axis: darkBg ? '#E2E8F0' : C.PAL.ink,
+      grid: darkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
+      halo: darkBg ? 'rgba(15,23,42,0.90)' : 'rgba(255,255,255,0.88)'
+    };
+  }
+
   /**
    * 1. HAND-DRAWN HATCHED BAR CHART (`CHART.bar(g, lt, opts)`)
-   * Supports positive & negative bars (zero-baseline), diagonal hatching,
-   * jagged trend arrows, and crumbling/burning crash effects inside the 9:16 Safe Box.
-   *
-   * Usage:
-   *   CHART.bar(g, lt, {
-   *     x: 485, y: 820, w: 680, h: 500,
-   *     title: 'ANNUAL CASH FLOW',
-   *     unit: '$', suffix: 'B',
-   *     bars: [
-   *       { label: '2023', value: 12.4, color: '#22C55E', hatch: true },
-   *       { label: '2025', value: -31.4, color: '#EF4444', hatch: true },
-   *       { label: '2026', value: -80.7, color: '#DC2626', hatch: true, fire: true }
-   *     ],
-   *     trendArrow: { color: '#DC2626', t0: 0.55 },
-   *     t0: 0.08, dur: 0.75
-   *   });
    */
   function bar(g, lt, opts) {
     const o = opts || {};
-    const box = safeChartBox(o, 680, 500, 820);
-    const { cx, w, h, left, top } = box;
+    const box = safeChartBox(o, 660, 480, 820);
+    const { cx, cy, w, h, left, top } = box;
     const bars = o.bars || o.data || [];
     const t0 = o.t0 !== undefined ? o.t0 : 0.08;
     const dur = o.dur !== undefined ? o.dur : 0.75;
 
     if (!bars.length) return;
+
+    const theme = getChartContrast(g, cx, cy, o);
 
     // Determine min & max values to position the zero baseline
     let minVal = 0, maxVal = 0;
@@ -70,26 +68,30 @@
     // Title
     if (o.title) {
       g.font = '900 ' + (o.titleSize || 38) + 'px "Nunito", sans-serif';
-      g.fillStyle = o.titleColor || C.PAL.ink;
       g.textAlign = 'center';
-      g.fillText(o.title, cx, top - 46);
+      g.textBaseline = 'alphabetic';
+      C.drawContrastText(g, o.title, cx, top - 46, {
+        fill: o.titleColor || theme.ink,
+        darkBg: theme.darkBg,
+        haloW: 6
+      });
     }
 
     // Subtle horizontal grid lines
     for (let i = 0; i <= 4; i++) {
       const gy = top + (i / 4) * h;
-      C.line(g, left, gy, left + w, gy, { lw: 1.8, color: 'rgba(0,0,0,0.08)', dash: [8, 8] });
+      C.line(g, left, gy, left + w, gy, { lw: 1.8, color: theme.grid, dash: [8, 8] });
     }
 
     const slotW = w / bars.length;
-    const barW = Math.min(o.barW || 115, slotW * 0.60);
+    const barW = Math.min(o.barW || 115, slotW * 0.58);
     const barTops = [];
 
     bars.forEach((b, i) => {
       const bt0 = b.t0 !== undefined ? b.t0 : t0 + i * (dur / Math.max(1, bars.length)) * 0.42;
       const p = C.seg(lt, bt0, bt0 + dur * 0.65, C.ease.outBack);
       const val = b.value * p;
-      const bh = (Math.abs(val) / totalSpan) * (h * 0.80);
+      const bh = (Math.abs(val) / totalSpan) * (h * 0.78);
       const bx = left + i * slotW + (slotW - barW) / 2;
       const isNeg = b.value < 0;
       const by = isNeg ? zeroY : zeroY - bh;
@@ -123,32 +125,45 @@
         });
       }
 
-      // Value label (handwritten style)
+      // Value label (handwritten style with contrast halo)
       if (p > 0.1) {
         const dispVal = (b.value * C.clamp(p, 0, 1)).toFixed(b.decimals !== undefined ? b.decimals : (Math.abs(b.value) % 1 !== 0 ? 1 : 0));
         const sign = b.value < 0 ? '-' : (b.plus ? '+' : '');
         const valStr = b.displayValue || (sign + (o.unit || '') + Math.abs(dispVal) + (o.suffix || ''));
 
         g.font = '700 ' + (o.valueSize || 42) + 'px "Caveat", "Kalam", cursive';
-        g.fillStyle = b.valueColor || col;
         g.textAlign = 'center';
         g.textBaseline = isNeg ? 'top' : 'bottom';
-        g.fillText(valStr, bx + barW / 2, isNeg ? by + bh + 12 : by - 10);
+        C.drawContrastText(g, valStr, bx + barW / 2, isNeg ? by + bh + 12 : by - 10, {
+          fill: b.valueColor || (theme.darkBg && C.isDarkColor(col) ? '#FACC15' : col),
+          darkBg: theme.darkBg,
+          haloW: 6
+        });
       }
 
-      // Category label on X-axis
+      // Category label on X-axis (auto-contrasted so never invisible on dark blue/slate!)
       if (b.label) {
-        g.font = '800 ' + (o.labelSize || 24) + 'px "Nunito", sans-serif';
-        g.fillStyle = C.PAL.ink;
+        let lblSize = o.labelSize || 23;
+        g.font = '800 ' + lblSize + 'px "Nunito", sans-serif';
+        const maxLblW = slotW - 8;
+        const lw = g.measureText(b.label).width;
+        if (lw > maxLblW && lw > 0) {
+          lblSize = Math.max(15, Math.floor(lblSize * (maxLblW / lw)));
+          g.font = '800 ' + lblSize + 'px "Nunito", sans-serif';
+        }
         g.textAlign = 'center';
         g.textBaseline = isNeg ? 'bottom' : 'top';
-        g.fillText(b.label, bx + barW / 2, isNeg ? zeroY - 12 : zeroY + 14);
+        C.drawContrastText(g, b.label, bx + barW / 2, isNeg ? zeroY - 12 : zeroY + 14, {
+          fill: b.labelColor || theme.ink,
+          darkBg: theme.darkBg,
+          haloW: 5
+        });
       }
     });
 
     // Bold L-Axis & Zero Baseline
-    C.line(g, left, top - 15, left, top + h + 10, { lw: 5, color: C.PAL.ink });
-    C.line(g, left - 10, zeroY, left + w + 12, zeroY, { lw: 5, color: C.PAL.ink });
+    C.line(g, left, top - 15, left, top + h + 10, { lw: 5, color: theme.axis });
+    C.line(g, left - 10, zeroY, left + w + 12, zeroY, { lw: 5, color: theme.axis });
 
     // Optional Trend Arrow across bar tops
     if (o.trendArrow && barTops.length >= 2) {
@@ -169,15 +184,15 @@
 
   /**
    * 2. JAGGED EDITORIAL LINE GRAPH (`CHART.line(g, lt, opts)`)
-   * Supports multi-series lines, shaded area fills, vertex dots, and anomaly callouts in 9:16 Safe Box.
    */
   function line(g, lt, opts) {
     const o = opts || {};
-    const box = safeChartBox(o, 680, 480, 820);
-    const { cx, w, h, left, top, bottom } = box;
+    const box = safeChartBox(o, 660, 460, 820);
+    const { cx, cy, w, h, left, top, bottom } = box;
     const t0 = o.t0 !== undefined ? o.t0 : 0.08;
     const dur = o.dur !== undefined ? o.dur : 0.85;
     const p = C.seg(lt, t0, t0 + dur, C.ease.outCubic);
+    const theme = getChartContrast(g, cx, cy, o);
 
     const seriesList = o.series || [{ values: o.values || [10, 40, 30, 80, 20], color: o.color || C.PAL.green, area: true }];
     let minV = o.min !== undefined ? o.min : Infinity;
@@ -195,25 +210,31 @@
 
     if (o.title) {
       g.font = '900 ' + (o.titleSize || 38) + 'px "Nunito", sans-serif';
-      g.fillStyle = C.PAL.ink;
       g.textAlign = 'center';
-      g.fillText(o.title, cx, top - 45);
+      C.drawContrastText(g, o.title, cx, top - 45, {
+        fill: o.titleColor || theme.ink,
+        darkBg: theme.darkBg,
+        haloW: 6
+      });
     }
 
     // Grid
     for (let i = 0; i <= 4; i++) {
       const gy = top + (i / 4) * h;
-      C.line(g, left, gy, left + w, gy, { lw: 1.8, color: 'rgba(0,0,0,0.08)', dash: [8, 8] });
+      C.line(g, left, gy, left + w, gy, { lw: 1.8, color: theme.grid, dash: [8, 8] });
     }
 
     // X-Axis Labels
     if (Array.isArray(o.xLabels)) {
       g.font = '800 22px "Nunito", sans-serif';
-      g.fillStyle = C.PAL.ink;
       g.textAlign = 'center';
       o.xLabels.forEach((lbl, i) => {
         const lx = left + (i / Math.max(1, o.xLabels.length - 1)) * w;
-        g.fillText(lbl, lx, bottom + 34);
+        C.drawContrastText(g, lbl, lx, bottom + 34, {
+          fill: theme.ink,
+          darkBg: theme.darkBg,
+          haloW: 5
+        });
       });
     }
 
@@ -238,7 +259,7 @@
         pts.forEach((pt) => g.lineTo(pt.x, pt.y));
         g.lineTo(pts[pts.length - 1].x, bottom);
         g.closePath();
-        g.fillStyle = C.rgba(col, 0.20);
+        g.fillStyle = C.rgba(col, 0.22);
         g.fill();
       }
 
@@ -263,7 +284,7 @@
         const apt = pts[s.anomalyIdx];
         C.circle(g, apt.x, apt.y, 12, { fill: col, stroke: C.PAL.ink, lw: 3.8 });
         if (s.anomalyLabel && window.TEXT) {
-          const bx = C.clamp(apt.x, SAFE.left + 80, SAFE.right - 80);
+          const bx = C.safeX(apt.x, 90);
           window.TEXT.badge(g, lt, {
             x: bx,
             y: apt.y - 48,
@@ -278,36 +299,40 @@
     });
 
     // Axes
-    C.line(g, left, top - 15, left, bottom, { lw: 5, color: C.PAL.ink });
-    C.line(g, left, bottom, left + w + 12, bottom, { lw: 5, color: C.PAL.ink });
+    C.line(g, left, top - 15, left, bottom, { lw: 5, color: theme.axis });
+    C.line(g, left, bottom, left + w + 12, bottom, { lw: 5, color: theme.axis });
 
     g.restore();
   }
 
   /**
    * 3. EXPLODED PIE / DONUT CHART (`CHART.pie(g, lt, opts)`)
-   * Centered in the 9:16 Safe Box with label clamping so right-side labels never hit Like/Comment icons.
    */
   function pie(g, lt, opts) {
     const o = opts || {};
-    const cx = o.x !== undefined ? (o.x === 960 ? SAFE.cx : o.x) : SAFE.cx;
-    const cy = o.y !== undefined ? o.y : SAFE.cy;
-    const r = o.r || 200;
+    const r = o.r || 195;
+    const cx = C.safeX(o.x !== undefined ? (o.x === 960 ? SAFE.cx : o.x) : SAFE.cx, r + 90);
+    const cy = C.safeY(o.y !== undefined ? o.y : SAFE.cy, r + 80);
     const t0 = o.t0 !== undefined ? o.t0 : 0.08;
     const p = C.seg(lt, t0, t0 + (o.dur || 0.78), C.ease.outCubic);
     const slices = o.slices || [];
     const total = slices.reduce((acc, s) => acc + (s.value || 1), 0) || 1;
+    const theme = getChartContrast(g, cx, cy, o);
 
     g.save();
 
     if (o.title) {
       g.font = '900 ' + (o.titleSize || 38) + 'px "Nunito", sans-serif';
-      g.fillStyle = C.PAL.ink;
       g.textAlign = 'center';
-      g.fillText(o.title, cx, cy - r - 76);
+      C.drawContrastText(g, o.title, cx, cy - r - 76, {
+        fill: o.titleColor || theme.ink,
+        darkBg: theme.darkBg,
+        haloW: 6
+      });
     }
 
     let curAngle = -Math.PI / 2;
+    const sbX = C.getSafeBoundsX ? C.getSafeBoundsX() : { minX: SAFE.left, maxX: SAFE.right };
 
     slices.forEach((s, idx) => {
       const span = ((s.value || 1) / total) * Math.PI * 2 * p;
@@ -326,20 +351,22 @@
       g.stroke();
 
       if (s.label && p > 0.55) {
-        g.font = '800 24px "Nunito", sans-serif';
+        g.font = '800 23px "Nunito", sans-serif';
         const tw = g.measureText(s.label).width;
-        let lx = sx + Math.cos(midA) * (r + 44);
-        const ly = sy + Math.sin(midA) * (r + 44);
+        let lx = sx + Math.cos(midA) * (r + 42);
+        const ly = sy + Math.sin(midA) * (r + 42);
         const isRight = Math.cos(midA) >= 0;
 
-        // Clamp so label never crosses SAFE.right (860) or SAFE.left (90)
-        if (isRight && lx + tw > SAFE.right - 10) lx = SAFE.right - 10 - tw;
-        if (!isRight && lx - tw < SAFE.left + 10) lx = SAFE.left + 10 + tw;
+        if (isRight && lx + tw > sbX.maxX - 10) lx = sbX.maxX - 10 - tw;
+        if (!isRight && lx - tw < sbX.minX + 10) lx = sbX.minX + 10 + tw;
 
-        g.fillStyle = C.PAL.ink;
         g.textAlign = isRight ? 'left' : 'right';
         g.textBaseline = 'middle';
-        g.fillText(s.label, lx, ly);
+        C.drawContrastText(g, s.label, lx, ly, {
+          fill: theme.ink,
+          darkBg: theme.darkBg,
+          haloW: 5
+        });
       }
 
       curAngle += span;
@@ -347,7 +374,7 @@
 
     if (o.donut) {
       C.circle(g, cx, cy, r * (typeof o.donut === 'number' ? o.donut : 0.48), {
-        fill: o.holeColor || C.PAL.studioWall,
+        fill: o.holeColor || (theme.darkBg ? '#1E293B' : C.PAL.studioWall),
         lw: 4.0
       });
     }
@@ -356,17 +383,17 @@
 
   /**
    * 4. LIVE COUNTING SCOREBOARD / BIG NUMBER TICKER (`CHART.counter(g, lt, opts)`)
-   * Defaults to x = 485, y = 760 inside the 9:16 Safe Zone.
    */
   function counter(g, lt, opts) {
     const o = opts || {};
-    const cw = Math.min(o.w || 580, SAFE.right - SAFE.left - 20);
+    const sbX = C.getSafeBoundsX ? C.getSafeBoundsX() : { minX: SAFE.left, maxX: SAFE.right };
+    const cw = Math.min(o.w || 560, sbX.maxX - sbX.minX - 24);
     const ch = o.h || 210;
-    let x = o.x !== undefined ? (o.x === 960 ? SAFE.cx : o.x) : SAFE.cx;
-    let y = o.y !== undefined ? o.y : 760;
+    const rawX = o.x !== undefined ? (o.x === 960 ? SAFE.cx : o.x) : SAFE.cx;
+    const rawY = o.y !== undefined ? o.y : 760;
 
-    if (x - cw / 2 < SAFE.left) x = SAFE.left + cw / 2;
-    if (x + cw / 2 > SAFE.right) x = SAFE.right - cw / 2;
+    const x = C.safeX(rawX, cw / 2 + 10);
+    const y = C.safeY(rawY, ch / 2 + 10);
 
     const t0 = o.t0 !== undefined ? o.t0 : 0.05;
     const dur = o.dur !== undefined ? o.dur : 0.75;
@@ -375,8 +402,10 @@
     const dec = o.decimals !== undefined ? o.decimals : 0;
     const formatted = (o.prefix || '') + val.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + (o.suffix || '');
 
+    const theme = getChartContrast(g, x, y, o);
+
     g.save();
-    if (o.card) {
+    if (o.card !== false) {
       C.roundRect(g, x - cw / 2, y - ch / 2, cw, ch, 16, {
         fill: o.bg || '#FFFFFF',
         hatch: o.hatch,
@@ -385,37 +414,60 @@
       });
     }
 
+    const onCard = o.card !== false;
+
     if (o.label) {
-      g.font = '800 ' + (o.labelSize || 28) + 'px "Nunito", sans-serif';
-      g.fillStyle = o.labelColor || '#475569';
+      let lblSize = o.labelSize || 27;
+      g.font = '800 ' + lblSize + 'px "Nunito", sans-serif';
+      const lw = g.measureText(o.label).width;
+      if (lw > cw - 36 && lw > 0) {
+        lblSize = Math.max(18, Math.floor(lblSize * ((cw - 36) / lw)));
+        g.font = '800 ' + lblSize + 'px "Nunito", sans-serif';
+      }
+      g.fillStyle = o.labelColor || (onCard ? '#475569' : theme.ink);
       g.textAlign = 'center';
-      g.fillText(o.label, x, y - (o.size || 96) * 0.68);
+      g.fillText(o.label, x, y - (o.size || 92) * 0.66);
     }
 
-    g.font = '700 ' + (o.size || 96) + 'px ' + (o.font || '"Caveat", "Kalam", cursive');
-    g.fillStyle = o.color || C.PAL.ink;
+    let numSize = o.size || 92;
+    const numFont = o.font || '"Caveat", "Kalam", cursive';
+    g.font = '700 ' + numSize + 'px ' + numFont;
+    const nw = g.measureText(formatted).width;
+    if (nw > cw - 32 && nw > 0) {
+      numSize = Math.max(46, Math.floor(numSize * ((cw - 32) / nw)));
+      g.font = '700 ' + numSize + 'px ' + numFont;
+    }
+
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(formatted, x, y);
+    if (onCard) {
+      g.fillStyle = o.color || C.PAL.ink;
+      g.fillText(formatted, x, y);
+    } else {
+      C.drawContrastText(g, formatted, x, y, {
+        fill: o.color || theme.ink,
+        darkBg: theme.darkBg,
+        haloW: 7
+      });
+    }
 
     if (o.sub) {
-      g.font = '700 26px "Nunito", sans-serif';
-      g.fillStyle = o.subColor || '#64748B';
-      g.fillText(o.sub, x, y + (o.size || 96) * 0.65);
+      g.font = '700 25px "Nunito", sans-serif';
+      g.fillStyle = o.subColor || (onCard ? '#64748B' : theme.ink);
+      g.fillText(o.sub, x, y + (o.size || 92) * 0.64);
     }
     g.restore();
   }
 
   /**
    * 5. ENDLESS UNROLLING RECEIPT / BILL / LEDGER (`CHART.receipt(g, lt, opts)`)
-   * Naturally vertical — unrolls from topY = 320 down to y = 1160 inside the 9:16 Safe Box.
    */
   function receipt(g, lt, opts) {
     const o = opts || {};
-    const w = Math.min(o.w || 460, SAFE.right - SAFE.left - 40);
-    let x = o.x !== undefined ? (o.x === 960 ? SAFE.cx : o.x) : SAFE.cx;
-    if (x + w / 2 > SAFE.right) x = SAFE.right - w / 2;
-    if (x - w / 2 < SAFE.left) x = SAFE.left + w / 2;
+    const sbX = C.getSafeBoundsX ? C.getSafeBoundsX() : { minX: SAFE.left, maxX: SAFE.right };
+    const w = Math.min(o.w || 460, sbX.maxX - sbX.minX - 40);
+    const rawX = o.x !== undefined ? (o.x === 960 ? SAFE.cx : o.x) : SAFE.cx;
+    const x = C.safeX(rawX, w / 2 + 12);
 
     const topY = o.topY !== undefined ? Math.max(SAFE.top + 20, o.topY) : 320;
     const maxH = Math.min(o.h || 820, SAFE.bottom - topY - 30);
@@ -481,24 +533,22 @@
 
   /**
    * 6. 9:16 SAFE-ZONE TIMELINE (`CHART.timeline(g, lt, opts)`)
-   * Supports both Vertical Top-to-Bottom cascading timelines (`vertical: true` or >= 4 events)
-   * and compact Horizontal timelines clamped inside x: 110..830.
    */
   function timeline(g, lt, opts) {
     const o = opts || {};
     const events = o.events || [];
     const p = C.seg(lt, o.t0 || 0.08, (o.t0 || 0.08) + (o.dur || 0.80), C.ease.outCubic);
     const useVertical = o.vertical !== undefined ? o.vertical : events.length >= 4;
+    const theme = getChartContrast(g, SAFE.cx, SAFE.cy, o);
 
     g.save();
 
     if (useVertical) {
-      // Vertical Top-to-Bottom Shorts Timeline (Cleo Abram / Smart Nonsense style)
-      const cx = o.x !== undefined ? (o.x === 960 ? SAFE.cx : o.x) : SAFE.cx;
+      const cx = C.safeX(o.x !== undefined ? (o.x === 960 ? SAFE.cx : o.x) : SAFE.cx, 180);
       const y0 = o.y0 !== undefined ? o.y0 : 340;
       const y1 = o.y1 !== undefined ? o.y1 : 1220;
 
-      C.arrow(g, cx, y0, cx, y1, { p: p, lw: 6, color: C.PAL.ink });
+      C.arrow(g, cx, y0, cx, y1, { p: p, lw: 6, color: theme.axis });
 
       events.forEach((ev, i) => {
         const u = events.length > 1 ? i / (events.length - 1) : 0.5;
@@ -506,9 +556,9 @@
         const ey = C.lerp(y0 + 40, y1 - 60, u);
         const side = i % 2 === 0 ? -1 : 1;
         const cardW = 240, cardH = 86;
-        const cardX = C.clamp(cx + side * 195, SAFE.left + cardW / 2 + 6, SAFE.right - cardW / 2 - 6);
+        const cardX = C.safeX(cx + side * 195, cardW / 2 + 8);
 
-        C.line(g, cx, ey, cardX, ey, { lw: 3.5, dash: [6, 6] });
+        C.line(g, cx, ey, cardX, ey, { lw: 3.5, color: theme.axis, dash: [6, 6] });
         C.circle(g, cx, ey, 12, { fill: ev.color || '#FACC15', lw: 3.8 });
 
         C.roundRect(g, cardX - cardW / 2, ey - cardH / 2, cardW, cardH, 12, {
@@ -526,22 +576,22 @@
         g.fillText(ev.label || '', cardX, ey + 20);
       });
     } else {
-      // Compact Horizontal Timeline clamped inside x: 110..830
       const y = o.y !== undefined ? o.y : SAFE.cy;
-      const x0 = Math.max(SAFE.left + 20, o.x0 !== undefined ? o.x0 : 115);
-      const x1 = Math.min(SAFE.right - 20, o.x1 !== undefined ? o.x1 : 835);
+      const sbX = C.getSafeBoundsX ? C.getSafeBoundsX() : { minX: SAFE.left, maxX: SAFE.right };
+      const x0 = Math.max(sbX.minX + 20, o.x0 !== undefined ? o.x0 : 115);
+      const x1 = Math.min(sbX.maxX - 20, o.x1 !== undefined ? o.x1 : 835);
 
-      C.arrow(g, x0, y, x1, y, { p: p, lw: 6, color: C.PAL.ink });
+      C.arrow(g, x0, y, x1, y, { p: p, lw: 6, color: theme.axis });
 
       events.forEach((ev, i) => {
         const u = events.length > 1 ? i / (events.length - 1) : 0.5;
         if (p < u) return;
         const cardW = 200, cardH = 84;
-        const ex = C.clamp(C.lerp(x0 + 70, x1 - 70, u), SAFE.left + cardW / 2 + 6, SAFE.right - cardW / 2 - 6);
+        const ex = C.safeX(C.lerp(x0 + 70, x1 - 70, u), cardW / 2 + 8);
         const above = i % 2 === 0;
         const cardY = above ? y - 115 : y + 115;
 
-        C.line(g, ex, y, ex, cardY, { lw: 3.5, dash: [6, 6] });
+        C.line(g, ex, y, ex, cardY, { lw: 3.5, color: theme.axis, dash: [6, 6] });
         C.circle(g, ex, y, 12, { fill: ev.color || '#FACC15', lw: 3.8 });
 
         C.roundRect(g, ex - cardW / 2, cardY - cardH / 2, cardW, cardH, 12, {

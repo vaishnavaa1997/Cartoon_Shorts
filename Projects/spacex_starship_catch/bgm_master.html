@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Cartoon Engine Shorts Studio — Master BGM Generator (bgm_master.html)</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #080b14; color: #e2e8f0; font-family: 'Nunito', sans-serif; padding: 32px; max-width: 1360px; margin: 0 auto; }
+header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 16px; margin-bottom: 24px; }
+h1 { font-size: 24px; color: #ff8a3d; }
+.controls { background: #121829; border: 1px solid #26324d; border-radius: 12px; padding: 18px 22px; display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+button, select, label.btn { background: #1e293b; color: #f8fafc; border: 1px solid #3b4c6b; border-radius: 8px; padding: 9px 16px; font-family: inherit; font-weight: 800; font-size: 13.5px; cursor: pointer; }
+button.primary { background: #ff8a3d; color: #0b0e17; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 13px; color: #ffb074; min-width: 240px; }
+.cue-list { display: grid; gap: 12px; }
+.cue-card { background: #13192b; border: 1px solid #24304c; border-left: 5px solid #ff8a3d; border-radius: 8px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; }
+.cue-card.active { border-color: #38c878; background: #1a233d; }
+.cue-title { font-weight: 900; color: #ffb074; font-size: 15.5px; }
+.cue-sub { color: #94a3b8; font-size: 13px; margin-top: 4px; }
+.badge { font-family: 'Space Mono', monospace; font-size: 12px; background: #0d1220; color: #ff8a3d; padding: 5px 10px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CARTOON ENGINE SHORTS — UNIVERSAL MASTER BGM GENERATOR (STEP 13)</h1>
+  <div id="summary" class="badge"></div>
+</header>
+<div class="controls">
+  <button id="playBtn">Play Master BGM</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.00s / 00.00s</div>
+  <select id="bgmMixSelect">
+    <option value="bgmOnly" selected>VO-Ducked BGM (0.18 Bed / 0.50 Swell)</option>
+    <option value="bgmFull">Full Unducked BGM</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="exportBtn" class="primary">Export bgm_master.wav</button>
+</div>
+<div class="cue-list" id="cueList"></div>
+<script src="../../engine.js"></script>
+<script>
+// ============================================================================
+// STEP 13: MASTER BGM SCORE (spacex_starship_catch · 97.5s · 45 Shots)
+// ============================================================================
+const BGM_SCORE = {
+  total_duration: 97.5,
+  cues: [
+    {
+      cue_id: 'CUE_01_HOOK_STARSHIP_CATCH',
+      start_time: 0.0,
+      end_time: 7.5,
+      situation: 'space',
+      mood: 'awe',
+      bpm: 124,
+      desc: 'Shots 1–5: Scroll-Stopper Hook — SpaceX First Starship Catch & Industry Shock'
+    },
+    {
+      cue_id: 'CUE_02_AIRPLANE_TRASH_COMEDY',
+      start_time: 7.5,
+      end_time: 14.3,
+      situation: 'comedy',
+      mood: 'quirky',
+      bpm: 120,
+      desc: 'Shots 6–9: ₹500 Crore Aeroplane Analogy & Throwing Plane in Trash Can Skit'
+    },
+    {
+      cue_id: 'CUE_03_OCEAN_DUMP_WASTE_CRISIS',
+      start_time: 14.3,
+      end_time: 22.2,
+      situation: 'danger',
+      mood: 'crisis',
+      bpm: 122,
+      desc: 'Shots 10–12: Dumping Rockets in the Ocean After 1 Trip & Billions Wasted Bill'
+    },
+    {
+      cue_id: 'CUE_04_SPACEX_SIMPLE_SOLUTION',
+      start_time: 22.2,
+      end_time: 33.2,
+      situation: 'curious',
+      mood: 'editorial',
+      bpm: 120,
+      desc: 'Shots 13–18: SpaceX Masterplan — Catch & Reuse + 2-Stage Booster & Starship Cutaway'
+    },
+    {
+      cue_id: 'CUE_05_BOOSTER_3X_RECORD',
+      start_time: 33.2,
+      end_time: 41.2,
+      situation: 'triumph',
+      mood: 'victory',
+      bpm: 124,
+      desc: 'Shots 19–21: 2024 Hot-Staging Separation & 3x Super Heavy Booster Catch Record'
+    },
+    {
+      cue_id: 'CUE_06_STARSHIP_REENTRY_RISK',
+      start_time: 41.2,
+      end_time: 46.6,
+      situation: 'suspense',
+      mood: 'investigative',
+      bpm: 122,
+      desc: 'Shots 22–23: Extreme Upper-Stage Re-Entry Heat & Mission to Catch the Ship'
+    },
+    {
+      cue_id: 'CUE_07_SHIP42_124M_LIFTOFF',
+      start_time: 46.6,
+      end_time: 56.4,
+      situation: 'space',
+      mood: 'discovery',
+      bpm: 124,
+      desc: 'Shots 24–28: Unveiling 124m Ship 42 (Biggest Rocket in History) & Thunderous Liftoff'
+    },
+    {
+      cue_id: 'CUE_08_BOOSTER_MISALIGNMENT_ABORT',
+      start_time: 56.4,
+      end_time: 63.3,
+      situation: 'danger',
+      mood: 'panic',
+      bpm: 126,
+      desc: 'Shots 29–31: Miscalculation Twist, Booster Catch Abort & Ocean Splashdown Gag'
+    },
+    {
+      cue_id: 'CUE_09_ORBIT_AND_PLASMA_REENTRY',
+      start_time: 63.3,
+      end_time: 76.8,
+      situation: 'space',
+      mood: 'cosmic',
+      bpm: 124,
+      desc: 'Shots 32–37: Ship 42 Reaches Orbit, 14 Earth Orbits, 27,000 km/hr Plasma Dive & Flip'
+    },
+    {
+      cue_id: 'CUE_10_HISTORIC_SHIP42_CATCH_CLIMAX',
+      start_time: 76.8,
+      end_time: 85.3,
+      situation: 'triumph',
+      mood: 'climax',
+      bpm: 126,
+      desc: 'Shots 38–40: Historic Climax! Ship 42 Caught by Mechazilla Chopsticks & 90% Cost Drop'
+    },
+    {
+      cue_id: 'CUE_11_NEW_SPACE_ERA_AND_LOOP',
+      start_time: 85.3,
+      end_time: 97.5,
+      situation: 'triumph',
+      mood: 'inspiring',
+      bpm: 124,
+      desc: 'Shots 41–45: $30M Down to $3M Launches, 3 Global Breakthroughs & Seamless Loop into Shot 1'
+    }
+  ],
+  volume_automation: [
+    // Instant Frame-0 Hook Start & Shot 1-4 Energy
+    { time: 0.00, gain: 0.46 },
+    { time: 0.25, gain: 0.20 },
+    { time: 3.90, gain: 0.20 },
+    { time: 4.05, gain: 0.45 }, // Shot 4: Chopstick catch swell
+    { time: 4.55, gain: 0.18 },
+
+    // Silence Drop #1A: Shot 5 Old CEO Monocle Spit-Take ('recordScratch' at 6.45s)
+    { time: 6.35, gain: 0.18 },
+    { time: 6.42, gain: 0.00 },
+    { time: 7.15, gain: 0.00 },
+    { time: 7.50, gain: 0.42 }, // Shot 6 Black Screen Re-Hook Swell
+    { time: 7.95, gain: 0.18 },
+
+    // Shots 7-8: ₹500 Crore Aeroplane Setup & Trash Can Dunk
+    { time: 11.80, gain: 0.18 },
+    { time: 11.95, gain: 0.36 }, // Trash crash accent
+    { time: 12.35, gain: 0.18 },
+
+    // Silence Drop #1B: Shot 9 Deadpan "இல்லல்ல?" + Cricket Chirp (13.3s - 14.3s)
+    { time: 13.22, gain: 0.18 },
+    { time: 13.28, gain: 0.00 },
+    { time: 14.25, gain: 0.00 },
+    { time: 14.35, gain: 0.38 }, // Shot 10 Split Panel Re-Entry
+    { time: 14.75, gain: 0.18 },
+
+    // Shot 11: Ocean Rocket Explosion & Hardhat Fish Gag
+    { time: 17.05, gain: 0.42 }, // Ocean explosion swell
+    { time: 17.45, gain: 0.18 },
+
+    // Silence Drop #2: Shot 12 Accountant Faints + 'sadTrombone' (20.9s - 21.8s)
+    { time: 20.80, gain: 0.18 },
+    { time: 20.88, gain: 0.00 },
+    { time: 21.85, gain: 0.00 },
+    { time: 22.20, gain: 0.44 }, // Shot 13 Elon Solution Swell
+    { time: 22.65, gain: 0.18 },
+
+    // Shot 14: 12-Second Re-Hook Black Screen ("THE IDEA? SUPER SIMPLE.")
+    { time: 24.35, gain: 0.18 },
+    { time: 24.45, gain: 0.42 },
+    { time: 24.90, gain: 0.18 },
+
+    // Shots 15-20: 2-Stage Cutaway & 2024 Booster Catch
+    { time: 34.45, gain: 0.18 },
+    { time: 34.60, gain: 0.42 }, // Shot 19 Hot-Staging Separation Flash
+    { time: 35.05, gain: 0.18 },
+    { time: 36.85, gain: 0.46 }, // Shot 20 Booster Caught Swell
+    { time: 37.35, gain: 0.18 },
+
+    // Shot 21-23: 3x Record -> Extreme Re-Entry Risk -> Black Screen Mission
+    { time: 44.35, gain: 0.18 },
+    { time: 44.45, gain: 0.44 }, // Shot 23 Black Screen ("AT ALL COSTS")
+    { time: 45.00, gain: 0.18 },
+
+    // Shot 24-27: Ship 42 Unveiling, 124m Scale & Liftoff
+    { time: 52.35, gain: 0.18 },
+    { time: 52.48, gain: 0.48 }, // Shot 27 Ship 42 Liftoff Roar
+    { time: 53.15, gain: 0.18 },
+
+    // Silence Drop #3: Shot 29 Miscalculation Twist ('recordScratch' at 56.44s)
+    { time: 56.36, gain: 0.18 },
+    { time: 56.42, gain: 0.00 },
+    { time: 57.12, gain: 0.00 },
+    { time: 57.25, gain: 0.22 }, // Tense crisis pulse resumes
+
+    // Silence Drop #4: Shot 31 Hardhat Fish Callback ("I THOUGHT YOU STOPPED?!" + 'rimshot')
+    { time: 61.75, gain: 0.42 }, // Ocean explosion
+    { time: 62.08, gain: 0.00 }, // Silence for Fish punchline + rimshot
+    { time: 63.18, gain: 0.00 },
+
+    // Shot 32-37: Cosmic Orbit Swell, 14 Orbits & 27,000 km/hr Plasma Entry
+    { time: 63.32, gain: 0.45 }, // Shot 32 Orbit Reveal Swell
+    { time: 63.95, gain: 0.18 },
+    { time: 69.95, gain: 0.18 },
+    { time: 70.10, gain: 0.42 }, // Shot 35 Plasma Entry Swell
+    { time: 70.65, gain: 0.18 },
+
+    // Silence Drop #5 + Climax Explosion: Shot 38 Historic Ship 42 Catch!
+    { time: 77.15, gain: 0.18 },
+    { time: 77.22, gain: 0.00 }, // Pre-clamp breath of silence
+    { time: 77.48, gain: 0.00 },
+    { time: 77.55, gain: 0.50 }, // Maximum Euphoric Climax Swell on Catch!
+    { time: 78.45, gain: 0.22 },
+
+    // Shot 40: 80%-90% Cost Drop Black Screen
+    { time: 82.05, gain: 0.20 },
+    { time: 82.20, gain: 0.44 },
+    { time: 82.75, gain: 0.18 },
+
+    // Shots 41-44: $30M vs $3M Bar Chart & New Space Era Flowchart
+    { time: 89.75, gain: 0.18 },
+    { time: 89.90, gain: 0.42 }, // $3M-$4M Stamp Payoff
+    { time: 90.40, gain: 0.18 },
+
+    // Shot 45: Subscribe CTA & Seamless Loop Handoff into Shot 1 (0.00s = 0.46)
+    { time: 96.15, gain: 0.18 },
+    { time: 96.35, gain: 0.36 },
+    { time: 97.25, gain: 0.46 },
+    { time: 97.50, gain: 0.46 }
+  ]
+};
+
+const DURATION = BGM_SCORE.total_duration;
+function scoreBGM(k){ k.bgmScore(BGM_SCORE); }
+window.BGM_SCORE = BGM_SCORE;
+window.DURATION = DURATION;
+window.scoreBGM = scoreBGM;
+window.scoreSound = scoreBGM;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, voAudio = null;
+document.getElementById('summary').textContent = BGM_SCORE.cues.length + ' Cues · Total ' + DURATION.toFixed(1) + 's';
+
+const cueListEl = document.getElementById('cueList');
+BGM_SCORE.cues.forEach((c, idx) => {
+  const div = document.createElement('div');
+  div.className = 'cue-card';
+  div.id = 'cue-card-' + idx;
+  const dna = SOUND.analyzeCueDNA(c);
+  div.innerHTML =
+    '<div>' +
+      '<div class="cue-title">' + (c.cue_id || ('CUE_' + (idx + 1))) + ' · ' + (c.situation || c.mood || 'Editorial') + ' — ' + (c.desc || '') + '</div>' +
+      '<div class="cue-sub">Scale: ' + dna.scaleName + ' (' + dna.key + ') · Prog: ' + dna.progName + ' · Lead: ' + dna.leadVoice + ' · BPM: ' + dna.bpm + '</div>' +
+    '</div>' +
+    '<div class="badge">' + c.start_time.toFixed(1) + 's – ' + c.end_time.toFixed(1) + 's</div>';
+  cueListEl.appendChild(div);
+});
+
+function updateUI(t){
+  currentT = C.clamp(t, 0, DURATION);
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = currentT.toFixed(2) + 's / ' + DURATION.toFixed(2) + 's';
+  BGM_SCORE.cues.forEach((c, idx) => {
+    const el = document.getElementById('cue-card-' + idx);
+    if (el) el.classList.toggle('active', currentT >= c.start_time && currentT <= c.end_time);
+  });
+}
+
+function startAudio(){
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('bgmMixSelect').value;
+  stopSound = SOUND.live(scoreBGM, currentT, { mixMode });
+  if (voAudio) { voAudio.currentTime = currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio(){
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play(){
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (nextT >= DURATION) { nextT = 0; currentT = 0; startAudio(); }
+    updateUI(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause(){
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play Master BGM';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  updateUI(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('bgmMixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('exportBtn');
+  btn.textContent = 'Rendering bgm_master.wav...';
+  const mixMode = document.getElementById('bgmMixSelect').value;
+  const res = await SOUND.renderOffline(scoreBGM, DURATION, 48000, { mixMode });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'bgm_master.wav';
+  a.click();
+  btn.textContent = 'Export bgm_master.wav';
+});
+</script>
+</body>
+</html>

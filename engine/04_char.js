@@ -1,37 +1,40 @@
 /**
- * MODULE 04: UNIVERSAL CHARACTER, CREATURE, HAND & MASCOT CREATOR — 9:16 EDITION (engine/04_char.js)
+ * MODULE 04: UNIVERSAL CHARACTER, CREATURE, HAND & MASCOT CREATOR — 9:16 PAPER BILLIONS / OVERSIMPLIFIED EDITION (engine/04_char.js)
  * 100% Topic-Agnostic & Composable Editorial Cartoon Rig tuned for 1080x1920 vertical screens.
- * Defaults to raised floor (y=1320), optical safe center (x=500), and phone-readable scale (s=1.25).
+ * - Plump "Paper Billions" egg/teardrop shaded torso + large expressive head
+ * - Pure round-capped stick arms & legs (ZERO balls on hands or feet + subtle stick fingers)
+ * - 100% Static "Oversimplified" comic-book mouth sprites (ZERO lip-syncing or mouth flapping)
+ * - Snug skull-cap hairstyles (ZERO bald forehead gaps on top of the head)
+ * - Defaults to raised floor (y=1320), optical safe center (x=500), and phone-readable scale (s=1.25).
  */
 (function () {
   const C = window.CORE;
 
-  const SKIN_TONES = ['#F5CBA7', '#F0B88B', '#E5A373', '#D48B5C', '#B97246', '#8D5534', '#F9DCC4'];
+  const SKIN_TONES = ['#F6D0B1', '#F0B88B', '#E5A373', '#D48B5C', '#B97246', '#8D5534', '#F9DCC4'];
   const HAIR_COLORS = ['#18181B', '#27201C', '#4A3222', '#784B2A', '#D9A043', '#B45309', '#9CA3AF', '#CBD5E1'];
 
   /**
-   * 1. DECLARATIVE CARTOON SHAPE COMPOSER (`CHAR.renderParts(g, parts, t)`)
+   * 1. DECLARATIVE CARTOON SHAPE COMPOSER (`CHAR.renderParts(g, parts, t, opts)`)
    * Renders an array of simple cartoon primitives with bold `#18181B` ink outlines.
-   *
-   * Supported part types:
-   *   { type: 'rect', x, y, w, h, r, fill, hatch, rot, lw }
-   *   { type: 'circle', x, y, r, fill, shade, lw }
-   *   { type: 'ellipse', x, y, rx, ry, rot, fill, lw }
-   *   { type: 'poly', pts: [[x1,y1],[x2,y2],...], fill, close, lw }
-   *   { type: 'line', x1, y1, x2, y2, color, lw, dash }
-   *   { type: 'arc', x, y, r, a0, a1, fill, color, lw }
-   *   { type: 'text', x, y, text, size, color, font, align }
    */
-  function renderParts(g, parts, t) {
+  function renderParts(g, parts, t, opts) {
     if (!Array.isArray(parts)) return;
+    const clampRadius = opts && opts.maxOffset ? opts.maxOffset : 0;
+
     parts.forEach((p) => {
       if (!p) return;
       g.save();
-      if (p.x || p.y) g.translate(p.x || 0, p.y || 0);
+      let px = p.x || 0;
+      let py = p.y || 0;
+      if (clampRadius > 0) {
+        if (Math.abs(px) > clampRadius) px = ((px % clampRadius) + clampRadius) % clampRadius - clampRadius * 0.5;
+        if (Math.abs(py) > clampRadius) py = ((py % clampRadius) + clampRadius) % clampRadius - clampRadius * 0.5;
+      }
+      if (px || py) g.translate(px, py);
       if (p.rot) g.rotate((p.rot * Math.PI) / 180);
       if (p.scale) g.scale(p.scale, p.scale);
 
-      const lw = p.lw !== undefined ? p.lw : 3.2;
+      const lw = p.lw !== undefined ? p.lw : 3.0;
       const stroke = p.stroke !== undefined ? p.stroke : C.PAL.ink;
 
       if (p.type === 'rect') {
@@ -75,7 +78,14 @@
           g.stroke();
         }
       } else if (p.type === 'line') {
-        C.line(g, p.x1 || 0, p.y1 || 0, p.x2 || 0, p.y2 || 0, {
+        let x1 = p.x1 || 0, y1 = p.y1 || 0, x2 = p.x2 || 0, y2 = p.y2 || 0;
+        if (clampRadius > 0) {
+          x1 = C.clamp(x1, -clampRadius, clampRadius);
+          y1 = C.clamp(y1, -clampRadius, clampRadius);
+          x2 = C.clamp(x2, -clampRadius, clampRadius);
+          y2 = C.clamp(y2, -clampRadius, clampRadius);
+        }
+        C.line(g, x1, y1, x2, y2, {
           lw: lw,
           color: p.color || stroke,
           dash: p.dash
@@ -133,7 +143,7 @@
   }
 
   /**
-   * 3. UNIVERSAL CAPSULE & STICK CHARACTER DRAWER (`CHAR.draw(g, opts)`)
+   * 3. PAPER BILLIONS / OVERSIMPLIFIED CHARACTER DRAWER (`CHAR.draw(g, opts)`)
    * 9:16 Defaults: `(x: 500, y: 1320, s: 1.25)`.
    * Supports `moveX: [startX, endX, lt, dur]` for automatic locomotion.
    */
@@ -162,31 +172,45 @@
     const pose = o.pose || (isMoving ? 'walk' : 'idle');
     const walkPhase = (isMoving || pose === 'walk' || pose === 'run') ? t * (pose === 'run' ? 14 : 9.5) : 0;
     const bobY = (isMoving || pose === 'walk' || pose === 'run')
-      ? Math.abs(Math.sin(walkPhase)) * -7
-      : Math.sin(t * 2.6 + (o.seed || 0)) * 1.5;
+      ? Math.abs(Math.sin(walkPhase)) * -6
+      : Math.sin(t * 2.2 + (o.seed || 0)) * 1.2;
 
-    const legH = o.seated || pose === 'sit' ? 36 : (o.legH !== undefined ? o.legH : 66);
-    const torsoW = o.torsoW || 68;
-    const torsoH = o.torsoH || 94;
-    const headRx = o.headRx || 50;
-    const headRy = o.headRy || 46;
+    const legH = o.seated || pose === 'sit' ? 36 : (o.legH !== undefined ? o.legH : 64);
+    const torsoW = o.torsoW || 72;
+    const torsoH = o.torsoH || 96;
+    const headRx = o.headRx || 51;
+    const headRy = o.headRy || 48;
 
     const hipY = -legH + bobY;
     const torsoCenterY = hipY - torsoH * 0.46;
-    const neckY = hipY - torsoH + 6;
-    const headY = neckY - headRy * 0.85;
+    const neckY = hipY - torsoH + 5;
+    const headY = neckY - headRy * 0.84;
     const dir = autoFlip ? -1 : 1;
+
+    // Optional automatic pupil look calculation toward `lookAt` or `pointTo`
+    let lookVec = o.look || null;
+    const lookTarget = o.lookAt || (Array.isArray(o.pointTo) ? o.pointTo : null);
+    if (!lookVec && Array.isArray(lookTarget)) {
+      const dx = lookTarget[0] - x;
+      const dy = lookTarget[1] - (y + headY * s);
+      const dist = Math.hypot(dx, dy) || 1;
+      lookVec = [C.clamp((dx / dist) * 1.3, -1.2, 1.2), C.clamp((dy / dist) * 1.1, -1.0, 1.0)];
+    }
 
     g.save();
     g.translate(x, y);
     if (o.rot) g.rotate((o.rot * Math.PI) / 180);
     g.scale(s, s);
 
-    // Ground shadow
+    // Soft Paper Billions ground shadow
     if (o.shadow !== false && !o.floating) {
-      g.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      const shGrd = g.createRadialGradient(0, 2, 4, 0, 2, 42);
+      shGrd.addColorStop(0, 'rgba(15, 23, 42, 0.28)');
+      shGrd.addColorStop(0.7, 'rgba(15, 23, 42, 0.14)');
+      shGrd.addColorStop(1, 'rgba(15, 23, 42, 0)');
+      g.fillStyle = shGrd;
       g.beginPath();
-      g.ellipse(0, 2, 38, 9, 0, 0, Math.PI * 2);
+      g.ellipse(0, 2, 42, 10, 0, 0, Math.PI * 2);
       g.fill();
     }
 
@@ -205,7 +229,7 @@
     if (o.backParts) {
       g.save();
       g.translate(0, torsoCenterY);
-      renderParts(g, o.backParts, t);
+      renderParts(g, o.backParts, t, { maxOffset: 110 });
       g.restore();
     }
     if (typeof o.drawBack === 'function') {
@@ -215,36 +239,37 @@
       g.restore();
     }
 
-    // 2. Back Hair
-    if (o.hairStyle === 'long' || o.hairStyle === 'shoulder' || o.backHairLen) {
-      const bh = o.backHairLen || (o.hairStyle === 'long' ? 68 : 44);
-      C.roundRect(g, -headRx - 3, headY - 10, (headRx + 3) * 2, bh, 18, {
+    // 2. Back Hair (for long / shoulder / bob hair)
+    if (o.hairStyle === 'long' || o.hairStyle === 'shoulder' || o.hairStyle === 'bob' || o.backHairLen) {
+      const bh = o.backHairLen || (o.hairStyle === 'long' ? 70 : (o.hairStyle === 'shoulder' ? 50 : 34));
+      C.roundRect(g, -headRx - 4, headY - 8, (headRx + 4) * 2, bh, 20, {
         fill: o.hairColor || '#18181B',
         stroke: C.PAL.ink,
-        lw: 3.5
+        lw: 3.2
       });
     }
 
-    // 3. Stick Legs & Feet
+    // 3. Pure Tapered Stick Legs (ZERO balls on feet!)
     if (o.legs !== false) {
       drawLegs(g, hipY - bobY, legH, walkPhase, pose, dir, o);
     }
 
-    // 4. Back Arm
+    // 4. Back Stick Arm
     drawArm(g, -1, neckY + 18, torsoW, pose, walkPhase, t, dir, x, y, s, o);
 
-    // 5. Capsule Torso & Composable Outfit
+    // 5. Paper Billions Plump Egg/Teardrop Torso & Composable Outfit
     drawTorso(g, torsoCenterY, torsoW, torsoH, dir, t, o);
 
-    // 6. Round Head, Face, Hair & Hat
+    // 6. Neck Bridge + Expressive Round Head, Face, Skull-Cap Hair & Hat
+    drawNeck(g, neckY, o.skin || '#F0B88B');
     g.save();
-    const headTilt = (o.headTilt || 0) + (pose === 'bow' ? 0.35 * dir : 0);
+    const headTilt = (o.headTilt || 0) + (pose === 'bow' ? 0.32 * dir : (pose === 'shrug' ? -0.06 * dir : 0));
     g.translate(0, headY);
     if (headTilt) g.rotate(headTilt);
-    drawHeadAndFace(g, headRx, headRy, dir, t, o);
+    drawHeadAndFace(g, headRx, headRy, dir, t, Object.assign({}, o, { _lookVec: lookVec }));
     g.restore();
 
-    // 7. Front Arm & Held Tool / Prop / Pointer
+    // 7. Front Stick Arm & Held Tool / Prop / Pointer
     drawArm(g, +1, neckY + 18, torsoW, pose, walkPhase, t, dir, x, y, s, o);
 
     // 8. Floating Emotion FX
@@ -253,10 +278,25 @@
     g.restore();
   }
 
-  // --- Internal: Stick Legs ---
+  function drawNeck(g, neckY, skin) {
+    g.save();
+    C.roundRect(g, -9, neckY - 8, 18, 16, 6, {
+      fill: C.shadeColor(skin, -6),
+      stroke: C.PAL.ink,
+      lw: 3.0
+    });
+    g.restore();
+  }
+
+  // --- Internal: Pure Paper Billions Stick Legs (NO Foot Balls) ---
   function drawLegs(g, hipY, legH, walkPhase, pose, dir, o) {
-    C.inkStyle(g, 4.2, C.PAL.ink, o.shoeColor || C.PAL.ink);
-    const hipSpread = 13;
+    g.save();
+    g.strokeStyle = C.PAL.ink;
+    g.lineWidth = 4.6;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+
+    const hipSpread = 14;
 
     [-1, 1].forEach((side) => {
       const hx = side * hipSpread;
@@ -264,8 +304,8 @@
 
       if (walkPhase > 0) {
         const swing = Math.sin(walkPhase + (side === 1 ? 0 : Math.PI));
-        fx = hx + swing * 22 * dir;
-        fy = Math.min(0, -Math.cos(walkPhase + (side === 1 ? 0 : Math.PI)) * 10);
+        fx = hx + swing * 20 * dir;
+        fy = Math.min(0, -Math.cos(walkPhase + (side === 1 ? 0 : Math.PI)) * 9);
       } else if (pose === 'sit' || o.seated) {
         fx = hx + 18 * dir;
         fy = hipY + 34;
@@ -275,7 +315,7 @@
       }
 
       g.beginPath();
-      g.moveTo(hx, hipY + 6);
+      g.moveTo(hx, hipY + 4);
       if (pose === 'sit' || o.seated) {
         g.lineTo(hx + 16 * dir, hipY + 14);
         g.lineTo(fx, fy);
@@ -283,12 +323,29 @@
         g.lineTo(fx, fy);
       }
       g.stroke();
-
-      g.beginPath();
-      g.ellipse(fx + 5 * dir, fy, 10, 4.8, 0, 0, Math.PI * 2);
-      g.fill();
-      g.stroke();
     });
+    g.restore();
+  }
+
+  // --- Internal: Paper Billions Egg/Teardrop Torso Path ---
+  function pathEggTorso(g, cy, w, h, shape) {
+    const top = cy - h / 2;
+    const bot = cy + h / 2;
+    if (shape === 'robe') {
+      C.pathRoundRect(g, -w / 2, top, w, h, 16);
+      return;
+    }
+    const topW = w * 0.43;
+    const botW = w * 0.53;
+    g.beginPath();
+    g.moveTo(0, top);
+    // Right shoulder -> plump belly -> curved hem
+    g.bezierCurveTo(topW, top, botW + 3, cy - h * 0.12, botW, cy + h * 0.22);
+    g.bezierCurveTo(botW - 2, bot - 3, w * 0.28, bot + 2, 0, bot + 2);
+    // Left hem -> plump belly -> left shoulder
+    g.bezierCurveTo(-w * 0.28, bot + 2, -botW + 2, bot - 3, -botW, cy + h * 0.22);
+    g.bezierCurveTo(-botW - 3, cy - h * 0.12, -topW, top, 0, top);
+    g.closePath();
   }
 
   // --- Internal: Composable Torso & Outfit System ---
@@ -296,12 +353,13 @@
     const shorthandMap = {
       suit:          { collar: 'lapel', neckwear: 'tie' },
       shirtTie:      { collar: 'shirt', neckwear: 'tie' },
-      leatherJacket: { collar: 'lapel', outerwear: 'bikerZipper', topColor: '#18181B' },
-      bikerJacket:   { collar: 'lapel', outerwear: 'bikerZipper', topColor: '#18181B' },
+      leatherJacket: { collar: 'lapel', outerwear: 'bikerZipper', topColor: '#1E1E24' },
+      bikerJacket:   { collar: 'lapel', outerwear: 'bikerZipper', topColor: '#1E1E24' },
       labCoat:       { collar: 'lapel', outerwear: 'openCoat', topColor: '#FFFFFF' },
       overalls:      { collar: 'round', outerwear: 'overalls' },
       hiVis:         { collar: 'vneck', outerwear: 'hiVisStripes' },
       hoodie:        { collar: 'hoodStrings', outerwear: 'pocket' },
+      jacket:        { collar: 'zipCollar', outerwear: 'zipJacket' },
       sweater:       { collar: 'quarterZip' },
       uniform:       { collar: 'shirt', outerwear: 'badgeButtons' },
       chef:          { collar: 'round', outerwear: 'doubleBreasted', topColor: '#FFFFFF' },
@@ -317,53 +375,73 @@
     const neckwear = o.neckwear || sh.neckwear || 'none';
     const outerwear = o.outerwear || sh.outerwear || 'none';
 
-    const left = -w / 2;
+    const left = -w * 0.55;
     const top = cy - h / 2;
-    const rad = o.torsoShape === 'robe' ? 16 : w * 0.46;
 
     g.save();
-    C.pathRoundRect(g, left, top, w, h, rad);
-    g.fillStyle = topCol;
+    pathEggTorso(g, cy, w, h, o.torsoShape);
+
+    // Paper Billions soft radial fabric shading
+    const bodyGrd = g.createRadialGradient(-w * 0.15 * dir, cy - h * 0.18, 6, 0, cy, w * 0.72);
+    bodyGrd.addColorStop(0, C.shadeColor(topCol, 10));
+    bodyGrd.addColorStop(0.7, topCol);
+    bodyGrd.addColorStop(1, C.shadeColor(topCol, -14));
+    g.fillStyle = bodyGrd;
     g.fill();
     g.clip();
 
-    g.fillStyle = 'rgba(0, 0, 0, 0.14)';
-    g.fillRect(dir >= 0 ? left : left + w * 0.76, top, w * 0.24, h);
+    // Rim shadow along back edge & bottom hem
+    g.fillStyle = 'rgba(0, 0, 0, 0.13)';
+    g.fillRect(dir >= 0 ? left : w * 0.28, top, w * 0.28, h + 6);
+    g.fillRect(left, top + h - 10, w * 1.1, 14);
 
-    C.inkStyle(g, 2.8, C.PAL.ink);
+    C.inkStyle(g, 2.6, C.PAL.ink);
 
     // 1. Outerwear Layer
     if (outerwear === 'openCoat') {
       g.fillStyle = underCol;
-      g.fillRect(-13, top, 26, h);
-      C.line(g, -13, top, -13, top + h, { lw: 2.8 });
-      C.line(g, 13, top, 13, top + h, { lw: 2.8 });
-      C.roundRect(g, 16, top + 34, 14, 16, 3, { fill: topCol, lw: 2 });
+      g.fillRect(-13, top, 26, h + 4);
+      C.line(g, -13, top, -13, top + h + 4, { lw: 2.6 });
+      C.line(g, 13, top, 13, top + h + 4, { lw: 2.6 });
+      C.roundRect(g, 16, top + 36, 14, 16, 3, { fill: topCol, lw: 2 });
+    } else if (outerwear === 'zipJacket') {
+      C.line(g, 0, top + 10, 0, top + h + 2, { lw: 2.6, color: C.PAL.ink });
+      C.line(g, -22, top + 54, -14, top + 74, { lw: 2.6, color: C.PAL.ink });
+      C.line(g, 22, top + 54, 14, top + 74, { lw: 2.6, color: C.PAL.ink });
     } else if (outerwear === 'overalls') {
       g.fillStyle = underCol;
-      g.fillRect(left, top, w, 30);
-      C.line(g, left, top + 30, left + w, top + 30, { lw: 2.8 });
-      C.roundRect(g, -18, top, 9, 32, 0, { fill: topCol, lw: 2.5 });
-      C.roundRect(g, 9, top, 9, 32, 0, { fill: topCol, lw: 2.5 });
-      C.roundRect(g, -12, top + 40, 24, 20, 4, { fill: topCol, lw: 2.5 });
+      g.fillRect(left, top, w * 1.1, 30);
+      C.line(g, left, top + 30, left + w * 1.1, top + 30, { lw: 2.6 });
+      C.roundRect(g, -18, top, 9, 32, 0, { fill: topCol, lw: 2.4 });
+      C.roundRect(g, 9, top, 9, 32, 0, { fill: topCol, lw: 2.4 });
+      C.roundRect(g, -12, top + 40, 24, 20, 4, { fill: topCol, lw: 2.4 });
     } else if (outerwear === 'hiVisStripes') {
       g.fillStyle = o.stripeColor || '#FDE047';
-      g.fillRect(left, top + 52, w, 9);
-      g.fillRect(left, top + 70, w, 9);
+      g.fillRect(left, top + 52, w * 1.1, 9);
+      g.fillRect(left, top + 70, w * 1.1, 9);
       g.fillRect(-18, top, 8, 52);
       g.fillRect(10, top, 8, 52);
-      C.line(g, 0, top + 12, 0, top + h, { lw: 2.8 });
+      C.line(g, 0, top + 12, 0, top + h + 2, { lw: 2.6 });
     } else if (outerwear === 'bikerZipper') {
-      C.line(g, 0, top + 26, 0, top + h, { lw: 2.8, color: '#CBD5E1' });
-      C.line(g, -18, top + 34, -6, top + 68, { lw: 2.8, color: '#CBD5E1' });
-      C.line(g, 18, top + 34, 8, top + 68, { lw: 2.8, color: '#CBD5E1' });
+      C.line(g, 0, top + 20, 0, top + h + 2, { lw: 2.6, color: '#CBD5E1' });
+      C.line(g, -18, top + 36, -8, top + 68, { lw: 2.6, color: '#CBD5E1' });
+      C.line(g, 18, top + 36, 8, top + 68, { lw: 2.6, color: '#CBD5E1' });
     } else if (outerwear === 'pocket') {
-      C.roundRect(g, -20, top + 54, 40, 24, 6, { fill: C.shadeColor(topCol, -8), lw: 2.5 });
+      // Paper Billions kangaroo hoodie pocket
+      g.fillStyle = C.shadeColor(topCol, -9);
+      g.beginPath();
+      g.moveTo(-22, top + 78);
+      g.lineTo(-16, top + 54);
+      g.lineTo(16, top + 54);
+      g.lineTo(22, top + 78);
+      g.closePath();
+      g.fill();
+      g.stroke();
     } else if (outerwear === 'badgeButtons') {
       C.circle(g, 16 * dir, top + 30, 6, { fill: '#FACC15', lw: 2 });
-      C.line(g, 0, top + 12, 0, top + h, { lw: 2.5 });
+      C.line(g, 0, top + 12, 0, top + h + 2, { lw: 2.4 });
     } else if (outerwear === 'doubleBreasted') {
-      C.line(g, -10, top + 16, -10, top + h, { lw: 2.5 });
+      C.line(g, -10, top + 16, -10, top + h + 2, { lw: 2.4 });
       for (let by = top + 26; by < top + h - 10; by += 18) {
         C.circle(g, -16, by, 2.5, { fill: C.PAL.ink, stroke: false });
         C.circle(g, 6, by, 2.5, { fill: C.PAL.ink, stroke: false });
@@ -371,28 +449,33 @@
     } else if (outerwear === 'sash') {
       C.line(g, -20, top, 18, top + h, { lw: 8, color: o.trimColor || '#FACC15' });
     } else if (outerwear === 'armorPlate') {
-      C.roundRect(g, -24, top + 14, 48, 42, 8, { fill: '#94A3B8', lw: 2.8 });
-      C.line(g, left, top + 62, left + w, top + 62, { lw: 4 });
+      C.roundRect(g, -24, top + 14, 48, 42, 8, { fill: '#94A3B8', lw: 2.6 });
+      C.line(g, left, top + 62, left + w * 1.1, top + 62, { lw: 3.6 });
     }
 
     if (o.belt) {
-      C.roundRect(g, left, top + h - 22, w, 10, 0, { fill: o.beltColor || '#18181B', lw: 2.5 });
-      C.roundRect(g, -7, top + h - 24, 14, 14, 2, { fill: '#FACC15', lw: 2 });
+      C.roundRect(g, left, top + h - 20, w * 1.1, 10, 0, { fill: o.beltColor || '#18181B', lw: 2.4 });
+      C.roundRect(g, -7, top + h - 22, 14, 14, 2, { fill: '#FACC15', lw: 2 });
     }
 
     // 2. Collar & Neckwear Layer
-    if (collar === 'lapel' && neckwear === 'tie') {
+    if (collar === 'lapel') {
       g.fillStyle = underCol;
       g.beginPath();
-      g.moveTo(-16, top); g.lineTo(0, top + 46); g.lineTo(16, top);
+      g.moveTo(-15, top); g.lineTo(0, top + 44); g.lineTo(15, top);
       g.closePath(); g.fill(); g.stroke();
+      // Suit lapel notches
+      C.line(g, -15, top, -22, top + 22, { lw: 2.4 });
+      C.line(g, -22, top + 22, 0, top + 44, { lw: 2.4 });
+      C.line(g, 15, top, 22, top + 22, { lw: 2.4 });
+      C.line(g, 22, top + 22, 0, top + 44, { lw: 2.4 });
     }
 
     if (neckwear === 'tie') {
       g.fillStyle = tieCol;
       g.beginPath();
-      g.moveTo(-4, top + 10); g.lineTo(4, top + 10);
-      g.lineTo(7, top + 50); g.lineTo(0, top + 60); g.lineTo(-7, top + 50);
+      g.moveTo(-4, top + 9); g.lineTo(4, top + 9);
+      g.lineTo(7, top + 48); g.lineTo(0, top + 58); g.lineTo(-7, top + 48);
       g.closePath(); g.fill(); g.stroke();
     } else if (neckwear === 'bowtie') {
       g.fillStyle = tieCol;
@@ -401,37 +484,49 @@
       g.lineTo(12, top + 10); g.lineTo(-12, top + 20);
       g.closePath(); g.fill(); g.stroke();
     } else if (neckwear === 'scarf') {
-      C.roundRect(g, -24, top, 48, 16, 6, { fill: tieCol, lw: 2.8 });
-      C.roundRect(g, 6, top + 10, 12, 34, 4, { fill: tieCol, lw: 2.8 });
+      C.roundRect(g, -24, top, 48, 16, 6, { fill: tieCol, lw: 2.6 });
+      C.roundRect(g, 6, top + 10, 12, 34, 4, { fill: tieCol, lw: 2.6 });
     } else if (neckwear === 'medal') {
       C.line(g, -12, top, 0, top + 32, { lw: 3, color: '#DC2626' });
       C.line(g, 12, top, 0, top + 32, { lw: 3, color: '#DC2626' });
-      C.circle(g, 0, top + 36, 7, { fill: '#FACC15', lw: 2.5 });
+      C.circle(g, 0, top + 36, 7, { fill: '#FACC15', lw: 2.4 });
+    } else if (neckwear === 'lanyard' || o.lanyard) {
+      C.line(g, -11, top, -2, top + 34, { lw: 3.2, color: '#2563EB' });
+      C.line(g, 11, top, 2, top + 34, { lw: 3.2, color: '#2563EB' });
+      C.roundRect(g, -9, top + 34, 18, 24, 3, { fill: '#F8FAFC', lw: 2.2 });
+      C.roundRect(g, -6, top + 38, 12, 6, 1, { fill: '#3B82F6', stroke: false });
     } else if (neckwear === 'stethoscope') {
       C.line(g, -14, top, -14, top + 36, { lw: 3, color: '#334155' });
       C.line(g, 14, top, 14, top + 36, { lw: 3, color: '#334155' });
-      C.circle(g, 14, top + 40, 6, { fill: '#94A3B8', lw: 2.5 });
+      C.circle(g, 14, top + 40, 6, { fill: '#94A3B8', lw: 2.4 });
     }
 
-    if (collar === 'shirt') {
+    if (collar === 'shirt' || collar === 'zipCollar') {
+      g.fillStyle = C.shadeColor(topCol, -10);
       g.beginPath();
-      g.moveTo(-16, top); g.lineTo(-6, top + 16); g.lineTo(0, top + 10);
-      g.lineTo(6, top + 16); g.lineTo(16, top);
-      g.stroke();
+      g.moveTo(-15, top); g.lineTo(-18, top + 14); g.lineTo(-4, top + 10);
+      g.closePath(); g.fill(); g.stroke();
+      g.beginPath();
+      g.moveTo(15, top); g.lineTo(18, top + 14); g.lineTo(4, top + 10);
+      g.closePath(); g.fill(); g.stroke();
     } else if (collar === 'quarterZip') {
-      C.line(g, 0, top + 8, 0, top + 30, { lw: 2.8 });
-      C.line(g, -12, top + 4, 0, top + 14, { lw: 2.8 });
-      C.line(g, 12, top + 4, 0, top + 14, { lw: 2.8 });
+      C.line(g, 0, top + 8, 0, top + 30, { lw: 2.6 });
+      C.line(g, -12, top + 4, 0, top + 14, { lw: 2.6 });
+      C.line(g, 12, top + 4, 0, top + 14, { lw: 2.6 });
     } else if (collar === 'hoodStrings') {
-      C.line(g, -7, top + 12, -7, top + 34, { lw: 2.5, color: '#F8FAFC' });
-      C.line(g, 7, top + 12, 7, top + 34, { lw: 2.5, color: '#F8FAFC' });
+      // Paper Billions hoodie collar ring + drawstrings
+      g.beginPath();
+      g.arc(0, top + 2, 16, 0.1 * Math.PI, 0.9 * Math.PI);
+      g.stroke();
+      C.line(g, -7, top + 11, -8, top + 32, { lw: 2.4, color: '#18181B' });
+      C.line(g, 7, top + 11, 8, top + 32, { lw: 2.4, color: '#18181B' });
     }
 
     // 3. Declarative `outfitParts` or `drawOutfit` callback
     if (o.outfitParts) {
       g.save();
       g.translate(0, cy);
-      renderParts(g, o.outfitParts, t);
+      renderParts(g, o.outfitParts, t, { maxOffset: 65 });
       g.restore();
     }
     if (typeof o.drawOutfit === 'function') {
@@ -444,57 +539,59 @@
     if (collar !== 'turtleneck') {
       g.fillStyle = skin;
       g.beginPath();
-      g.moveTo(-8, top); g.lineTo(0, top + 11); g.lineTo(8, top);
+      g.moveTo(-8, top); g.lineTo(0, top + 10); g.lineTo(8, top);
       g.closePath(); g.fill(); g.stroke();
     }
 
     if (o.shadowSide) {
-      g.fillStyle = 'rgba(0, 0, 0, 0.48)';
-      g.fillRect(o.shadowSide === 'left' ? left : 0, top, w / 2, h);
+      g.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      g.fillRect(o.shadowSide === 'left' ? left : 0, top, w * 0.6, h + 6);
     }
 
     g.restore();
 
-    C.pathRoundRect(g, left, top, w, h, rad);
-    C.inkStyle(g, 3.8, C.PAL.ink);
+    pathEggTorso(g, cy, w, h, o.torsoShape);
+    C.inkStyle(g, 3.6, C.PAL.ink);
     g.stroke();
   }
 
-  // --- Internal: Head, Face, Hair & Headwear ---
+  // --- Internal: Head, Face, Skull-Cap Hair & Headwear ---
   function drawHeadAndFace(g, rx, ry, dir, t, o) {
     const skin = o.skin || '#F0B88B';
     const hairCol = o.hairColor || '#18181B';
     const hairStyle = o.hairStyle !== undefined ? o.hairStyle : 'parted';
 
+    // Head base with soft Paper Billions radial shading
     g.save();
     g.beginPath();
     g.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-    const grd = g.createRadialGradient(-rx * 0.25 * dir, -ry * 0.25, rx * 0.1, 0, 0, rx * 1.05);
-    grd.addColorStop(0, C.shadeColor(skin, 8));
-    grd.addColorStop(0.78, skin);
-    grd.addColorStop(1, C.shadeColor(skin, -12));
+    const grd = g.createRadialGradient(-rx * 0.22 * dir, -ry * 0.22, rx * 0.12, 0, 0, rx * 1.05);
+    grd.addColorStop(0, C.shadeColor(skin, 9));
+    grd.addColorStop(0.74, skin);
+    grd.addColorStop(1, C.shadeColor(skin, -14));
     g.fillStyle = grd;
     g.fill();
 
     if (o.shadowSide) {
       g.save();
       g.clip();
-      g.fillStyle = 'rgba(0, 0, 0, 0.48)';
+      g.fillStyle = 'rgba(0, 0, 0, 0.45)';
       g.fillRect(o.shadowSide === 'left' ? -rx - 5 : 0, -ry - 5, rx + 5, ry * 2 + 10);
       g.restore();
     }
 
-    C.inkStyle(g, 3.8, C.PAL.ink);
+    C.inkStyle(g, 3.6, C.PAL.ink);
     g.stroke();
     g.restore();
 
-    const faceShiftX = (o.look && o.look[0] ? o.look[0] * 6 : dir * 4);
-    const eyeY = -3;
-    const eyeSpread = o.eyeSpread || 16;
+    const lookVec = o._lookVec || o.look;
+    const faceShiftX = (lookVec && lookVec[0] ? lookVec[0] * 5.5 : dir * 4);
+    const eyeY = -2;
+    const eyeSpread = o.eyeSpread || 16.5;
 
     if (o.blush || o.eyes === 'heart' || o.eyes === 'happy') {
       g.strokeStyle = '#F87171';
-      g.lineWidth = 2.5;
+      g.lineWidth = 2.4;
       [-1, 1].forEach((s) => {
         const bx = faceShiftX + s * 26, by = eyeY + 12;
         g.beginPath();
@@ -504,7 +601,7 @@
       });
     }
 
-    drawEyes(g, faceShiftX, eyeY, eyeSpread, dir, t, o);
+    drawEyes(g, faceShiftX, eyeY, eyeSpread, dir, t, o, lookVec);
 
     if (o.glasses && o.glasses !== 'none') {
       drawGlasses(g, faceShiftX, eyeY, eyeSpread, o.glasses);
@@ -516,18 +613,20 @@
       drawFacialHair(g, faceShiftX, eyeY + 18, rx, ry, hairCol, o.facialHair);
     }
 
+    // 100% Static Oversimplified / Paper Billions Comic Mouth Sprite
     drawMouth(g, faceShiftX, eyeY + 21, dir, t, o);
 
-    if (o.faceParts) renderParts(g, o.faceParts, t);
+    // Clamp head-local faceParts so coordinates never float away in world space
+    if (o.faceParts) renderParts(g, o.faceParts, t, { maxOffset: 62 });
     if (typeof o.drawFace === 'function') o.drawFace(g, rx, ry, t);
 
     // Sweat drop
     if (o.sweat || o.eyes === 'panic') {
-      const sx = -dir * (rx * 0.68), sy = -10 + Math.sin(t * 6) * 3;
+      const sx = -dir * (rx * 0.68), sy = -8 + Math.sin(t * 6) * 2.5;
       g.save();
       g.fillStyle = '#60A5FA';
       g.strokeStyle = C.PAL.ink;
-      g.lineWidth = 2.5;
+      g.lineWidth = 2.4;
       g.beginPath();
       g.moveTo(sx, sy - 9);
       g.quadraticCurveTo(sx + 7, sy + 2, sx, sy + 8);
@@ -542,7 +641,7 @@
       const vx = dir * (rx * 0.55), vy = -ry * 0.52;
       g.save();
       g.strokeStyle = '#EF4444';
-      g.lineWidth = 3;
+      g.lineWidth = 2.8;
       g.beginPath();
       g.moveTo(vx - 7, vy - 2); g.lineTo(vx - 2, vy - 2); g.lineTo(vx - 2, vy - 7);
       g.moveTo(vx + 7, vy - 2); g.lineTo(vx + 2, vy - 2); g.lineTo(vx + 2, vy - 7);
@@ -552,39 +651,39 @@
       g.restore();
     }
 
-    // Front Hair
+    // Front Skull-Cap Hair (Guaranteed to cover the top of the head!)
     if (hairStyle && hairStyle !== 'none' && hairStyle !== 'bald') {
       drawFrontHair(g, rx, ry, dir, hairCol, hairStyle);
     }
-    if (o.hairParts) renderParts(g, o.hairParts, t);
+    if (o.hairParts) renderParts(g, o.hairParts, t, { maxOffset: 65 });
 
     // Hat / Headwear
     if (o.hat && o.hat !== 'none') {
       drawHat(g, rx, ry, dir, o.hat, o.hatColor);
     }
-    if (o.hatParts) renderParts(g, o.hatParts, t);
+    if (o.hatParts) renderParts(g, o.hatParts, t, { maxOffset: 68 });
     if (typeof o.drawHat === 'function') o.drawHat(g, rx, ry, t);
   }
 
-  function drawEyes(g, cx, cy, spread, dir, t, o) {
+  function drawEyes(g, cx, cy, spread, dir, t, o, lookVec) {
     const mode = o.eyes || o.eyeMode || 'normal';
-    const lookX = o.look ? o.look[0] * 3.2 : dir * 1.5;
-    const lookY = o.look ? o.look[1] * 2.5 : 0;
-    const blinkCycle = (t + (o.seed || 1) * 1.37) % 3.8;
-    const isBlinking = mode === 'normal' && blinkCycle > 3.66;
+    const lookX = lookVec ? lookVec[0] * 3.4 : dir * 1.8;
+    const lookY = lookVec ? lookVec[1] * 2.6 : 0;
+    const blinkCycle = (t + (o.seed || 1) * 1.37) % 4.1;
+    const isBlinking = mode === 'normal' && blinkCycle > 3.96;
 
-    C.inkStyle(g, 3.0, C.PAL.ink);
+    C.inkStyle(g, 2.8, C.PAL.ink);
 
     [-1, 1].forEach((side) => {
       const ex = cx + side * spread, ey = cy;
 
       if (mode === 'closed' || isBlinking || (mode === 'wink' && side === 1)) {
         g.beginPath();
-        g.arc(ex, ey + 1, 6, 0.15 * Math.PI, 0.85 * Math.PI);
+        g.arc(ex, ey + 1, 6.2, 0.15 * Math.PI, 0.85 * Math.PI);
         g.stroke();
       } else if (mode === 'happy' || mode === 'closedArch') {
         g.beginPath();
-        g.arc(ex, ey + 3, 6.5, 1.15 * Math.PI, 1.85 * Math.PI);
+        g.arc(ex, ey + 3, 6.8, 1.15 * Math.PI, 1.85 * Math.PI);
         g.stroke();
       } else if (mode === 'x' || mode === 'dead') {
         C.line(g, ex - 5, ey - 5, ex + 5, ey + 5, { lw: 3 });
@@ -592,8 +691,6 @@
       } else if (mode === 'heart') {
         g.save();
         g.translate(ex, ey);
-        const hs = 1 + Math.sin(t * 8) * 0.08;
-        g.scale(hs, hs);
         g.fillStyle = '#EF4444';
         g.beginPath();
         g.moveTo(0, 4);
@@ -604,8 +701,8 @@
       } else if (mode === 'dot') {
         C.circle(g, ex + lookX * 0.5, ey + lookY * 0.5, 3.8, { fill: C.PAL.ink, stroke: false });
       } else {
-        const rx = (mode === 'wide' || mode === 'panic') ? 7.5 : 6.0;
-        const ry = (mode === 'wide' || mode === 'panic') ? 9.2 : 7.6;
+        const rx = (mode === 'wide' || mode === 'panic') ? 7.8 : 6.4;
+        const ry = (mode === 'wide' || mode === 'panic') ? 9.5 : 8.0;
 
         g.save();
         g.beginPath();
@@ -614,7 +711,8 @@
         g.fill();
         g.clip();
 
-        const pr = mode === 'panic' ? 2.3 : 2.8;
+        // Solid black pupil (Paper Billions style)
+        const pr = mode === 'panic' ? 2.4 : 3.2;
         g.fillStyle = C.PAL.ink;
         g.beginPath();
         g.arc(ex + lookX, ey + lookY, pr, 0, Math.PI * 2);
@@ -623,7 +721,7 @@
         if (mode === 'half' || mode === 'skeptical' || mode === 'deadpan') {
           g.fillStyle = o.skin || '#F0B88B';
           g.fillRect(ex - rx - 2, ey - ry - 2, rx * 2 + 4, ry * 0.95);
-          C.line(g, ex - rx - 1, ey - 0.5, ex + rx + 1, ey - 0.5, { lw: 3.0 });
+          C.line(g, ex - rx - 1, ey - 0.5, ex + rx + 1, ey - 0.5, { lw: 2.8 });
         }
         g.restore();
 
@@ -639,25 +737,25 @@
     C.inkStyle(g, 2.8, C.PAL.ink);
     if (kind === 'sunglasses' || kind === 'shades') {
       [-1, 1].forEach((s) => {
-        C.roundRect(g, cx + s * spread - 12, cy - 8, 24, 16, 4, { fill: '#111827', lw: 2.8 });
+        C.roundRect(g, cx + s * spread - 12.5, cy - 8, 25, 16, 4, { fill: '#111827', lw: 2.8 });
       });
-      C.line(g, cx - spread + 12, cy - 2, cx + spread - 12, cy - 2, { lw: 2.8 });
+      C.line(g, cx - spread + 12.5, cy - 2, cx + spread - 12.5, cy - 2, { lw: 2.8 });
     } else if (kind === 'rect') {
       [-1, 1].forEach((s) => {
-        C.roundRect(g, cx + s * spread - 12, cy - 7, 24, 14, 3, { fill: 'rgba(255,255,255,0.18)', lw: 2.6 });
+        C.roundRect(g, cx + s * spread - 12.5, cy - 7.5, 25, 15, 3, { fill: 'rgba(255,255,255,0.22)', lw: 2.6 });
       });
-      C.line(g, cx - spread + 12, cy - 1, cx + spread - 12, cy - 1, { lw: 2.6 });
+      C.line(g, cx - spread + 12.5, cy - 1, cx + spread - 12.5, cy - 1, { lw: 2.6 });
     } else if (kind === 'monocle') {
-      C.circle(g, cx - spread, cy, 11, { fill: 'rgba(255,255,255,0.22)', lw: 2.6 });
+      C.circle(g, cx - spread, cy, 11, { fill: 'rgba(255,255,255,0.24)', lw: 2.6 });
       C.line(g, cx - spread - 9, cy + 7, cx - spread - 14, cy + 28, { lw: 1.8 });
     } else if (kind === 'eyepatch') {
       C.circle(g, cx + spread, cy, 10, { fill: '#18181B', lw: 2.5 });
       C.line(g, cx - 32, cy - 14, cx + 32, cy + 4, { lw: 2.5 });
     } else {
       [-1, 1].forEach((s) => {
-        C.circle(g, cx + s * spread, cy, 10.5, { fill: 'rgba(255,255,255,0.16)', lw: 2.6 });
+        C.circle(g, cx + s * spread, cy, 11, { fill: 'rgba(255,255,255,0.22)', lw: 2.6 });
       });
-      C.line(g, cx - spread + 10.5, cy, cx + spread - 10.5, cy, { lw: 2.6 });
+      C.line(g, cx - spread + 11, cy, cx + spread - 11, cy, { lw: 2.6 });
     }
     g.restore();
   }
@@ -674,107 +772,164 @@
       else if (mode === 'skeptical') tilt = s === 1 ? -4 : 2;
 
       g.beginPath();
-      g.moveTo(bx - 7, by - tilt);
-      g.quadraticCurveTo(bx, by - 2, bx + 7, by + tilt);
+      g.moveTo(bx - 7.5, by - tilt);
+      g.quadraticCurveTo(bx, by - 2.2, bx + 7.5, by + tilt);
       g.stroke();
     });
   }
 
+  // --- Internal: 100% STATIC Oversimplified / Paper Billions Comic Mouth Sprites (ZERO Flapping!) ---
   function drawMouth(g, cx, cy, dir, t, o) {
+    // Strictly ignore `o.talking` oscillation — mouths are pure static comic emotion sprites!
     let m = o.mouth || 'smile';
-    if (o.talking) m = Math.sin(t * 20 + (o.seed || 0)) > 0 ? 'talk' : 'smile';
+    if (m === 'talk') m = 'openSmile';
 
-    C.inkStyle(g, 3.0, C.PAL.ink);
+    C.inkStyle(g, 2.8, C.PAL.ink);
     g.save();
     g.translate(cx, cy);
 
     if (m === 'smile') {
-      g.beginPath(); g.arc(0, -3, 8, 0.18 * Math.PI, 0.82 * Math.PI); g.stroke();
+      g.beginPath();
+      g.arc(0, -3, 8.5, 0.18 * Math.PI, 0.82 * Math.PI);
+      g.stroke();
     } else if (m === 'frown' || m === 'sad') {
-      g.beginPath(); g.arc(0, 7, 8, 1.18 * Math.PI, 1.82 * Math.PI); g.stroke();
+      g.beginPath();
+      g.arc(0, 7, 8.5, 1.18 * Math.PI, 1.82 * Math.PI);
+      g.stroke();
     } else if (m === 'neutral' || m === 'flat') {
-      C.line(g, -7, 0, 7, 0, { lw: 3.0 });
+      C.line(g, -7.5, 0, 7.5, 0, { lw: 2.8 });
     } else if (m === 'smirk') {
-      g.beginPath(); g.moveTo(-6, 1); g.quadraticCurveTo(2, 2, 8, -4); g.stroke();
-    } else if (m === 'o' || m === 'gasp') {
-      C.circle(g, 0, 1, 5.5, { fill: '#7F1D1D', lw: 2.8 });
-    } else if (m === 'talk' || m === 'open' || m === 'laugh') {
-      g.beginPath(); g.arc(0, -2, 11, 0, Math.PI); g.closePath();
-      g.fillStyle = '#7F1D1D'; g.fill();
-      g.save(); g.clip();
-      g.fillStyle = '#FFFFFF'; g.fillRect(-12, -3, 24, 5);
-      g.fillStyle = '#F87171'; g.beginPath(); g.arc(0, 10, 7, 0, Math.PI * 2); g.fill();
+      g.beginPath();
+      g.moveTo(-6.5, 1);
+      g.quadraticCurveTo(2, 2, 8.5, -4);
+      g.stroke();
+      C.line(g, 7.5, -6, 10, -2.5, { lw: 2.2 });
+    } else if (m === 'o' || m === 'gasp' || m === 'shock') {
+      C.circle(g, 0, 1.5, 5.8, { fill: '#7F1D1D', lw: 2.8 });
+    } else if (m === 'openSmile' || m === 'open' || m === 'laugh') {
+      g.beginPath();
+      g.arc(0, -2, 10.5, 0, Math.PI);
+      g.closePath();
+      g.fillStyle = '#7F1D1D';
+      g.fill();
+      g.save();
+      g.clip();
+      g.fillStyle = '#FFFFFF';
+      g.fillRect(-11, -3, 22, 4.5);
+      g.fillStyle = '#F87171';
+      g.beginPath();
+      g.arc(0, 9.5, 6.5, 0, Math.PI * 2);
+      g.fill();
       g.restore();
       g.stroke();
     } else if (m === 'grit' || m === 'panicTeeth') {
-      C.roundRect(g, -14, -5, 28, 13, 5, { fill: '#FFFFFF', lw: 2.8 });
-      C.line(g, -13, 1.5, 13, 1.5, { lw: 2 });
-      C.line(g, -5, -4, -5, 7, { lw: 2 });
-      C.line(g, 5, -4, 5, 7, { lw: 2 });
-    } else if (m === 'squiggle') {
+      C.roundRect(g, -13.5, -5, 27, 12.5, 5, { fill: '#FFFFFF', lw: 2.8 });
+      C.line(g, -12.5, 1.2, 12.5, 1.2, { lw: 2 });
+      C.line(g, -4.5, -4, -4.5, 6.5, { lw: 2 });
+      C.line(g, 4.5, -4, 4.5, 6.5, { lw: 2 });
+    } else if (m === 'squiggle' || m === 'confused') {
       g.beginPath();
-      g.moveTo(-9, 1); g.quadraticCurveTo(-4, -3, 0, 1); g.quadraticCurveTo(4, 5, 9, 1);
+      g.moveTo(-9, 1);
+      g.quadraticCurveTo(-4, -3.5, 0, 1);
+      g.quadraticCurveTo(4, 5.5, 9, 1);
       g.stroke();
     } else if (m === 'spitTake') {
-      C.circle(g, 0, 1, 5.5, { fill: '#7F1D1D', lw: 2.8 });
-      for (let i = 0; i < 7; i++) {
-        const ang = (i - 3) * 0.18;
-        const dist = 16 + ((t * 95 + i * 13) % 45);
-        C.circle(g, Math.cos(ang) * dist * dir, Math.sin(ang) * dist + 4, 3.5, {
-          fill: o.spitColor || '#D97706',
+      C.circle(g, 0, 1.5, 5.8, { fill: '#7F1D1D', lw: 2.8 });
+      [-0.25, 0, 0.25].forEach((ang, i) => {
+        const dist = 20 + i * 9;
+        C.circle(g, Math.cos(ang) * dist * dir, Math.sin(ang) * dist + 2, 3.2, {
+          fill: o.spitColor || '#60A5FA',
           lw: 1.5
         });
-      }
+      });
     }
     g.restore();
   }
 
+  // --- Internal: Snug Skull-Cap Hairstyles (NEVER leaves bald head top exposed!) ---
   function drawFrontHair(g, rx, ry, dir, col, style) {
     g.save();
-    C.inkStyle(g, 3.5, C.PAL.ink, col);
-    if (style === 'parted' || style === 'sidePart') {
+    C.inkStyle(g, 3.4, C.PAL.ink, col);
+
+    if (style === 'baldSide' || style === 'receding') {
+      [-1, 1].forEach((s) => {
+        g.beginPath();
+        g.ellipse(s * (rx - 1), -4, 8, 16, s * -0.15, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+      });
+      g.restore();
+      return;
+    }
+
+    if (style === 'curly' || style === 'afro') {
+      // Full upper skull base + overlapping curls
       g.beginPath();
-      g.arc(0, -2, rx + 2, Math.PI * 1.02, Math.PI * 1.98);
-      g.lineTo(rx * 0.92, -ry * 0.2);
-      g.quadraticCurveTo(rx * 0.3 * dir, -ry * 0.62, -rx * 0.35 * dir, -ry * 0.32);
-      g.lineTo(-rx * 0.95, -ry * 0.15);
-      g.closePath(); g.fill(); g.stroke();
-    } else if (style === 'shortCrop' || style === 'crew') {
-      g.beginPath();
-      g.arc(0, -3, rx + 1.5, Math.PI * 1.08, Math.PI * 1.92);
-      g.quadraticCurveTo(0, -ry * 0.42, -rx * 0.92, -ry * 0.35);
-      g.closePath(); g.fill(); g.stroke();
-    } else if (style === 'curly' || style === 'afro') {
-      [[-34, -18, 16], [-22, -34, 18], [-4, -40, 20], [16, -36, 18], [32, -22, 16], [0, -28, 18]].forEach((p) => {
-        C.circle(g, p[0], p[1], p[2], { fill: col, shade: false, lw: 3.2 });
+      g.ellipse(0, -ry * 0.48, rx + 4, ry * 0.66, 0, Math.PI * 0.92, Math.PI * 2.08);
+      g.closePath();
+      g.fill();
+      [
+        [-rx * 0.78, -ry * 0.35, 16],
+        [-rx * 0.52, -ry * 0.76, 19],
+        [-rx * 0.12, -ry * 0.94, 21],
+        [rx * 0.28, -ry * 0.88, 20],
+        [rx * 0.64, -ry * 0.64, 18],
+        [rx * 0.82, -ry * 0.30, 15],
+        [0, -ry * 0.62, 19]
+      ].forEach((p) => {
+        C.circle(g, p[0], p[1], p[2], { fill: col, shade: false, lw: 3.0 });
       });
       g.fillStyle = col;
-      g.beginPath(); g.ellipse(0, -28, 34, 16, 0, 0, Math.PI * 2); g.fill();
-    } else if (style === 'bob' || style === 'shoulder' || style === 'long') {
       g.beginPath();
-      g.arc(0, 0, rx + 2.5, Math.PI * 0.88, Math.PI * 2.12);
-      g.lineTo(rx * 0.88, ry * 0.45);
-      g.quadraticCurveTo(rx * 0.65, -ry * 0.35, 0, -ry * 0.48);
-      g.quadraticCurveTo(-rx * 0.65, -ry * 0.35, -rx * 0.88, ry * 0.45);
-      g.closePath(); g.fill(); g.stroke();
-    } else if (style === 'baldSide' || style === 'receding') {
-      [-1, 1].forEach((s) => {
-        g.beginPath(); g.ellipse(s * (rx - 2), -4, 8, 16, s * -0.15, 0, Math.PI * 2);
-        g.fill(); g.stroke();
-      });
-    } else if (style === 'bun' || style === 'topBun') {
-      C.circle(g, 0, -ry - 10, 15, { fill: col, lw: 3.5 });
-      g.beginPath();
-      g.arc(0, -3, rx + 1.5, Math.PI * 1.08, Math.PI * 1.92);
-      g.quadraticCurveTo(0, -ry * 0.42, -rx * 0.92, -ry * 0.35);
-      g.closePath(); g.fill(); g.stroke();
-    } else if (style === 'swept') {
-      g.beginPath();
-      g.moveTo(-rx * 0.95, -12);
-      g.quadraticCurveTo(-rx * 0.4, -ry - 16, rx * 1.02, -16);
-      g.quadraticCurveTo(rx * 0.3, -ry * 0.35, -rx * 0.95, -12);
-      g.closePath(); g.fill(); g.stroke();
+      g.ellipse(0, -ry * 0.64, rx * 0.72, 16, 0, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+      return;
     }
+
+    if (style === 'bun' || style === 'topBun') {
+      C.circle(g, -dir * 6, -ry - 11, 16, { fill: col, lw: 3.4 });
+    }
+
+    // Universal full-skull cap contour that hugs and covers the ENTIRE top dome of the head
+    g.beginPath();
+    g.moveTo(-rx - 2, -ry * 0.08);
+    // Left temple -> over the top crown (well above -ry so ZERO bare skin shows on top) -> right temple
+    g.bezierCurveTo(-rx - 4, -ry * 0.82, -rx * 0.48, -ry - 9, 0, -ry - 8);
+    g.bezierCurveTo(rx * 0.48, -ry - 9, rx + 4, -ry * 0.82, rx + 2, -ry * 0.08);
+
+    if (style === 'parted' || style === 'sidePart') {
+      const partX = -rx * 0.32 * dir;
+      g.lineTo(rx * 0.92, -ry * 0.22);
+      g.quadraticCurveTo(rx * 0.25 * dir, -ry * 0.36, partX, -ry * 0.62);
+      g.quadraticCurveTo(partX - 10 * dir, -ry * 0.34, -rx * 0.92, -ry * 0.20);
+    } else if (style === 'swept' || style === 'spiky') {
+      // Swept volume wave across forehead while keeping top dome 100% covered
+      g.lineTo(rx * 0.94, -ry * 0.26);
+      g.quadraticCurveTo(rx * 0.18 * dir, -ry * 0.52, -rx * 0.94, -ry * 0.24);
+    } else if (style === 'bob' || style === 'shoulder' || style === 'long') {
+      g.lineTo(rx * 0.92, ry * 0.28);
+      g.quadraticCurveTo(rx * 0.72, -ry * 0.36, 0, -ry * 0.48);
+      g.quadraticCurveTo(-rx * 0.72, -ry * 0.36, -rx * 0.92, ry * 0.28);
+    } else {
+      // 'shortCrop', 'crew', 'bun'
+      g.lineTo(rx * 0.92, -ry * 0.26);
+      g.quadraticCurveTo(0, -ry * 0.46, -rx * 0.92, -ry * 0.26);
+    }
+
+    g.closePath();
+    g.fill();
+    g.stroke();
+
+    // Subtle Paper Billions top hair volume tuft for swept/parted styles
+    if (style === 'swept' || style === 'parted' || style === 'spiky') {
+      g.beginPath();
+      g.moveTo(-rx * 0.2 * dir, -ry - 5);
+      g.quadraticCurveTo(rx * 0.25 * dir, -ry - 15, rx * 0.55 * dir, -ry - 2);
+      g.fill();
+      g.stroke();
+    }
+
     g.restore();
   }
 
@@ -790,7 +945,7 @@
       C.roundRect(g, cx - 8, cy + 8, 16, 14, 6, { fill: col, lw: 2.5 });
     } else if (kind === 'beard') {
       g.beginPath();
-      g.arc(0, 2, rx - 1, 0.08 * Math.PI, 0.92 * Math.PI);
+      g.arc(0, 2, rx - 0.5, 0.08 * Math.PI, 0.92 * Math.PI);
       g.quadraticCurveTo(cx, cy - 4, -rx + 2, 8);
       g.closePath(); g.fill(); g.stroke();
     }
@@ -800,14 +955,14 @@
   function drawHat(g, rx, ry, dir, kind, col) {
     g.save();
     const c = col || '#FACC15';
-    C.inkStyle(g, 3.5, C.PAL.ink, c);
+    C.inkStyle(g, 3.4, C.PAL.ink, c);
 
     if (typeof kind === 'object') {
       const hc = kind.color || c;
       if (kind.dome) {
         g.fillStyle = hc;
         g.beginPath();
-        g.arc(0, -ry * 0.35, rx * (kind.domeW || 0.92), Math.PI, Math.PI * 2);
+        g.ellipse(0, -ry * 0.45, rx * (kind.domeW || 0.98), ry * 0.65, 0, Math.PI, Math.PI * 2);
         g.fill(); g.stroke();
       }
       if (kind.cylinder) {
@@ -815,19 +970,24 @@
       }
       if (kind.brim) {
         const bw = rx * (kind.brimW || 2.1);
-        C.roundRect(g, -bw / 2, -ry * 0.42, bw, 9, 4, { fill: kind.brimColor || hc, lw: 3.2 });
+        C.roundRect(g, -bw / 2, -ry * 0.48, bw, 9, 4, { fill: kind.brimColor || hc, lw: 3.2 });
       }
       g.restore();
       return;
     }
 
     if (kind === 'hardhat' || kind === 'helmet') {
-      g.beginPath(); g.arc(0, -ry * 0.35, rx * 0.92, Math.PI, Math.PI * 2); g.fill(); g.stroke();
-      C.roundRect(g, -rx * 1.06, -ry * 0.42, rx * 2.12, 10, 5, { fill: c, lw: 3.2 });
+      g.beginPath();
+      g.ellipse(0, -ry * 0.44, rx * 0.98, ry * 0.66, 0, Math.PI, Math.PI * 2);
+      g.fill(); g.stroke();
+      C.roundRect(g, -rx * 0.22, -ry - 12, rx * 0.44, 14, 4, { fill: C.shadeColor(c, 10), lw: 2.6 });
+      C.roundRect(g, -rx * 1.08, -ry * 0.48, rx * 2.16, 10, 5, { fill: c, lw: 3.2 });
     } else if (kind === 'cap' || kind === 'capBack') {
       const visorDir = kind === 'capBack' ? -dir : dir;
-      g.beginPath(); g.arc(0, -ry * 0.35, rx * 0.9, Math.PI, Math.PI * 2); g.fill(); g.stroke();
-      C.roundRect(g, visorDir > 0 ? -10 : -rx * 1.25, -ry * 0.42, rx * 1.25 + 10, 9, 4, { fill: c, lw: 3.2 });
+      g.beginPath();
+      g.ellipse(0, -ry * 0.44, rx * 0.98, ry * 0.64, 0, Math.PI, Math.PI * 2);
+      g.fill(); g.stroke();
+      C.roundRect(g, visorDir > 0 ? -8 : -rx * 1.28, -ry * 0.48, rx * 1.28 + 8, 9, 4, { fill: c, lw: 3.2 });
     } else if (kind === 'chefHat') {
       C.roundRect(g, -30, -ry - 14, 60, 22, 4, { fill: '#FFFFFF', lw: 3.2 });
       C.circle(g, -18, -ry - 26, 16, { fill: '#FFFFFF', lw: 3.2 });
@@ -839,29 +999,30 @@
     } else if (kind === 'crown') {
       g.fillStyle = '#FACC15';
       g.beginPath();
-      g.moveTo(-26, -ry + 6); g.lineTo(-28, -ry - 20); g.lineTo(-12, -ry - 8);
-      g.lineTo(0, -ry - 26); g.lineTo(12, -ry - 8); g.lineTo(28, -ry - 20); g.lineTo(26, -ry + 6);
+      g.moveTo(-26, -ry + 4); g.lineTo(-28, -ry - 22); g.lineTo(-12, -ry - 10);
+      g.lineTo(0, -ry - 28); g.lineTo(12, -ry - 10); g.lineTo(28, -ry - 22); g.lineTo(26, -ry + 4);
       g.closePath(); g.fill(); g.stroke();
     } else if (kind === 'securityCap' || kind === 'captainHat') {
       const topC = kind === 'captainHat' ? '#FFFFFF' : (col || '#1E3A5F');
-      C.roundRect(g, -36, -ry - 12, 72, 20, 6, { fill: topC, lw: 3.2 });
-      C.roundRect(g, -38, -ry + 4, 76, 8, 3, { fill: '#111827', lw: 3.2 });
-      C.circle(g, 0, -ry - 2, 5, { fill: '#FACC15', lw: 2 });
+      C.roundRect(g, -36, -ry - 14, 72, 20, 6, { fill: topC, lw: 3.2 });
+      C.roundRect(g, -38, -ry + 2, 76, 8, 3, { fill: '#111827', lw: 3.2 });
+      C.circle(g, 0, -ry - 4, 5, { fill: '#FACC15', lw: 2 });
     } else if (kind === 'turban') {
-      C.roundRect(g, -rx * 1.05, -ry - 12, rx * 2.1, 34, 17, { fill: c, lw: 3.5 });
-      C.circle(g, 0, -ry - 4, 7, { fill: '#FACC15', lw: 2.5 });
+      C.roundRect(g, -rx * 1.05, -ry - 14, rx * 2.1, 34, 17, { fill: c, lw: 3.5 });
+      C.circle(g, 0, -ry - 6, 7, { fill: '#FACC15', lw: 2.5 });
     } else if (kind === 'spaceHelmet') {
-      C.circle(g, 0, -2, rx * 1.22, { fill: 'rgba(186, 230, 253, 0.25)', lw: 4 });
+      C.circle(g, 0, -2, rx * 1.24, { fill: 'rgba(186, 230, 253, 0.25)', lw: 4 });
     }
     g.restore();
   }
 
-  // --- Internal: Stick Arms, Both-Hands Target Reach & Custom Hand Props ---
+  // --- Internal: Pure Paper Billions Stick Arms & Stick-Finger Gestures (ZERO Hand Balls!) ---
   function drawArm(g, side, shoulderY, torsoW, pose, walkPhase, t, dir, charX, charY, scale, o) {
-    const sx = side * (torsoW * 0.44);
+    const sx = side * (torsoW * 0.42);
     const sy = shoulderY;
-    let hx = sx + side * 22;
+    let hx = sx + side * 20;
     let hy = sy + 42;
+    let showFingers = false;
 
     const isFrontArm = (dir >= 0 && side === 1) || (dir < 0 && side === -1);
     const targetCoord = side === -1 ? o.leftHandTo : (o.rightHandTo || (isFrontArm ? o.pointTo : null));
@@ -871,38 +1032,65 @@
       hy = (targetCoord[1] - charY) / scale;
       const dx = hx - sx, dy = hy - sy;
       const dist = Math.hypot(dx, dy) || 1;
-      const maxArm = o.pointerStick ? 56 : 82;
+      const maxArm = o.pointerStick ? 54 : 80;
       if (dist > maxArm) {
         hx = sx + (dx / dist) * maxArm;
         hy = sy + (dy / dist) * maxArm;
       }
+      showFingers = !o.pointerStick;
+    } else if (pose === 'pockets') {
+      hx = side * (torsoW * 0.26);
+      hy = sy + 44;
     } else if (pose === 'handsUp' || pose === 'celebrate') {
-      hx = sx + side * 32;
-      hy = sy - 38 + Math.sin(t * 7 + side) * 5;
+      hx = sx + side * 30;
+      hy = sy - 38 + Math.sin(t * 7 + side) * 4;
+      showFingers = true;
     } else if (pose === 'shrug') {
       hx = sx + side * 38;
       hy = sy - 8;
+      showFingers = true;
     } else if (pose === 'wave' && isFrontArm) {
-      hx = sx + side * 36 + Math.sin(t * 10) * 10;
+      hx = sx + side * 34 + Math.sin(t * 10) * 9;
       hy = sy - 34;
+      showFingers = true;
     } else if (pose === 'think' && isFrontArm) {
       hx = dir * 12;
       hy = sy - 26;
     } else if (pose === 'point' && isFrontArm) {
-      hx = sx + dir * 56;
+      hx = sx + dir * 54;
       hy = sy - 10;
+      showFingers = true;
     } else if (walkPhase > 0) {
       hx = sx + Math.sin(walkPhase + (side === 1 ? Math.PI : 0)) * 18;
       hy = sy + 40;
     }
 
-    C.inkStyle(g, 4.2, C.PAL.ink, o.skin || '#F0B88B');
+    const ctrlX = (sx + hx) / 2 + side * (pose === 'pockets' ? 14 : 6);
+    const ctrlY = (sy + hy) / 2 + 8;
+
+    g.save();
+    g.strokeStyle = C.PAL.ink;
+    g.lineWidth = 4.5;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+
     g.beginPath();
     g.moveTo(sx, sy);
-    g.quadraticCurveTo((sx + hx) / 2 + side * 6, (sy + hy) / 2 + 8, hx, hy);
+    g.quadraticCurveTo(ctrlX, ctrlY, hx, hy);
     g.stroke();
 
-    C.circle(g, hx, hy, 5.5, { fill: o.skin || '#F0B88B', lw: 3.0 });
+    // Subtle Paper Billions 2-finger stick splay on active gestures (ZERO circle ball!)
+    if (showFingers && !o.handParts && typeof o.drawProp !== 'function') {
+      const ang = Math.atan2(hy - ctrlY, hx - ctrlX);
+      g.lineWidth = 3.2;
+      [-0.38, 0.28].forEach((da) => {
+        g.beginPath();
+        g.moveTo(hx, hy);
+        g.lineTo(hx + Math.cos(ang + da) * 8.5, hy + Math.sin(ang + da) * 8.5);
+        g.stroke();
+      });
+    }
+    g.restore();
 
     if (isFrontArm && o.pointerStick && Array.isArray(targetCoord)) {
       const tx = (targetCoord[0] - charX) / scale;
@@ -915,7 +1103,7 @@
       if (o.handParts) {
         g.save();
         g.translate(hx, hy);
-        renderParts(g, o.handParts, t);
+        renderParts(g, o.handParts, t, { maxOffset: 75 });
         g.restore();
       }
       if (typeof o.drawProp === 'function') {
@@ -1080,12 +1268,19 @@
       C.circle(g, bw * 0.44, -14 - bh, 2.5, { fill: C.PAL.ink, stroke: false });
       renderParts(g, [{ type: 'poly', pts: [[bw * 0.65, -15 - bh], [bw * 0.95, -12 - bh], [bw * 0.65, -9 - bh]], fill: '#FACC15' }], t);
     } else if (plan === 'fish') {
-      const bw = o.bodyW || 56, bh = o.bodyH || 30;
+      const bw = o.bodyW || 62, bh = o.bodyH || 34;
+      const cy = -bh / 2;
+      // Tail fin + dorsal fin + plump fish body + expressive comic eye & mouth
       renderParts(g, [
-        { type: 'poly', pts: [[-bw / 2, -bh / 2], [-bw * 0.85, -bh], [-bw * 0.85, 0]], fill: col },
-        { type: 'ellipse', x: 0, y: -bh / 2, rx: bw / 2, ry: bh / 2, fill: col },
-        { type: 'circle', x: bw * 0.28, y: -bh * 0.58, r: 3, fill: C.PAL.ink, stroke: false }
+        { type: 'poly', pts: [[-bw * 0.42, cy], [-bw * 0.86, cy - bh * 0.55], [-bw * 0.74, cy], [-bw * 0.86, cy + bh * 0.55]], fill: C.shadeColor(col, -12) },
+        { type: 'poly', pts: [[-bw * 0.12, cy - bh * 0.42], [0, cy - bh * 0.78], [bw * 0.16, cy - bh * 0.42]], fill: C.shadeColor(col, -10) },
+        { type: 'ellipse', x: 0, y: cy, rx: bw / 2, ry: bh / 2, fill: col },
+        { type: 'arc', x: bw * 0.08, y: cy + 1, r: bh * 0.28, a0: 0.65 * Math.PI, a1: 1.35 * Math.PI, color: C.PAL.ink, lw: 2.4 },
+        { type: 'circle', x: bw * 0.26, y: cy - bh * 0.12, r: 5.5, fill: '#FFFFFF', shade: false, lw: 2.5 },
+        { type: 'circle', x: bw * 0.28, y: cy - bh * 0.12, r: 2.5, fill: C.PAL.ink, stroke: false },
+        { type: 'line', x1: bw * 0.34, y1: cy + bh * 0.16, x2: bw * 0.46, y2: cy + bh * 0.12, lw: 2.5 }
       ], t);
+      return g.restore();
     } else if (plan === 'insect' || plan === 'ant' || plan === 'spider') {
       const swing = Math.sin(t * 15) * 4;
       [-10, 0, 10].forEach((lx, idx) => {
@@ -1141,7 +1336,7 @@
     }
 
     if (o.parts && plan !== 'custom') {
-      renderParts(g, o.parts, t);
+      renderParts(g, o.parts, t, { maxOffset: 80 });
     }
     g.restore();
   }

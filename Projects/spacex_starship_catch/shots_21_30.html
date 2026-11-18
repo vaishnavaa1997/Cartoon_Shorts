@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Cartoon Engine Shorts Studio (9:16) — Shots 21 to 30</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #05070d; color: #e2e8f0; font-family: 'Nunito', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+#stage-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; position: relative; overflow: hidden; }
+canvas { max-width: 100%; max-height: 100%; aspect-ratio: 9 / 16; box-shadow: 0 16px 48px rgba(0,0,0,0.85); background: #070b16; }
+#controls { height: 58px; background: #101522; border-top: 1px solid #222b42; display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 13px; }
+button, select, label.btn { background: #1c2539; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 6px 11px; font-family: inherit; font-weight: 700; font-size: 12px; cursor: pointer; }
+button:hover, select:hover, label.btn:hover { background: #283552; border-color: #ff8a3d; }
+button.active { background: #ff8a3d; color: #080b14; border-color: #ff8a3d; }
+#scrub { flex: 1; accent-color: #ff8a3d; cursor: pointer; }
+#readout { font-family: 'Space Mono', monospace; font-size: 12px; color: #ffb074; min-width: 210px; }
+</style>
+</head>
+<body>
+<div id="stage-wrap"><canvas id="stage" width="1080" height="1920"></canvas></div>
+<div id="controls">
+  <button id="playBtn">Play</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" />
+  <div id="readout">00.0s / 00.0s · Shot 21</div>
+  <select id="shotSelect"><option value="all">All Shots in Batch</option></select>
+  <button id="safeBtn" title="Toggle Shorts/Reels UI Safe Zone Guide">Safe Zone UI: OFF</button>
+  <select id="mixSelect">
+    <option value="sfxOnly" selected>SFX + Ambient Only</option>
+    <option value="mute">Mute</option>
+  </select>
+  <label class="btn">Load vo.wav <input id="voInput" type="file" accept="audio/*" style="display:none" /></label>
+  <button id="wavBtn">Export Batch SFX (.wav)</button>
+</div>
+<script src="../../engine.js"></script>
+<script>
+// ============================================================================
+// STEP 10: MASTER CHARACTER, ANIMAL, ENVIRONMENT & PROP DICTIONARY (DICT)
+// ============================================================================
+const DICT = {
+  // 1. RECURRING CHARACTERS (9:16 Phone-Readable Scale, y = 1320 Raised Floor)
+  CHARS: {
+    HOST: {
+      skin: '#F1C27D',
+      hairStyle: 'swept',
+      hairColor: '#18181B',
+      facialHair: 'none',
+      glasses: 'none',
+      hat: 'none',
+      topColor: '#F97316',
+      underColor: '#1E293B',
+      collar: 'lapel',
+      neckwear: 'none',
+      outerwear: 'openCoat',
+      belt: true,
+      s: 1.28,
+      outfitParts: [
+        { type: 'circle', x: 18, y: -118, r: 8, fill: '#FACC15', lw: 2.5 },
+        { type: 'text', x: 18, y: -118, text: '★', size: 10, color: '#18181B' }
+      ]
+    },
+
+    ELON: {
+      skin: '#FAD6A5',
+      hairStyle: 'parted',
+      hairColor: '#27272A',
+      facialHair: 'none',
+      glasses: 'sunglasses',
+      hat: 'none',
+      topColor: '#18181B',
+      underColor: '#3F3F46',
+      collar: 'lapel',
+      neckwear: 'none',
+      outerwear: 'bikerZipper',
+      belt: true,
+      s: 1.30,
+      outfitParts: [
+        { type: 'rect', x: 12, y: -126, w: 22, h: 14, r: 3, fill: '#090D16', lw: 2 },
+        { type: 'text', x: 23, y: -119, text: 'X', size: 11, color: '#FFFFFF' }
+      ]
+    },
+
+    ENGINEER: {
+      skin: '#E0AC69',
+      hairStyle: 'shortCrop',
+      hairColor: '#18181B',
+      facialHair: 'none',
+      glasses: 'rect',
+      hat: 'hardhat',
+      topColor: '#2563EB',
+      underColor: '#F8FAFC',
+      collar: 'shirt',
+      neckwear: 'none',
+      outerwear: 'hiVisStripes',
+      belt: true,
+      s: 1.25,
+      outfitParts: [
+        { type: 'rect', x: -24, y: -122, w: 14, h: 18, r: 2, fill: '#FACC15', lw: 2 }
+      ]
+    },
+
+    FLIGHT_DIR: {
+      skin: '#F1C27D',
+      hairStyle: 'parted',
+      hairColor: '#334155',
+      facialHair: 'mustache',
+      glasses: 'rect',
+      hat: 'none',
+      topColor: '#1E293B',
+      underColor: '#FFFFFF',
+      tieColor: '#EF4444',
+      collar: 'shirt',
+      neckwear: 'tie',
+      outerwear: 'pocket',
+      belt: true,
+      s: 1.26,
+      faceParts: [
+        { type: 'arc', x: 0, y: -195, r: 34, a0: 3.14, a1: 6.28, color: '#18181B', lw: 4 },
+        { type: 'circle', x: -34, y: -190, r: 8, fill: '#38BDF8', lw: 2.5 },
+        { type: 'line', x1: -34, y1: -186, x2: -10, y2: -174, color: '#18181B', lw: 3 }
+      ]
+    },
+
+    AIRLINE_BOSS: {
+      skin: '#E0AC69',
+      hairStyle: 'parted',
+      hairColor: '#18181B',
+      facialHair: 'mustache',
+      glasses: 'none',
+      hat: 'securityCap',
+      topColor: '#1E3A8A',
+      underColor: '#FFFFFF',
+      tieColor: '#DC2626',
+      collar: 'lapel',
+      neckwear: 'tie',
+      outerwear: 'doubleBreasted',
+      belt: true,
+      s: 1.28,
+      outfitParts: [
+        { type: 'poly', pts: [[12, -124], [30, -128], [24, -120]], fill: '#FACC15', close: true, lw: 2 }
+      ]
+    },
+
+    OLD_CEO: {
+      skin: '#FAD6A5',
+      hairStyle: 'baldSide',
+      hairColor: '#94A3B8',
+      facialHair: 'mustache',
+      glasses: 'monocle',
+      hat: 'topHat',
+      topColor: '#18181B',
+      underColor: '#FFFFFF',
+      tieColor: '#EF4444',
+      collar: 'lapel',
+      neckwear: 'bowtie',
+      outerwear: 'doubleBreasted',
+      belt: true,
+      s: 1.25
+    },
+
+    ACCOUNTANT: {
+      skin: '#F1C27D',
+      hairStyle: 'baldSide',
+      hairColor: '#475569',
+      facialHair: 'none',
+      glasses: 'round',
+      hat: 'none',
+      topColor: '#E2E8F0',
+      underColor: '#FFFFFF',
+      tieColor: '#16A34A',
+      collar: 'shirt',
+      neckwear: 'tie',
+      outerwear: 'pocket',
+      belt: true,
+      s: 1.25
+    },
+
+    ASTRONAUT: {
+      skin: '#F1C27D',
+      hairStyle: 'shortCrop',
+      hairColor: '#18181B',
+      hat: 'spaceHelmet',
+      topColor: '#F8FAFC',
+      underColor: '#38BDF8',
+      collar: 'turtleneck',
+      outerwear: 'armorPlate',
+      belt: true,
+      s: 1.25,
+      outfitParts: [
+        { type: 'rect', x: -18, y: -128, w: 36, h: 24, r: 4, fill: '#E2E8F0', lw: 2.5 },
+        { type: 'circle', x: -8, y: -116, r: 4, fill: '#EF4444', lw: 2 },
+        { type: 'circle', x: 8, y: -116, r: 4, fill: '#22C55E', lw: 2 }
+      ]
+    }
+  },
+
+  // 2. RECURRING ANIMALS / MASCOTS (Comedy Callback Characters)
+  ANIMALS: {
+    HARDHAT_FISH: {
+      bodyPlan: 'fish',
+      color: '#FB923C',
+      bodyW: 96,
+      bodyH: 62,
+      s: 1.25,
+      parts: [
+        { type: 'arc', x: 8, y: -28, r: 22, a0: Math.PI, a1: Math.PI * 2, fill: '#FACC15', color: '#18181B', lw: 3 },
+        { type: 'rect', x: -18, y: -30, w: 52, h: 7, r: 3, fill: '#FDE047', lw: 3 }
+      ]
+    }
+  },
+
+  // 3. ENVIRONMENTS (1080x1920 Vertical Stage, Raised Floor at y = 1320)
+  ENVS: {
+    STARBASE_DUSK: {
+      floorY: 1320,
+      sky: {
+        topColor: '#1E1B4B',
+        botColor: '#F97316',
+        stars: 18,
+        celestial: { x: 740, y: 380, r: 64, color: '#FDE047', rings: false },
+        clouds: 3,
+        rays: true
+      },
+      horizon: [
+        { type: 'hills', count: 4, maxH: 140, color: '#312E81' },
+        { type: 'stepped', count: 6, maxH: 90, color: '#1E293B' }
+      ],
+      ground: { color: '#334155', style: 'road' },
+      parts: [
+        { type: 'rect', x: 80, y: 1304, w: 800, h: 20, r: 4, fill: '#FACC15', hatch: true, lw: 3 }
+      ]
+    },
+
+    STARBASE_DAY: {
+      floorY: 1320,
+      sky: {
+        topColor: '#0284C7',
+        botColor: '#BAE6FD',
+        stars: 0,
+        celestial: { x: 760, y: 340, r: 54, color: '#FEF08A', rings: false },
+        clouds: 4,
+        rays: false
+      },
+      horizon: [
+        { type: 'hills', count: 5, maxH: 120, color: '#64748B' }
+      ],
+      ground: { color: '#475569', style: 'road' },
+      parts: [
+        { type: 'rect', x: 80, y: 1304, w: 800, h: 20, r: 4, fill: '#FACC15', hatch: true, lw: 3 }
+      ]
+    },
+
+    FACTORY_BAY: {
+      floorY: 1320,
+      wall: { color: '#1E293B', pattern: 'metal' },
+      structures: [
+        { type: 'pillar', x: 110, y: 200, w: 54, h: 1120, color: '#334155' },
+        { type: 'pillar', x: 810, y: 200, w: 54, h: 1120, color: '#334155' }
+      ],
+      ground: { color: '#0F172A', style: 'tiles' },
+      parts: [
+        { type: 'rect', x: 90, y: 250, w: 790, h: 36, r: 4, fill: '#FACC15', hatch: true, lw: 3.5 },
+        { type: 'text', x: 485, y: 268, text: 'STARBASE MEGA BAY · TEXAS', size: 18, color: '#18181B' }
+      ]
+    },
+
+    OCEAN_SCENE: {
+      floorY: 1320,
+      sky: {
+        topColor: '#0369A1',
+        botColor: '#7DD3FC',
+        clouds: 4
+      },
+      horizon: [
+        { type: 'hills', count: 6, maxH: 70, color: '#0284C7' }
+      ],
+      ground: { color: '#0C4A6E', style: 'solid' },
+      parts: [
+        { type: 'rect', x: 0, y: 1120, w: 1080, h: 800, r: 0, fill: '#0284C7', lw: 3.5 },
+        { type: 'rect', x: 0, y: 1240, w: 1080, h: 680, r: 0, fill: '#0369A1', lw: 3 }
+      ],
+      particles: { shape: 'bubbles', count: 24 }
+    },
+
+    STRATOSPHERE: {
+      floorY: 1320,
+      sky: {
+        topColor: '#090D16',
+        botColor: '#0284C7',
+        stars: 28,
+        clouds: 2
+      },
+      ground: { color: '#0C4A6E', style: 'curved' }
+    },
+
+    ORBIT_SPACE: {
+      floorY: 1320,
+      sky: {
+        topColor: '#050811',
+        botColor: '#0F172A',
+        stars: 65,
+        celestial: { x: 760, y: 360, r: 42, color: '#FDE047', rings: true }
+      },
+      ground: { color: '#1D4ED8', style: 'curved' },
+      parts: [
+        { type: 'rect', x: 0, y: 1305, w: 1080, h: 24, r: 0, fill: '#38BDF8', lw: 0 },
+        { type: 'ellipse', x: 500, y: 1480, rx: 460, ry: 120, fill: '#22C55E', lw: 3 }
+      ],
+      particles: { shape: 'dust', count: 25 }
+    },
+
+    PLASMA_REENTRY: {
+      floorY: 1320,
+      sky: {
+        topColor: '#18042C',
+        botColor: '#9D174D',
+        stars: 25
+      },
+      ground: { color: '#4C0519', style: 'curved' },
+      particles: { shape: 'embers', count: 40 }
+    }
+  },
+
+  // 4. HERO PROPS (Rockets, Mechazilla Tower, Chopsticks, Aeroplane, Trash Can)
+  PROPS: {
+    STARSHIP_S42: {
+      parts: [
+        { type: 'poly', pts: [[-48, -40], [-82, -10], [-82, 30], [-48, 30]], fill: '#334155', close: true, lw: 3.5 },
+        { type: 'poly', pts: [[48, -40], [82, -10], [82, 30], [48, 30]], fill: '#94A3B8', close: true, lw: 3.5 },
+        { type: 'poly', pts: [[-44, -220], [-70, -195], [-70, -165], [-44, -170]], fill: '#334155', close: true, lw: 3.5 },
+        { type: 'poly', pts: [[44, -220], [70, -195], [70, -165], [44, -170]], fill: '#94A3B8', close: true, lw: 3.5 },
+        { type: 'rect', x: -48, y: -190, w: 96, h: 220, r: 6, fill: '#CBD5E1', hatch: true, lw: 3.5 },
+        { type: 'rect', x: -48, y: -190, w: 38, h: 220, r: 4, fill: '#18181B', lw: 3 },
+        { type: 'poly', pts: [[-48, -190], [0, -295], [48, -190]], fill: '#E2E8F0', close: true, lw: 3.5 },
+        { type: 'poly', pts: [[-48, -190], [0, -295], [-10, -190]], fill: '#18181B', close: true, lw: 3 },
+        { type: 'rect', x: -60, y: -162, w: 14, h: 10, r: 2, fill: '#FACC15', lw: 2.5 },
+        { type: 'rect', x: 46, y: -162, w: 14, h: 10, r: 2, fill: '#FACC15', lw: 2.5 },
+        { type: 'text', x: 14, y: -120, text: 'S42', size: 22, color: '#18181B' },
+        { type: 'text', x: 14, y: -70, text: 'STARSHIP', size: 13, color: '#1E293B' },
+        { type: 'poly', pts: [[-36, 30], [-44, 52], [-18, 52], [-24, 30]], fill: '#475569', close: true, lw: 3 },
+        { type: 'poly', pts: [[-8, 30], [-14, 54], [14, 54], [8, 30]], fill: '#334155', close: true, lw: 3 },
+        { type: 'poly', pts: [[24, 30], [18, 52], [44, 52], [36, 30]], fill: '#475569', close: true, lw: 3 }
+      ]
+    },
+
+    BOOSTER_B19: {
+      parts: [
+        { type: 'rect', x: -86, y: -275, w: 36, h: 28, r: 3, fill: '#475569', hatch: true, lw: 3.5 },
+        { type: 'rect', x: 50, y: -275, w: 36, h: 28, r: 3, fill: '#475569', hatch: true, lw: 3.5 },
+        { type: 'rect', x: -64, y: -242, w: 16, h: 12, r: 3, fill: '#FACC15', lw: 3 },
+        { type: 'rect', x: 48, y: -242, w: 16, h: 12, r: 3, fill: '#FACC15', lw: 3 },
+        { type: 'rect', x: -50, y: -300, w: 100, h: 26, r: 3, fill: '#334155', hatch: true, lw: 3.5 },
+        { type: 'rect', x: -50, y: -274, w: 100, h: 304, r: 4, fill: '#E2E8F0', hatch: true, lw: 3.5 },
+        { type: 'rect', x: -50, y: -274, w: 24, h: 304, r: 0, fill: '#94A3B8', lw: 2.5 },
+        { type: 'text', x: 8, y: -155, text: 'BOOSTER', size: 17, color: '#18181B' },
+        { type: 'text', x: 8, y: -125, text: '33 ENGINES', size: 12, color: '#475569' },
+        { type: 'rect', x: -52, y: 20, w: 104, h: 18, r: 3, fill: '#1E293B', lw: 3.5 },
+        { type: 'circle', x: -34, y: 44, r: 10, fill: '#334155', lw: 3 },
+        { type: 'circle', x: -12, y: 46, r: 10, fill: '#334155', lw: 3 },
+        { type: 'circle', x: 12, y: 46, r: 10, fill: '#334155', lw: 3 },
+        { type: 'circle', x: 34, y: 44, r: 10, fill: '#334155', lw: 3 }
+      ]
+    },
+
+    FULL_STACK_124M: {
+      parts: [
+        { type: 'rect', x: -44, y: -260, w: 88, h: 260, r: 4, fill: '#CBD5E1', hatch: true, lw: 3.5 },
+        { type: 'rect', x: -72, y: -250, w: 28, h: 20, r: 2, fill: '#475569', hatch: true, lw: 3 },
+        { type: 'rect', x: 44, y: -250, w: 28, h: 20, r: 2, fill: '#475569', hatch: true, lw: 3 },
+        { type: 'rect', x: -46, y: -16, w: 92, h: 16, r: 2, fill: '#1E293B', lw: 3 },
+        { type: 'text', x: 0, y: -130, text: 'BOOSTER', size: 15, color: '#18181B' },
+        { type: 'rect', x: -45, y: -278, w: 90, h: 18, r: 2, fill: '#FACC15', lw: 3 },
+        { type: 'poly', pts: [[-42, -315], [-68, -290], [-68, -278], [-42, -278]], fill: '#334155', close: true, lw: 3 },
+        { type: 'poly', pts: [[42, -315], [68, -290], [68, -278], [42, -278]], fill: '#94A3B8', close: true, lw: 3 },
+        { type: 'rect', x: -42, y: -440, w: 84, h: 162, r: 4, fill: '#E2E8F0', hatch: true, lw: 3.5 },
+        { type: 'rect', x: -42, y: -440, w: 30, h: 162, r: 2, fill: '#18181B', lw: 2.5 },
+        { type: 'poly', pts: [[-42, -440], [0, -530], [42, -440]], fill: '#F8FAFC', close: true, lw: 3.5 },
+        { type: 'poly', pts: [[-42, -440], [0, -530], [-10, -440]], fill: '#18181B', close: true, lw: 2.5 },
+        { type: 'text', x: 12, y: -365, text: 'S42', size: 18, color: '#18181B' }
+      ]
+    },
+
+    MECHAZILLA_TOWER: {
+      parts: [
+        { type: 'rect', x: -95, y: -45, w: 190, h: 45, r: 6, fill: '#64748B', hatch: true, lw: 3.5 },
+        { type: 'rect', x: -55, y: -780, w: 110, h: 735, r: 4, fill: '#1E293B', hatch: true, lw: 4 },
+        { type: 'line', x1: -55, y1: -760, x2: 55, y2: -640, color: '#475569', lw: 3 },
+        { type: 'line', x1: 55, y1: -760, x2: -55, y2: -640, color: '#475569', lw: 3 },
+        { type: 'line', x1: -55, y1: -640, x2: 55, y2: -520, color: '#475569', lw: 3 },
+        { type: 'line', x1: 55, y1: -640, x2: -55, y2: -520, color: '#475569', lw: 3 },
+        { type: 'line', x1: -55, y1: -520, x2: 55, y2: -400, color: '#475569', lw: 3 },
+        { type: 'line', x1: 55, y1: -520, x2: -55, y2: -400, color: '#475569', lw: 3 },
+        { type: 'line', x1: -55, y1: -400, x2: 55, y2: -280, color: '#475569', lw: 3 },
+        { type: 'line', x1: -55, y1: -280, x2: 55, y2: -160, color: '#475569', lw: 3 },
+        { type: 'rect', x: 35, y: -760, w: 16, h: 700, r: 2, fill: '#FACC15', lw: 2.5 },
+        { type: 'rect', x: -8, y: -835, w: 16, h: 55, r: 3, fill: '#94A3B8', lw: 3 },
+        { type: 'circle', x: 0, y: -842, r: 10, fill: '#EF4444', lw: 2.5 }
+      ]
+    },
+
+    CHOPSTICK_ARM: {
+      parts: [
+        { type: 'rect', x: -120, y: -18, w: 240, h: 36, r: 6, fill: '#334155', hatch: true, lw: 3.5 },
+        { type: 'rect', x: -110, y: -10, w: 220, h: 12, r: 3, fill: '#FACC15', lw: 2.5 },
+        { type: 'circle', x: -95, y: 0, r: 12, fill: '#EF4444', lw: 3 },
+        { type: 'circle', x: 95, y: 0, r: 12, fill: '#22C55E', lw: 3 }
+      ]
+    },
+
+    BOEING_PLANE: {
+      parts: [
+        { type: 'poly', pts: [[-30, -20], [-95, -95], [-55, -95], [25, -20]], fill: '#94A3B8', close: true, lw: 3.5 },
+        { type: 'poly', pts: [[-155, -15], [-195, -95], [-145, -95], [-105, -15]], fill: '#2563EB', close: true, lw: 3.5 },
+        { type: 'rect', x: -165, y: -42, w: 310, h: 68, r: 34, fill: '#F8FAFC', hatch: true, lw: 3.5 },
+        { type: 'rect', x: -155, y: -10, w: 290, h: 14, r: 4, fill: '#2563EB', lw: 2.5 },
+        { type: 'poly', pts: [[95, -32], [135, -14], [95, -14]], fill: '#38BDF8', close: true, lw: 3 },
+        { type: 'circle', x: -90, y: -22, r: 6, fill: '#38BDF8', lw: 2 },
+        { type: 'circle', x: -60, y: -22, r: 6, fill: '#38BDF8', lw: 2 },
+        { type: 'circle', x: -30, y: -22, r: 6, fill: '#38BDF8', lw: 2 },
+        { type: 'circle', x: 0, y: -22, r: 6, fill: '#38BDF8', lw: 2 },
+        { type: 'circle', x: 30, y: -22, r: 6, fill: '#38BDF8', lw: 2 },
+        { type: 'circle', x: 60, y: -22, r: 6, fill: '#38BDF8', lw: 2 },
+        { type: 'poly', pts: [[-20, 8], [-85, 78], [-35, 78], [45, 8]], fill: '#CBD5E1', close: true, lw: 3.5 },
+        { type: 'rect', x: -35, y: 38, w: 56, h: 28, r: 10, fill: '#2563EB', lw: 3.5 },
+        { type: 'text', x: -15, y: 2, text: '₹500 CR JET', size: 15, color: '#FFFFFF' }
+      ]
+    },
+
+    TRASH_CAN: {
+      parts: [
+        { type: 'poly', pts: [[-85, -210], [85, -210], [68, 0], [-68, 0]], fill: '#16A34A', close: true, lw: 3.5 },
+        { type: 'rect', x: -94, y: -228, w: 188, h: 22, r: 6, fill: '#15803D', lw: 3.5 },
+        { type: 'line', x1: -45, y1: -185, x2: -38, y2: -25, color: '#14532D', lw: 4 },
+        { type: 'line', x1: 0, y1: -185, x2: 0, y2: -25, color: '#14532D', lw: 4 },
+        { type: 'line', x1: 45, y1: -185, x2: 38, y2: -25, color: '#14532D', lw: 4 },
+        { type: 'rect', x: -64, y: -135, w: 128, h: 44, r: 6, fill: '#FEF08A', lw: 3 },
+        { type: 'text', x: 0, y: -113, text: 'KUPPAI / TRASH', size: 16, color: '#18181B' }
+      ]
+    },
+
+    SATELLITE: {
+      parts: [
+        { type: 'rect', x: -135, y: -18, w: 95, h: 36, r: 4, fill: '#2563EB', hatch: true, lw: 3 },
+        { type: 'rect', x: 40, y: -18, w: 95, h: 36, r: 4, fill: '#2563EB', hatch: true, lw: 3 },
+        { type: 'rect', x: -32, y: -32, w: 64, h: 64, r: 8, fill: '#E2E8F0', hatch: true, lw: 3.5 },
+        { type: 'circle', x: 0, y: 0, r: 16, fill: '#FACC15', lw: 3 },
+        { type: 'arc', x: 0, y: 42, r: 24, a0: Math.PI, a1: Math.PI * 2, fill: '#94A3B8', color: '#18181B', lw: 3 }
+      ]
+    },
+
+    SUBSCRIBE_CARD: {
+      parts: [
+        { type: 'rect', x: -190, y: -55, w: 380, h: 110, r: 22, fill: '#EF4444', hatch: true, lw: 4 },
+        { type: 'circle', x: -125, y: 0, r: 30, fill: '#FACC15', lw: 3.5 },
+        { type: 'text', x: -125, y: 2, text: '🔔', size: 30, color: '#18181B' },
+        { type: 'text', x: 30, y: -8, text: 'SUBSCRIBE', size: 34, color: '#FFFFFF' },
+        { type: 'text', x: 30, y: 26, text: 'DAILY TAMIL FACTS', size: 18, color: '#FEF08A' }
+      ]
+    }
+  }
+};
+
+// ============================================================================
+// STEP 12: SHOTS 21 TO 30 (00:38.4s - 01:01.0s)
+// ============================================================================
+const SHOTS = [
+  // --------------------------------------------------------------------------
+  // SHOT 021 · [00:38.4 - 00:41.2] (dur: 2.8s) — "இத SpaceX மட்டும் மூணு டைம் successful-ஆ பண்ணிருக்காங்க."
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 21,
+    title: '3x Booster Catch World Record',
+    start: 38.4,
+    end: 41.2,
+    duration: 2.8,
+    draw(g, lt, gt, u) {
+      CAM.begin(g, {
+        zoom: 1.0,
+        focusX: 540,
+        focusY: 960,
+        rot: 0,
+        shake: 0,
+        t: gt
+      });
+
+      const drawCatchRow = (g) => {
+        PROP.build(g, DICT.PROPS.BOOSTER_B19, {
+          x: 480,
+          y: 1080,
+          s: 0.85,
+          t: gt,
+          lt
+        });
+        CHAR.draw(g, {
+          ...DICT.CHARS.ELON,
+          x: 260,
+          y: 1260,
+          s: 0.85,
+          pose: 'handsUp',
+          eyes: 'happy',
+          mouth: 'smile',
+          t: gt
+        });
+      };
+
+      CAM.split(g, lt, {
+        layout: '3row',
+        panels: [
+          {
+            t0: 0.0,
+            bg: '#DCFCE7',
+            title: 'CATCH #1 (OCT 2024) ✅',
+            draw: drawCatchRow
+          },
+          {
+            t0: 0.38,
+            bg: '#BBF7D0',
+            title: 'CATCH #2 (JAN 2025) ✅',
+            draw: drawCatchRow
+          },
+          {
+            t0: 0.76,
+            bg: '#86EFAC',
+            title: 'CATCH #3 (MAR 2025) ✅',
+            draw: drawCatchRow
+          }
+        ]
+      });
+
+      TEXT.stamp(g, lt, {
+        x: 520,
+        y: 820,
+        text: '3X WORLD RECORD! 🏆',
+        color: '#15803D',
+        angle: -6,
+        size: 58,
+        t0: 1.45
+      });
+
+      CAM.end(g, {
+        vignette: 0.25,
+        spotlight: false,
+        grain: 0.02,
+        t: gt
+      });
+    },
+    sfx(k, bt0) {
+      k.play('panelSlide', bt0 + 0.02, { gain: 0.48 });
+      k.play('panelSlide', bt0 + 0.38, { gain: 0.48 });
+      k.play('panelSlide', bt0 + 0.76, { gain: 0.48 });
+      k.play('ding', bt0 + 1.40, { gain: 0.52 });
+      k.play('stamp', bt0 + 1.45, { gain: 0.58 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 022 · [00:41.2 - 00:44.4] (dur: 3.2s) — "ஆனா இந்த top half-ஆன Starship-அ catch பண்றது கொஞ்சம் சிரமமா இருந்துருக்கு."
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 22,
+    title: 'Catching Starship Is Much Harder',
+    start: 41.2,
+    end: 44.4,
+    duration: 3.2,
+    draw(g, lt, gt, u) {
+      CAM.begin(g, {
+        zoom: C.key(lt, [[0, 1.05], [1.60, 1.18], [3.00, 1.24], [3.2, 1.46]], C.ease.inOutCubic),
+        focusX: 500,
+        focusY: 820,
+        rot: -2.5,
+        shake: C.shake(lt, 6, 26, 22),
+        t: gt
+      });
+
+      ENV.studio(g, {
+        theme: 'danger',
+        floorY: 1320,
+        grid: true,
+        spotlight: true
+      });
+
+      PROP.gauge(g, lt, {
+        x: 250,
+        y: 540,
+        r: 115,
+        value: 0.95,
+        label: 'HEAT DANGER'
+      });
+
+      PROP.build(g, DICT.PROPS.STARSHIP_S42, {
+        x: 520,
+        y: 820,
+        s: 1.40,
+        rot: 28,
+        glow: '#EF4444',
+        t: gt,
+        lt
+      });
+
+      CHAR.draw(g, {
+        ...DICT.CHARS.ENGINEER,
+        x: 700,
+        y: 1320,
+        s: 1.28,
+        flipX: true,
+        pose: 'handsUp',
+        eyes: 'panic',
+        mouth: 'o',
+        sweat: true,
+        t: gt
+      });
+
+      TEXT.stamp(g, lt, {
+        x: 480,
+        y: 400,
+        text: 'EXTREME RE-ENTRY RISK! 🔥',
+        color: '#EF4444',
+        angle: -8,
+        size: 54,
+        t0: 1.60
+      });
+
+      CAM.end(g, {
+        vignette: 0.30,
+        spotlight: false,
+        grain: 0.02,
+        t: gt
+      });
+    },
+    sfx(k, bt0) {
+      k.play('alarmBeep', bt0 + 0.20, { gain: 0.48 });
+      k.play('fireIgnite', bt0 + 0.75, { gain: 0.52 });
+      k.play('stamp', bt0 + 1.60, { gain: 0.58 });
+      k.play('whoosh', bt0 + 3.02, { gain: 0.50 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 023 · [00:44.4 - 00:46.6] (dur: 2.2s) — "இதையும் எப்படியாவது successful ஆக்கி காட்டிரணும்னு சொல்லிட்டு,"
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 23,
+    title: 'Mission: Catch the Ship at All Costs',
+    start: 44.4,
+    end: 46.6,
+    duration: 2.2,
+    draw(g, lt, gt, u) {
+      CAM.begin(g, {
+        zoom: C.key(lt, [[0, 1.0], [2.00, 1.12], [2.2, 1.0]], C.ease.inOutCubic),
+        focusX: 500,
+        focusY: 820,
+        rot: 0,
+        shake: 0,
+        t: gt
+      });
+
+      TEXT.blackScreen(g, lt, {
+        text: "MISSION:\n{yellow:CATCH THE SHIP}\n{red:AT ALL COSTS.}",
+        sub: "— NEXT-GEN BLOCK 3",
+        x: 500,
+        y: 820,
+        t0: 0.05,
+        dur: 0.75,
+        size: 74,
+        underline: true
+      });
+
+      CAM.end(g, {
+        vignette: 0.20,
+        spotlight: false,
+        grain: 0.02,
+        t: gt
+      });
+    },
+    sfx(k, bt0) {
+      k.play('typewriter', bt0 + 0.10, { gain: 0.48 });
+      k.play('highlighter', bt0 + 1.05, { gain: 0.52 });
+      k.play('whoosh', bt0 + 2.02, { gain: 0.50 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 024 · [00:46.6 - 00:48.5] (dur: 1.9s) — "Ship 42 அப்படிங்கிற rocket செய்றாங்க."
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 24,
+    title: 'Building Ship 42 (Block 3)',
+    start: 46.6,
+    end: 48.5,
+    duration: 1.9,
+    draw(g, lt, gt, u) {
+      CAM.begin(g, {
+        zoom: C.key(lt, [[0, 1.28], [0.18, 1.04], [1.70, 1.14], [1.9, 1.34]], C.ease.inOutCubic),
+        focusX: C.key(lt, [[0, 490], [1.70, 490], [1.9, 760]], C.ease.inOutQuad),
+        focusY: C.key(lt, [[0, 960], [0.25, 800], [1.9, 800]], C.ease.outCubic),
+        rot: 0,
+        shake: 0,
+        t: gt
+      });
+
+      ENV.create(g, { ...DICT.ENVS.FACTORY_BAY, t: gt });
+
+      PROP.build(g, DICT.PROPS.FULL_STACK_124M, {
+        x: 490,
+        y: 1310,
+        s: 1.42,
+        glow: '#38BDF8',
+        t: gt,
+        lt
+      });
+
+      CHAR.draw(g, {
+        ...DICT.CHARS.ENGINEER,
+        x: 230,
+        y: 1320,
+        s: 1.22,
+        pose: 'point',
+        pointTo: [490, 780],
+        eyes: 'happy',
+        mouth: 'smile',
+        t: gt
+      });
+
+      CHAR.draw(g, {
+        ...DICT.CHARS.ELON,
+        x: 730,
+        y: 1320,
+        s: 1.25,
+        flipX: true,
+        pose: 'handsUp',
+        eyes: 'happy',
+        mouth: 'smile',
+        t: gt
+      });
+
+      TEXT.stamp(g, lt, {
+        x: 490,
+        y: 480,
+        text: 'SHIP 42 (BLOCK 3) ✨',
+        color: '#38BDF8',
+        angle: -6,
+        size: 58,
+        t0: 0.80
+      });
+
+      CAM.end(g, {
+        vignette: 0.28,
+        spotlight: { x: 490, y: 800, r: 720, cone: true },
+        grain: 0.02,
+        t: gt
+      });
+    },
+    sfx(k, bt0) {
+      k.play('electricSpark', bt0 + 0.15, { gain: 0.48 });
+      k.play('stamp', bt0 + 0.80, { gain: 0.58 });
+      k.play('swish', bt0 + 1.72, { gain: 0.50 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 025 · [00:48.5 - 00:50.6] (dur: 2.1s) — "இதுதான் மனுஷங்க செஞ்சதுலயே மிகப்பெரிய rocket."
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 25,
+    title: 'Biggest Rocket Made by Humans',
+    start: 48.5,
+    end: 50.6,
+    duration: 2.1,
+    draw(g, lt, gt, u) {
+      CAM.begin(g, {
+        zoom: C.key(lt, [[0, 1.32], [0.22, 1.02], [2.1, 1.12]], C.ease.outCubic),
+        focusX: C.key(lt, [[0, 320], [0.22, 490], [2.1, 490]], C.ease.outCubic),
+        focusY: 820,
+        rot: 0,
+        shake: 0,
+        t: gt
+      });
+
+      ENV.studio(g, {
+        theme: 'warm',
+        floorY: 1320,
+        grid: true,
+        spotlight: true
+      });
+
+      PROP.build(g, DICT.PROPS.FULL_STACK_124M, {
+        x: 540,
+        y: 1320,
+        s: 1.65,
+        t: gt,
+        lt
+      });
+
+      CHAR.draw(g, {
+        ...DICT.CHARS.ENGINEER,
+        x: 260,
+        y: 1320,
+        s: 0.68,
+        pose: 'point',
+        pointTo: [540, 520],
+        eyes: 'wide',
+        mouth: 'o',
+        t: gt
+      });
+
+      TEXT.stamp(g, lt, {
+        x: 480,
+        y: 380,
+        text: 'BIGGEST ROCKET EVER! 🏆',
+        color: '#D97706',
+        angle: -8,
+        size: 56,
+        t0: 0.95
+      });
+
+      TEXT.speechBubble(g, lt, {
+        x: 260,
+        y: 1040,
+        tailX: 260,
+        tailY: 1180,
+        text: 'My neck hurts!',
+        t0: 1.10
+      });
+
+      CAM.end(g, {
+        vignette: 0.28,
+        spotlight: false,
+        grain: 0.02,
+        t: gt
+      });
+    },
+    sfx(k, bt0) {
+      k.play('boing', bt0 + 0.25, { gain: 0.48 });
+      k.play('stamp', bt0 + 0.95, { gain: 0.58 });
+      k.play('pop', bt0 + 1.10, { gain: 0.48 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 026 · [00:50.6 - 00:52.4] (dur: 1.8s) — "அதோட height மட்டும் 124 மீட்டர்."
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 26,
+    title: '124 Meters Height Scale Comparison',
+    start: 50.6,
+    end: 52.4,
+    duration: 1.8,
+    draw(g, lt, gt, u) {
+      CAM.begin(g, {
+        zoom: C.key(lt, [[0, 1.04], [1.60, 1.16], [1.8, 1.44]], C.ease.inOutCubic),
+        focusX: 485,
+        focusY: C.key(lt, [[0, 920], [1.8, 740]], C.ease.inOutQuad),
+        rot: 0,
+        shake: 0,
+        t: gt
+      });
+
+      ENV.studio(g, {
+        theme: 'blueprint',
+        floorY: 1320,
+        grid: true,
+        spotlight: true
+      });
+
+      DIAGRAM.scaleCompare(g, lt, {
+        floorY: 1320,
+        items: [
+          { label: 'Qutub Minar', metric: '73m', size: 73, color: '#94A3B8' },
+          { label: 'Statue of Liberty', metric: '93m', size: 93, color: '#38BDF8' },
+          { label: 'SHIP 42 STACK', metric: '124m', size: 124, color: '#FACC15' }
+        ]
+      });
+
+      CHART.counter(g, lt, {
+        x: 485,
+        y: 380,
+        from: 0,
+        to: 124,
+        decimals: 0,
+        prefix: '',
+        suffix: ' METERS!',
+        label: '40-STOREY BUILDING TALL',
+        card: true,
+        size: 74,
+        t0: 0.08,
+        dur: 0.70
+      });
+
+      CAM.end(g, {
+        vignette: 0.28,
+        spotlight: false,
+        grain: 0.02,
+        t: gt
+      });
+    },
+    sfx(k, bt0) {
+      k.play('counterTick', bt0 + 0.10, { gain: 0.48 });
+      k.play('ding', bt0 + 0.75, { gain: 0.55 });
+      k.play('whoosh', bt0 + 1.62, { gain: 0.50 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 027 · [00:52.4 - 00:54.3] (dur: 1.9s) — "இந்த rocket-அ வந்து successful-ஆ launch பண்ணிறாங்க."
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 27,
+    title: 'Ship 42 Successful Launch',
+    start: 52.4,
+    end: 54.3,
+    duration: 1.9,
+    draw(g, lt, gt, u) {
+      CAM.begin(g, {
+        zoom: C.key(lt, [[0, 1.24], [0.20, 1.06], [1.70, 1.14], [1.9, 1.38]], C.ease.inOutCubic),
+        focusX: 490,
+        focusY: C.key(lt, [[0, 960], [1.70, 740], [1.9, 500]], C.ease.inOutQuad),
+        rot: 0,
+        shake: C.shake(lt, 10, 28, 27),
+        t: gt
+      });
+
+      ENV.create(g, { ...DICT.ENVS.STARBASE_DAY, t: gt });
+
+      PROP.build(g, DICT.PROPS.MECHAZILLA_TOWER, {
+        x: 310,
+        y: 1320,
+        s: 1.05,
+        t: gt,
+        lt
+      });
+
+      PROP.build(g, DICT.PROPS.FULL_STACK_124M, {
+        x: 520,
+        y: C.lerp(1300, 620, C.ease.inCubic(u)),
+        s: 1.35,
+        glow: '#F97316',
+        t: gt,
+        lt
+      });
+
+      TEXT.badge(g, lt, {
+        x: 490,
+        y: 300,
+        text: 'SHIP 42 LIFTOFF! 🚀',
+        fill: '#22C55E',
+        color: '#FFFFFF',
+        size: 32,
+        t0: 0.10
+      });
+
+      TEXT.stamp(g, lt, {
+        x: 490,
+        y: 520,
+        text: 'LAUNCH SUCCESS! ✅',
+        color: '#16A34A',
+        angle: -6,
+        size: 56,
+        t0: 0.85
+      });
+
+      CAM.end(g, {
+        vignette: 0.28,
+        spotlight: { x: 520, y: 760, r: 720, cone: true },
+        grain: 0.02,
+        t: gt
+      });
+    },
+    sfx(k, bt0) {
+      k.play('explosion', bt0 + 0.04, { gain: 0.60 });
+      k.play('fireIgnite', bt0 + 0.25, { gain: 0.52 });
+      k.play('stamp', bt0 + 0.85, { gain: 0.55 });
+      k.play('whoosh', bt0 + 1.72, { gain: 0.52 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 028 · [00:54.3 - 00:56.4] (dur: 2.1s) — "இத launch பண்ணதுக்கு அப்புறம் Booster-அ catch பண்ணலாம்னு நினைக்கிறாங்க."
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 28,
+    title: 'Mission Control Plans Booster Catch',
+    start: 54.3,
+    end: 56.4,
+    duration: 2.1,
+    draw(g, lt, gt, u) {
+      CAM.begin(g, {
+        zoom: C.key(lt, [[0, 1.24], [0.18, 1.05], [2.1, 1.16]], C.ease.outCubic),
+        focusX: 490,
+        focusY: 840,
+        rot: 0,
+        shake: 0,
+        t: gt
+      });
+
+      ENV.studio(g, {
+        theme: 'cool',
+        floorY: 1320,
+        grid: true,
+        spotlight: true
+      });
+
+      PROP.furniture(g, {
+        x: 340,
+        y: 1320,
+        w: 300,
+        h: 130,
+        style: 'desk',
+        color: '#1E293B',
+        label: 'MISSION CONTROL'
+      });
+
+      CHAR.draw(g, {
+        ...DICT.CHARS.FLIGHT_DIR,
+        x: 340,
+        y: 1320,
+        s: 1.28,
+        pose: 'point',
+        pointTo: [640, 820],
+        eyes: 'happy',
+        mouth: 'talk',
+        talking: true,
+        t: gt
+      });
+
+      PROP.build(g, DICT.PROPS.MECHAZILLA_TOWER, {
+        x: 660,
+        y: 1320,
+        s: 0.92,
+        t: gt,
+        lt
+      });
+
+      TEXT.speechBubble(g, lt, {
+        x: 380,
+        y: 660,
+        tailX: 340,
+        tailY: 920,
+        text: 'Ready to catch Booster 19!',
+        t0: 0.95
+      });
+
+      CAM.end(g, {
+        vignette: 0.28,
+        spotlight: false,
+        grain: 0.02,
+        t: gt
+      });
+    },
+    sfx(k, bt0) {
+      k.bed('office', bt0, bt0 + 2.1, { gain: 0.14 });
+      k.play('ding', bt0 + 0.25, { gain: 0.48 });
+      k.play('pop', bt0 + 0.95, { gain: 0.50 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 029 · [00:56.4 - 00:58.8] (dur: 2.4s) — "ஆனா ஒரு சில miscalculations and misalignments-னால,"
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 29,
+    title: 'Miscalculation & Misalignment Error',
+    start: 56.4,
+    end: 58.8,
+    duration: 2.4,
+    draw(g, lt, gt, u) {
+      CAM.begin(g, {
+        zoom: C.key(lt, [[0, 1.08], [0.25, 1.22], [2.20, 1.26], [2.4, 1.38]], C.ease.inOutCubic),
+        focusX: C.key(lt, [[0, 490], [2.20, 490], [2.4, 280]], C.ease.inOutQuad),
+        focusY: 820,
+        rot: 4.0,
+        shake: C.shake(lt, 7, 28, 29),
+        t: gt
+      });
+
+      ENV.studio(g, {
+        theme: 'danger',
+        floorY: 1320,
+        grid: true,
+        spotlight: true
+      });
+
+      PROP.build(g, DICT.PROPS.BOOSTER_B19, {
+        x: 560,
+        y: 860,
+        s: 1.28,
+        rot: 18,
+        glow: '#EF4444',
+        t: gt,
+        lt
+      });
+
+      CHAR.draw(g, {
+        ...DICT.CHARS.FLIGHT_DIR,
+        x: 260,
+        y: 1320,
+        s: 1.28,
+        pose: 'handsUp',
+        eyes: 'panic',
+        mouth: 'spitTake',
+        sweat: true,
+        t: gt
+      });
+
+      TEXT.stamp(g, lt, {
+        x: 490,
+        y: 440,
+        text: 'MISALIGNMENT ERROR! ⚠️',
+        color: '#EF4444',
+        angle: -10,
+        size: 54,
+        t0: 1.15
+      });
+
+      CAM.end(g, {
+        vignette: 0.30,
+        spotlight: false,
+        grain: 0.02,
+        t: gt
+      });
+    },
+    sfx(k, bt0) {
+      k.play('recordScratch', bt0 + 0.04, { gain: 0.55 });
+      k.play('alarmBeep', bt0 + 0.35, { gain: 0.52 });
+      k.play('stamp', bt0 + 1.15, { gain: 0.58 });
+      k.play('swish', bt0 + 2.22, { gain: 0.50 });
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SHOT 030 · [00:58.8 - 01:01.0] (dur: 2.2s) — "இந்த டைம் Booster-அ அவங்களால catch பண்ண முடியல."
+  // --------------------------------------------------------------------------
+  {
+    shot_number: 30,
+    title: 'Booster Catch Aborted',
+    start: 58.8,
+    end: 61.0,
+    duration: 2.2,
+    draw(g, lt, gt, u) {
+      CAM.begin(g, {
+        zoom: C.key(lt, [[0, 1.28], [0.18, 1.06], [2.00, 1.12], [2.2, 1.36]], C.ease.inOutCubic),
+        focusX: C.key(lt, [[0, 680], [0.18, 490], [2.2, 500]], C.ease.outCubic),
+        focusY: C.key(lt, [[0, 840], [2.00, 840], [2.2, 1120]], C.ease.inOutQuad),
+        rot: 0,
+        shake: 0,
+        t: gt
+      });
+
+      ENV.create(g, { ...DICT.ENVS.STARBASE_DAY, t: gt });
+
+      PROP.build(g, DICT.PROPS.MECHAZILLA_TOWER, {
+        x: 260,
+        y: 1320,
+        s: 1.02,
+        t: gt,
+        lt
+      });
+
+      PROP.build(g, DICT.PROPS.BOOSTER_B19, {
+        x: C.lerp(420, 660, u),
+        y: C.lerp(660, 960, u),
+        s: 1.18,
+        rot: 24,
+        t: gt,
+        lt
+      });
+
+      C.arrow(g, 380, 680, 700, 980, {
+        p: C.seg(lt, 0.15, 0.95),
+        lw: 8,
+        color: '#EF4444',
+        dash: [14, 10]
+      });
+
+      TEXT.stamp(g, lt, {
+        x: 490,
+        y: 440,
+        text: 'BOOSTER CATCH ABORTED ❌',
+        color: '#DC2626',
+        angle: -8,
+        size: 54,
+        t0: 1.00
+      });
+
+      CAM.end(g, {
+        vignette: 0.28,
+        spotlight: { x: 490, y: 800, r: 720, cone: true },
+        grain: 0.02,
+        t: gt
+      });
+    },
+    sfx(k, bt0) {
+      k.play('alarmBeep', bt0 + 0.15, { gain: 0.48 });
+      k.play('stamp', bt0 + 1.00, { gain: 0.58 });
+      k.play('whoosh', bt0 + 2.02, { gain: 0.50 });
+    }
+  }
+];
+
+// ============================================================================
+// 9:16 STUDIO BATCH PLAYER RUNTIME
+// ============================================================================
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const BATCH_START = SHOTS[0].start;
+const BATCH_END = SHOTS[SHOTS.length - 1].end;
+const DURATION = BATCH_END - BATCH_START;
+
+window.scoreSound = function scoreSound(k){
+  SHOTS.forEach((s) => {
+    if (typeof s.sfx === 'function') s.sfx(k, s.start - BATCH_START);
+  });
+};
+const scoreSound = window.scoreSound;
+
+window.BATCH_START = BATCH_START;
+window.BATCH_END = BATCH_END;
+window.DURATION = DURATION;
+window.SHOTS = SHOTS;
+
+let currentT = 0, playing = false, rafId = null, lastTs = 0, stopSound = null, activeShotFilter = 'all', voAudio = null, showSafeZone = false;
+
+function findShotAtGlobal(gt){
+  for (let i = 0; i < SHOTS.length; i++) {
+    if (gt >= SHOTS[i].start && gt <= SHOTS[i].end) return SHOTS[i];
+  }
+  return gt < SHOTS[0].start ? SHOTS[0] : SHOTS[SHOTS.length - 1];
+}
+
+function renderAtLocal(localT){
+  currentT = C.clamp(localT, 0, DURATION);
+  const gt = BATCH_START + currentT;
+  const s = findShotAtGlobal(gt);
+  const lt = C.clamp(gt - s.start, 0, s.duration);
+  const u = s.duration > 0 ? lt / s.duration : 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 1080, 1920);
+  ctx.save();
+  C.drawShot(ctx, s, lt, gt, u);
+  ctx.restore();
+  if (showSafeZone && window.CAM && typeof window.CAM.safeZoneOverlay === 'function') {
+    window.CAM.safeZoneOverlay(ctx, true);
+  }
+  document.getElementById('scrub').value = DURATION > 0 ? currentT / DURATION : 0;
+  document.getElementById('readout').textContent = gt.toFixed(2) + 's (' + currentT.toFixed(2) + 's) · Shot ' + s.shot_number;
+}
+
+window.seek = function (t, opts){
+  if (playing) pause();
+  const localT = opts && opts.global ? t - BATCH_START : t;
+  renderAtLocal(localT);
+};
+
+function startAudio(){
+  if (stopSound) { stopSound(); stopSound = null; }
+  const mixMode = document.getElementById('mixSelect').value;
+  if (mixMode !== 'mute' && window.SOUND) stopSound = SOUND.live(scoreSound, currentT, { mixMode: 'sfxOnly' });
+  if (voAudio) { voAudio.currentTime = BATCH_START + currentT; voAudio.play().catch(() => {}); }
+}
+
+function stopAudio(){
+  if (stopSound) { stopSound(); stopSound = null; }
+  if (voAudio) voAudio.pause();
+}
+
+function play(){
+  if (playing) return;
+  playing = true;
+  document.getElementById('playBtn').textContent = 'Pause';
+  lastTs = performance.now();
+  startAudio();
+  const tick = (now) => {
+    if (!playing) return;
+    const dt = (now - lastTs) / 1000;
+    lastTs = now;
+    let nextT = currentT + dt;
+    if (activeShotFilter !== 'all') {
+      const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+      if (s) {
+        const sLocal0 = s.start - BATCH_START, sLocal1 = s.end - BATCH_START;
+        if (nextT >= sLocal1) { nextT = sLocal0; currentT = nextT; startAudio(); }
+      }
+    } else if (nextT >= DURATION) {
+      nextT = 0; currentT = 0; startAudio();
+    }
+    renderAtLocal(nextT);
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function pause(){
+  playing = false;
+  document.getElementById('playBtn').textContent = 'Play';
+  if (rafId) cancelAnimationFrame(rafId);
+  stopAudio();
+}
+
+const shotSelect = document.getElementById('shotSelect');
+SHOTS.forEach((s) => {
+  const opt = document.createElement('option');
+  opt.value = String(s.shot_number);
+  opt.textContent = 'Shot ' + s.shot_number + ': ' + s.title + ' (' + s.start.toFixed(1) + 's-' + s.end.toFixed(1) + 's)';
+  shotSelect.appendChild(opt);
+});
+
+shotSelect.addEventListener('change', () => {
+  activeShotFilter = shotSelect.value;
+  if (activeShotFilter !== 'all') {
+    const s = SHOTS.find((sh) => String(sh.shot_number) === activeShotFilter);
+    if (s) { renderAtLocal(s.start - BATCH_START); if (playing) startAudio(); }
+  }
+});
+
+document.getElementById('safeBtn').addEventListener('click', (e) => {
+  showSafeZone = !showSafeZone;
+  e.target.textContent = showSafeZone ? 'Safe Zone UI: ON' : 'Safe Zone UI: OFF';
+  e.target.classList.toggle('active', showSafeZone);
+  renderAtLocal(currentT);
+});
+
+document.getElementById('playBtn').addEventListener('click', () => (playing ? pause() : play()));
+document.getElementById('scrub').addEventListener('input', (e) => {
+  renderAtLocal(parseFloat(e.target.value) * DURATION);
+  if (playing) startAudio();
+});
+document.getElementById('mixSelect').addEventListener('change', () => { if (playing) startAudio(); });
+document.getElementById('voInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  voAudio = new Audio(URL.createObjectURL(file));
+});
+document.getElementById('wavBtn').addEventListener('click', async () => {
+  const res = await SOUND.renderOffline(scoreSound, DURATION, 48000, { mixMode: 'sfxOnly' });
+  const blob = SOUND.encodeWAV(res.inter, res.sr);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'batch_sfx_' + SHOTS[0].shot_number + '_' + SHOTS[SHOTS.length - 1].shot_number + '.wav';
+  a.click();
+});
+window.addEventListener('DOMContentLoaded', async () => {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  renderAtLocal(0);
+});
+</script>
+</body>
+</html>

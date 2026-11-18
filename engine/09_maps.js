@@ -1,25 +1,28 @@
 /**
  * MODULE 09: UNIVERSAL 9:16 EDITORIAL VECTOR MAP & GLOBE CREATOR (engine/09_maps.js)
- * Native 1080x1920 (9:16 Vertical) Edition — 100% UI Safe-Zone Compliant.
- * Zero external tile servers, zero lag. Renders clean vertical editorial maps,
- * custom regions/empires, animated travel routes, pulsing radar pins, and 2.5D globes
- * inside the Golden Safe Box (x: 80..860, y: 320..1240) clear of Likes/Comments & Titles.
+ * Paper Billions / RealLifeLore / Kurzgesagt 1080x1920 (9:16 Vertical) Edition.
+ * Renders warm editorial maps, custom regions/empires, animated route vehicles (planes/ships/rockets),
+ * pulsing radar pins, and 2.5D spinning vector Earth globes inside the Golden Safe Box (x: 80..860).
  */
 (function () {
   const C = window.CORE;
 
-  // Clean Simplified Editorial Continent & Region Polygons (Normalized [lon: -180..180, lat: -90..90])
+  // Clean Editorial Continent & Region Polygons (Normalized [lon: -180..180, lat: -90..90])
   const CONTINENTS = {
-    northAmerica: [[-165, 65], [-130, 70], [-75, 68], [-55, 48], [-80, 25], [-90, 18], [-80, 8], [-105, 20], [-125, 48]],
-    southAmerica: [[-80, 10], [-60, 10], [-35, -6], [-48, -28], [-68, -54], [-75, -45], [-72, -18], [-81, -4]],
-    europe:       [[-10, 36], [0, 44], [-5, 58], [15, 70], [45, 68], [55, 50], [30, 42], [24, 36], [12, 38]],
-    africa:       [[-17, 15], [-5, 35], [12, 37], [33, 31], [50, 12], [40, -12], [20, -34], [12, -18], [8, 4], [-8, 5]],
-    middleEast:   [[33, 31], [55, 38], [62, 25], [55, 16], [44, 12], [35, 28]],
-    asia:         [[30, 40], [55, 50], [70, 72], [140, 70], [145, 45], [122, 22], [104, 2], [96, 16], [88, 22], [78, 8], [68, 24], [55, 24], [45, 12], [35, 30]],
-    india:        [[68, 24], [77, 34], [88, 27], [88, 22], [78, 8], [72, 18]],
-    australia:    [[114, -22], [132, -12], [153, -26], [146, -40], [130, -33], [115, -34]],
-    japan:        [[130, 31], [136, 35], [141, 41], [145, 44], [141, 36], [132, 32]],
-    uk:           [[-6, 50], [-2, 58], [2, 53], [-1, 50]]
+    northAmerica: [[-166, 66], [-140, 70], [-95, 72], [-72, 66], [-54, 48], [-76, 35], [-81, 25], [-96, 19], [-84, 9], [-105, 20], [-118, 34], [-126, 49]],
+    greenland:    [[-52, 60], [-70, 76], [-22, 82], [-18, 70], [-42, 60]],
+    southAmerica: [[-80, 10], [-62, 11], [-35, -6], [-40, -22], [-56, -36], [-68, -54], [-75, -46], [-71, -18], [-81, -4]],
+    europe:       [[-9, 37], [-9, 43], [-2, 48], [8, 55], [5, 62], [20, 70], [52, 68], [56, 52], [32, 45], [24, 36], [14, 38], [3, 42]],
+    uk:           [[-6, 50], [-5, 58], [1, 53], [-1, 50]],
+    africa:       [[-17, 15], [-6, 35], [11, 37], [33, 31], [51, 12], [41, -11], [32, -26], [20, -35], [13, -18], [9, 4], [-8, 5]],
+    madagascar:   [[44, -25], [49, -13], [50, -18], [46, -25]],
+    middleEast:   [[33, 31], [48, 38], [56, 26], [59, 21], [44, 13], [35, 28]],
+    asia:         [[32, 42], [56, 52], [72, 72], [135, 71], [170, 66], [142, 48], [130, 34], [121, 23], [104, 2], [96, 16], [88, 22], [78, 8], [68, 24], [55, 25]],
+    india:        [[68, 24], [76, 34], [88, 27], [88, 22], [78, 8], [72, 18]],
+    sriLanka:     [[79.5, 9.6], [81.8, 7.5], [80.5, 6.0], [79.8, 7.8]],
+    indonesia:    [[96, 5], [106, -6], [118, -8], [120, -2], [110, 1]],
+    australia:    [[114, -22], [129, -12], [142, -11], [153, -26], [147, -39], [131, -32], [115, -34]],
+    japan:        [[130, 31], [136, 35], [141, 41], [145, 44], [141, 36], [132, 32]]
   };
 
   function projectLonLat(lon, lat, box) {
@@ -32,24 +35,67 @@
     return [box.x + u * box.w, box.y + v * box.h];
   }
 
+  // Helper: Draw a small cohesive vector airplane / ship / rocket at the head of a map route
+  function drawRouteHeadIcon(g, kind, x, y, angle, color) {
+    g.save();
+    g.translate(x, y);
+    g.rotate(angle);
+
+    if (kind === 'plane' || kind === 'flight' || kind === 'air') {
+      g.fillStyle = '#FFFFFF';
+      C.inkStyle(g, 2.8, C.PAL.ink);
+      // Swept wings
+      g.beginPath();
+      g.moveTo(4, 0);
+      g.lineTo(-10, -22);
+      g.lineTo(-16, -22);
+      g.lineTo(-8, 0);
+      g.lineTo(-16, 22);
+      g.lineTo(-10, 22);
+      g.closePath();
+      g.fill(); g.stroke();
+      // Fuselage
+      C.roundRect(g, -20, -5, 36, 10, 5, { fill: '#FFFFFF', lw: 2.8 });
+      // Tail fin
+      g.beginPath();
+      g.moveTo(-16, 0);
+      g.lineTo(-24, -10);
+      g.lineTo(-20, 0);
+      g.lineTo(-24, 10);
+      g.closePath();
+      g.fillStyle = color || C.PAL.red;
+      g.fill(); g.stroke();
+    } else if (kind === 'rocket' || kind === 'starship') {
+      C.roundRect(g, -16, -6, 24, 12, 3, { fill: '#E2E8F0', lw: 2.6 });
+      g.beginPath();
+      g.moveTo(8, -6);
+      g.lineTo(18, 0);
+      g.lineTo(8, 6);
+      g.closePath();
+      g.fillStyle = color || '#EF4444';
+      g.fill();
+      C.inkStyle(g, 2.6, C.PAL.ink);
+      g.stroke();
+    } else if (kind === 'ship' || kind === 'boat') {
+      g.rotate(-angle); // Keep ship upright
+      C.roundRect(g, -14, -10, 22, 10, 2, { fill: '#FACC15', lw: 2.4 });
+      g.beginPath();
+      g.moveTo(-20, -2);
+      g.lineTo(20, -2);
+      g.lineTo(14, 8);
+      g.lineTo(-14, 8);
+      g.closePath();
+      g.fillStyle = color || '#1E293B';
+      g.fill();
+      C.inkStyle(g, 2.6, C.PAL.ink);
+      g.stroke();
+    }
+    g.restore();
+  }
+
   /**
    * 1. EDITORIAL 9:16 2D VECTOR MAP CREATOR (`MAP.draw(g, lt, opts)`)
-   * Default frame sits at `x: 80, y: 320, w: 780, h: 880` (right edge = 860, bottom = 1200)
-   * so the map, pins, and labels are NEVER covered by Likes/Comments (`x > 880`) or Titles (`y > 1450`).
-   *
-   * Usage:
-   *   MAP.draw(g, lt, {
-   *     title: 'THE SMUGGLING ROUTE',
-   *     bbox: [60, -12, 145, 45], // [minLon, minLat, maxLon, maxLat] (Defaults to World)
-   *     highlight: ['india'],     // Or custom `regions: [{ pts: [[x,y],...], color, label, hatch }]`
-   *     routes: [
-   *       { from: [103.8, 1.3], to: [114.1, 22.3], label: 'CHIP SHIPMENT', color: '#EF4444', t0: 0.15, dur: 0.85 }
-   *     ],
-   *     pins: [
-   *       { lonLat: [103.8, 1.3], label: 'SINGAPORE', color: '#FACC15', pulse: true, t0: 0.08 },
-   *       { lonLat: [114.1, 22.3], label: 'SHENZHEN', color: '#EF4444', t0: 0.55 }
-   *     ]
-   *   });
+   * Default frame sits at `x: 80, y: 320, w: 780, h: 880` inside the Golden Safe Zone.
    */
   function draw(g, lt, opts) {
     const o = opts || {};
@@ -71,7 +117,7 @@
 
     g.save();
 
-    // Ocean card frame inside 9:16 Safe Zone
+    // Warm Paper-Billions Ocean Card Frame
     C.roundRect(g, mx, my, mw, mh, 20, {
       fill: o.oceanColor || '#BAE6FD',
       lw: 4.5,
@@ -81,6 +127,13 @@
     g.save();
     C.pathRoundRect(g, mx, my, mw, mh, 20);
     g.clip();
+
+    // Soft radial ocean depth vignette
+    const oceanGrad = g.createRadialGradient(mx + mw * 0.5, my + mh * 0.45, mw * 0.1, mx + mw * 0.5, my + mh * 0.5, mw * 0.85);
+    oceanGrad.addColorStop(0, 'rgba(255,255,255,0.22)');
+    oceanGrad.addColorStop(1, 'rgba(2, 132, 199, 0.18)');
+    g.fillStyle = oceanGrad;
+    g.fillRect(mx, my, mw, mh);
 
     // Subtle latitude/longitude grid lines
     const gridCol = o.gridColor || 'rgba(15, 23, 42, 0.08)';
@@ -93,7 +146,7 @@
       C.line(g, mx, gy, mx + mw, gy, { lw: 1.5, color: gridCol, dash: [8, 8] });
     }
 
-    // Base Continents
+    // Base Continents with Paper-Billions coastal shelf rim
     if (o.continents !== false) {
       const hiList = (o.highlight || []).map((s) => String(s).toLowerCase());
       Object.keys(CONTINENTS).forEach((name) => {
@@ -107,19 +160,28 @@
           else g.lineTo(p[0], p[1]);
         });
         g.closePath();
-        g.fillStyle = isHi ? (o.highlightColor || '#FCA5A5') : (o.landColor || '#E7E0D0');
+
+        // Outer shallow coastal water halo
+        g.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+        g.lineWidth = 9;
+        g.lineJoin = 'round';
+        g.stroke();
+
+        g.fillStyle = isHi ? (o.highlightColor || '#FCA5A5') : (o.landColor || '#EDE5D5');
         g.fill();
 
-        if (isHi && o.highlightHatch) {
+        if (isHi && o.highlightHatch !== false) {
           const xs = screenPts.map((p) => p[0]);
           const ys = screenPts.map((p) => p[1]);
           const rx = Math.min.apply(null, xs);
           const ry = Math.min.apply(null, ys);
-          const rw = Math.max.apply(null, xs) - rx;
-          const rh = Math.max.apply(null, ys) - ry;
           g.save();
           g.clip();
-          C.hatchRect(g, rx, ry, rw, rh, { color: 'rgba(220, 38, 38, 0.25)', spacing: 12, lw: 2.2 });
+          C.hatchRect(g, rx, ry, Math.max.apply(null, xs) - rx, Math.max.apply(null, ys) - ry, {
+            color: 'rgba(220, 38, 38, 0.22)',
+            spacing: 12,
+            lw: 2.2
+          });
           g.restore();
         }
 
@@ -128,7 +190,7 @@
       });
     }
 
-    // Custom Polygons / Regions / Empires (`regions: [{ pts: [[x,y] or [lon,lat]], useLonLat, color, label, hatch }]`)
+    // Custom Polygons / Regions / Empires
     (o.regions || o.territories || []).forEach((reg) => {
       if (!Array.isArray(reg.pts) || reg.pts.length < 3) return;
       const isLonLat = reg.useLonLat || (Math.abs(reg.pts[0][0]) <= 180 && Math.abs(reg.pts[0][1]) <= 90);
@@ -159,9 +221,11 @@
       g.stroke();
 
       if (reg.label) {
-        const cx = C.clamp(pts.reduce((a, p) => a + p[0], 0) / pts.length, mx + 70, mx + mw - 70);
+        const cx = C.clamp(pts.reduce((a, p) => a + p[0], 0) / pts.length, mx + 85, mx + mw - 85);
         const cy = C.clamp(pts.reduce((a, p) => a + p[1], 0) / pts.length, my + 50, my + mh - 50);
-        g.font = '900 24px "Nunito", sans-serif';
+        g.font = '900 22px "Nunito", sans-serif';
+        const tw = g.measureText(reg.label).width + 24;
+        C.roundRect(g, cx - tw / 2, cy - 18, tw, 36, 8, { fill: 'rgba(255,255,255,0.92)', lw: 2.8 });
         g.fillStyle = C.PAL.ink;
         g.textAlign = 'center';
         g.textBaseline = 'middle';
@@ -169,7 +233,7 @@
       }
     });
 
-    // Animated Travel Routes (`from` / `to` can be `[lon, lat]` or screen `[x, y]`)
+    // Animated Travel Routes + Optional Flying Plane / Ship / Rocket Icon
     (o.routes || []).forEach((rt) => {
       const p0 = (rt.screen || Math.abs(rt.from[0]) > 180) ? rt.from : projectLonLat(rt.from[0], rt.from[1], box);
       const p1 = (rt.screen || Math.abs(rt.to[0]) > 180) ? rt.to : projectLonLat(rt.to[0], rt.to[1], box);
@@ -188,15 +252,28 @@
         curveY: curveY
       });
 
+      // Optional Vehicle Icon along quadratic Bezier curve (`rt.icon: 'plane'|'ship'|'rocket'`)
+      const iconKind = rt.icon || (/flight|fly|air|plane/i.test(rt.label || '') ? 'plane' : '');
+      if (iconKind && rp > 0.05 && rp < 0.99) {
+        const cx = (p0[0] + p1[0]) / 2;
+        const cy = (p0[1] + p1[1]) / 2 + (rt.curve !== false ? curveY : 0);
+        const u = rp;
+        const ix = (1 - u) * (1 - u) * p0[0] + 2 * (1 - u) * u * cx + u * u * p1[0];
+        const iy = (1 - u) * (1 - u) * p0[1] + 2 * (1 - u) * u * cy + u * u * p1[1];
+        const dx = 2 * (1 - u) * (cx - p0[0]) + 2 * u * (p1[0] - cx);
+        const dy = 2 * (1 - u) * (cy - p0[1]) + 2 * u * (p1[1] - cy);
+        drawRouteHeadIcon(g, iconKind, ix, iy, Math.atan2(dy, dx), rt.color || C.PAL.red);
+      }
+
       if (rt.label && rp > 0.4) {
         const lx = C.clamp((p0[0] + p1[0]) / 2, mx + 95, mx + mw - 95);
         const ly = C.clamp((p0[1] + p1[1]) / 2 + curveY * 0.55 - 22, my + 75, my + mh - 45);
         g.font = '700 30px "Caveat", cursive';
-        const tw = g.measureText(rt.label).width + 24;
+        const tw = g.measureText(rt.label).width + 26;
         C.roundRect(g, lx - tw / 2, ly - 20, tw, 38, 10, {
-          fill: 'rgba(255, 255, 255, 0.92)',
+          fill: 'rgba(255, 255, 255, 0.95)',
           stroke: rt.color || C.PAL.red,
-          lw: 2.8
+          lw: 3
         });
         g.fillStyle = rt.color || C.PAL.red;
         g.textAlign = 'center';
@@ -234,7 +311,6 @@
       if (pin.label) {
         g.font = '900 22px "Nunito", sans-serif';
         const tw = g.measureText(pin.label).width + 28;
-        // Shift label horizontally if pin is near left/right edge of map card
         let labelOffX = 0;
         if (px - tw / 2 < mx + 12) labelOffX = (mx + 12) - (px - tw / 2);
         if (px + tw / 2 > mx + mw - 12) labelOffX = (mx + mw - 12) - (px + tw / 2);
@@ -258,7 +334,6 @@
     // Map Card Outer Re-Stroke
     C.roundRect(g, mx, my, mw, mh, 20, { fill: false, lw: 4.5, stroke: C.PAL.ink });
 
-    // Optional Map Title Header Pill (Centered at top of map inside Safe Zone)
     if (o.title && window.TEXT) {
       window.TEXT.badge(g, lt, {
         x: mx + mw / 2,
@@ -274,16 +349,12 @@
   }
 
   /**
-   * 2. ORTHOGRAPHIC 2.5D EDITORIAL GLOBE (`MAP.globe(g, lt, opts)`)
-   * Centered in the 9:16 Safe Zone (`x: 485, y: 820, r: 320`) with support for
-   * spinning continents, 3D projected pins, and orbital arcs.
+   * Helper: Core 2.5D Vector Earth Sphere Renderer (`MAP.drawEarthCore`)
+   * Used both by `MAP.globe` and by `DIAGRAM.orbit` so Earth never renders as an emoji in a blue circle!
    */
-  function globe(g, lt, opts) {
+  function drawEarthCore(g, lt, cx, cy, r, opts) {
     const o = opts || {};
-    const cx = o.x !== undefined ? o.x : 485;
-    const cy = o.y !== undefined ? o.y : 820;
-    const r = o.r || 320;
-    const rotLon = (o.lon !== undefined ? o.lon : 78) + (o.spin ? lt * o.spin : 0);
+    const rotLon = (o.lon !== undefined ? o.lon : 78) + (o.spin !== undefined ? lt * o.spin : lt * 16);
 
     function projectOnGlobe(lon, lat) {
       const dLon = ((lon - rotLon + 540) % 360) - 180;
@@ -298,36 +369,37 @@
 
     g.save();
 
-    // Optional outer atmosphere glow
+    // 1. Outer Atmosphere Halo Glow
     if (o.glow !== false) {
-      const grd = g.createRadialGradient(cx, cy, r * 0.85, cx, cy, r * 1.22);
-      grd.addColorStop(0, C.rgba(o.glowColor || '#38BDF8', 0.28));
+      const grd = g.createRadialGradient(cx, cy, r * 0.85, cx, cy, r * 1.24);
+      grd.addColorStop(0, C.rgba(o.glowColor || '#38BDF8', 0.32));
       grd.addColorStop(1, C.rgba(o.glowColor || '#38BDF8', 0));
       g.fillStyle = grd;
       g.beginPath();
-      g.arc(cx, cy, r * 1.22, 0, Math.PI * 2);
+      g.arc(cx, cy, r * 1.24, 0, Math.PI * 2);
       g.fill();
     }
 
-    C.circle(g, cx, cy, r, { fill: o.oceanColor || '#38BDF8', lw: 5, shadow: true });
+    // 2. Base Ocean Sphere
+    C.circle(g, cx, cy, r, { fill: o.oceanColor || '#0284C7', lw: 4.5, shadow: true });
 
     g.save();
     g.beginPath();
     g.arc(cx, cy, r, 0, Math.PI * 2);
     g.clip();
 
-    // Graticule rings
-    const gratCol = 'rgba(255,255,255,0.24)';
+    // Subtle Graticule Rings
+    const gratCol = 'rgba(255,255,255,0.18)';
     [-0.5, 0, 0.5].forEach((latK) => {
-      C.line(g, cx - r, cy + latK * r, cx + r, cy + latK * r, { lw: 2, color: gratCol });
+      C.line(g, cx - r, cy + latK * r, cx + r, cy + latK * r, { lw: Math.max(1.2, r * 0.006), color: gratCol });
       g.strokeStyle = gratCol;
-      g.lineWidth = 2;
+      g.lineWidth = Math.max(1.2, r * 0.006);
       g.beginPath();
       g.ellipse(cx, cy, r * Math.abs(latK || 0.25), r, 0, 0, Math.PI * 2);
       g.stroke();
     });
 
-    // Rotating continent polygons on globe
+    // 3. Rotating Vector Continents
     const hiList = (o.highlight || []).map((s) => String(s).toLowerCase());
     Object.keys(CONTINENTS).forEach((name) => {
       const poly = CONTINENTS[name];
@@ -344,12 +416,30 @@
         g.closePath();
         g.fillStyle = isHi ? (o.highlightColor || '#FCA5A5') : (o.landColor || '#4ADE80');
         g.fill();
-        C.inkStyle(g, 3.2, C.PAL.ink);
+        C.inkStyle(g, Math.max(2.0, r * 0.011), C.PAL.ink);
         g.stroke();
       }
     });
 
-    // Optional 3D-projected Pins on Globe
+    // 4. Soft Atmospheric Cloud Wisps
+    if (o.clouds !== false && r >= 55) {
+      g.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      [
+        { y: -0.42, w: 0.48, speed: 14, phase: 0.1 },
+        { y: 0.08,  w: 0.56, speed: 20, phase: 0.55 },
+        { y: 0.48,  w: 0.42, speed: 12, phase: 0.82 }
+      ].forEach((cl) => {
+        const u = ((lt * (cl.speed / 120) + cl.phase) % 1) * 2 - 1;
+        const cw = r * cl.w;
+        const ch = Math.max(6, r * 0.075);
+        C.roundRect(g, cx + u * r * 0.75 - cw / 2, cy + cl.y * r - ch / 2, cw, ch, ch / 2, {
+          fill: 'rgba(255, 255, 255, 0.42)',
+          stroke: false
+        });
+      });
+    }
+
+    // 5. Optional 3D-Projected Pins on Globe
     (o.pins || []).forEach((pin, idx) => {
       const raw = pin.lonLat || pin.pos || [78, 20];
       const gp = projectOnGlobe(raw[0], raw[1]);
@@ -382,34 +472,44 @@
       g.restore();
     });
 
-    // Subtle 2.5D spherical terminator shadow on right edge of globe
-    const shd = g.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.2, cx, cy, r);
-    shd.addColorStop(0, 'rgba(255,255,255,0.12)');
-    shd.addColorStop(0.7, 'rgba(0,0,0,0)');
-    shd.addColorStop(1, 'rgba(15,23,42,0.28)');
+    // 6. 2.5D Spherical Specular Highlight & Night Terminator Shadow
+    const shd = g.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.15, cx, cy, r);
+    shd.addColorStop(0, 'rgba(255,255,255,0.22)');
+    shd.addColorStop(0.65, 'rgba(0,0,0,0)');
+    shd.addColorStop(1, 'rgba(15,23,42,0.34)');
     g.fillStyle = shd;
     g.fillRect(cx - r, cy - r, r * 2, r * 2);
 
     g.restore();
 
-    // Bold outer ink rim
-    C.circle(g, cx, cy, r, { fill: false, lw: 5, stroke: C.PAL.ink });
+    // Bold Outer Ink Rim
+    C.circle(g, cx, cy, r, { fill: false, lw: Math.max(3.8, r * 0.016), stroke: C.PAL.ink });
+    g.restore();
+  }
+
+  /**
+   * 2. ORTHOGRAPHIC 2.5D EDITORIAL GLOBE (`MAP.globe(g, lt, opts)`)
+   */
+  function globe(g, lt, opts) {
+    const o = opts || {};
+    const cx = o.x !== undefined ? o.x : 485;
+    const cy = o.y !== undefined ? o.y : 820;
+    const r = o.r || 320;
+
+    drawEarthCore(g, lt, cx, cy, r, o);
 
     if (o.title && window.TEXT) {
       window.TEXT.badge(g, lt, {
         x: cx,
-        y: cy - r - 56,
+        y: Math.max(265, cy - r - 56),
         text: o.title,
         size: 28,
         fill: '#FFFFFF',
         t0: 0.05
       });
     }
-
-    g.restore();
   }
 
-  // Instant 0ms preloader stub for Studio Player / Renderer compatibility
   function preloadAll() {
     return Promise.resolve();
   }
@@ -419,6 +519,8 @@
     world: draw,
     region: draw,
     globe,
+    drawEarthCore,
+    CONTINENTS,
     preloadAll
   };
 })();

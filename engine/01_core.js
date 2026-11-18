@@ -1,7 +1,8 @@
 /**
  * MODULE 01: CORE — 9:16 VERTICAL SHORTS & REELS EDITION (engine/01_core.js)
  * 1080x1920 Vertical Stage, UI Safe-Zone constants (C.SAFE), raised floor (y=1320),
- * math, easing, deterministic RNG, color palettes, bold ink outlines,
+ * camera-aware safe clamping, auto-contrast background detection, math, easing,
+ * deterministic RNG, Paper Billions color palettes, bold ink outlines,
  * diagonal hatching, and hand-drawn vector primitives.
  */
 (function () {
@@ -26,6 +27,11 @@
     floorY: FLOOR_Y
   };
 
+  // Live camera & scene state tracked across modules
+  let _activeCam = null;
+  let _inSplitPanel = false;
+  let _sceneIsDark = false;
+
   // --- 1. Easing Functions ---
   const ease = {
     linear: (t) => t,
@@ -48,26 +54,64 @@
     step: (t) => (t < 1 ? 0 : 1)
   };
 
-  // --- 2. Math, Safe-Zone Clamp & Keyframe Helpers ---
+  // --- 2. Math, Camera-Aware Safe-Zone Clamp & Keyframe Helpers ---
   function clamp(v, min, max) {
     return Math.max(min, Math.min(max, v));
   }
 
-  // Clamps a center X coordinate so an element of `halfW` stays inside C.SAFE.left..C.SAFE.right
+  // Returns current visible safe horizontal bounds in world coordinates
+  function getSafeBoundsX() {
+    let minX = SAFE.left;
+    let maxX = SAFE.right;
+    if (_activeCam && !_inSplitPanel) {
+      const z = Math.max(0.25, _activeCam.zoom || 1);
+      const camLeft = (SAFE.left - 540) / z + _activeCam.fx;
+      const camRight = (SAFE.right - 540) / z + _activeCam.fx;
+      minX = Math.max(SAFE.left - 30, camLeft + 14 / z);
+      maxX = Math.min(SAFE.right + 10, camRight - 14 / z);
+      if (minX > maxX) {
+        const mid = (camLeft + camRight) / 2;
+        return { minX: mid, maxX: mid, cx: mid };
+      }
+    }
+    return { minX, maxX, cx: (minX + maxX) / 2 };
+  }
+
+  // Returns current visible safe vertical bounds in world coordinates
+  function getSafeBoundsY() {
+    let minY = SAFE.top;
+    let maxY = SAFE.bottom;
+    if (_activeCam && !_inSplitPanel) {
+      const z = Math.max(0.25, _activeCam.zoom || 1);
+      const camTop = (SAFE.top - 960) / z + _activeCam.fy;
+      const camBot = (SAFE.bottom - 960) / z + _activeCam.fy;
+      minY = Math.max(SAFE.top - 20, camTop + 14 / z);
+      maxY = Math.min(SAFE.bottom + 40, camBot - 14 / z);
+      if (minY > maxY) {
+        const mid = (camTop + camBot) / 2;
+        return { minY: mid, maxY: mid, cy: mid };
+      }
+    }
+    return { minY, maxY, cy: (minY + maxY) / 2 };
+  }
+
+  // Clamps a center X coordinate so an element of `halfW` stays inside visible C.SAFE
   function safeX(x, halfW) {
     const hw = halfW || 0;
-    const minX = SAFE.left + hw;
-    const maxX = SAFE.right - hw;
-    if (minX > maxX) return SAFE.cx;
+    const b = getSafeBoundsX();
+    const minX = b.minX + hw;
+    const maxX = b.maxX - hw;
+    if (minX > maxX) return b.cx;
     return clamp(x !== undefined ? x : SAFE.cx, minX, maxX);
   }
 
-  // Clamps a center Y coordinate so an element of `halfH` stays inside C.SAFE.top..C.SAFE.bottom
+  // Clamps a center Y coordinate so an element of `halfH` stays inside visible C.SAFE
   function safeY(y, halfH) {
     const hh = halfH || 0;
-    const minY = SAFE.top + hh;
-    const maxY = SAFE.bottom - hh;
-    if (minY > maxY) return SAFE.cy;
+    const b = getSafeBoundsY();
+    const minY = b.minY + hh;
+    const maxY = b.maxY - hh;
+    if (minY > maxY) return b.cy;
     return clamp(y !== undefined ? y : SAFE.cy, minY, maxY);
   }
 
@@ -137,7 +181,7 @@
     return { x: dx, y: dy };
   }
 
-  // --- 4. Editorial Cartoon Color Palettes ---
+  // --- 4. Editorial Cartoon Color Palettes & Auto-Contrast Helpers ---
   const PAL = {
     ink: '#18181B',         // Signature bold black/charcoal outline
     paper: '#F5F2EB',       // Warm editorial paper white
@@ -162,10 +206,66 @@
   };
 
   function hexToRgb(hex) {
-    const h = String(hex || '#000000').replace('#', '');
+    const h = String(hex || '#000000').replace('#', '').trim();
+    if (h.startsWith('rgb')) {
+      const m = h.match(/\d+/g);
+      if (m && m.length >= 3) return { r: +m[0], g: +m[1], b: +m[2] };
+    }
     const full = h.length === 3 ? h[0] + h[0] + h[1] + h[1] + h[2] + h[2] : h;
     const num = parseInt(full, 16) || 0;
     return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+
+  function luminance(hex) {
+    const c = hexToRgb(hex);
+    return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255;
+  }
+
+  function isDarkColor(hex) {
+    if (!hex) return false;
+    return luminance(hex) < 0.42;
+  }
+
+  // Samples the rendered canvas pixel at world coordinate (x, y) to detect dark backgrounds
+  function isCanvasDarkAt(g, x, y) {
+    if (_sceneIsDark) return true;
+    if (!g || typeof g.getImageData !== 'function') return false;
+    try {
+      const m = typeof g.getTransform === 'function' ? g.getTransform() : { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+      const px = clamp(Math.round(m.a * x + m.c * y + m.e), 2, W - 3);
+      const py = clamp(Math.round(m.b * x + m.d * y + m.f), 2, H - 3);
+      const d = g.getImageData(px, py, 1, 1).data;
+      if (d[3] < 30) return false;
+      const lum = (0.299 * d[0] + 0.587 * d[1] + 0.114 * d[2]) / 255;
+      return lum < 0.42;
+    } catch (e) {
+      return _sceneIsDark;
+    }
+  }
+
+  // Draws text with an automatic subtle contrast halo so it never disappears on dark or busy backgrounds
+  function drawContrastText(g, text, x, y, opts) {
+    const o = opts || {};
+    const str = String(text || '');
+    if (!str) return;
+    g.save();
+    const darkBg = o.darkBg !== undefined ? o.darkBg : isCanvasDarkAt(g, x, y);
+    let fillCol = o.fill || PAL.ink;
+    if ((fillCol === PAL.ink || fillCol === '#18181B' || fillCol === '#0F172A') && darkBg) {
+      fillCol = '#F8FAFC';
+    }
+    const fillDark = isDarkColor(fillCol);
+    const haloCol = o.haloColor || (fillDark ? 'rgba(255,255,255,0.88)' : 'rgba(15,23,42,0.88)');
+    if (o.halo !== false) {
+      g.lineJoin = 'round';
+      g.lineCap = 'round';
+      g.lineWidth = o.haloW || 5.5;
+      g.strokeStyle = haloCol;
+      g.strokeText(str, x, y);
+    }
+    g.fillStyle = fillCol;
+    g.fillText(str, x, y);
+    g.restore();
   }
 
   function rgba(hex, alpha) {
@@ -208,7 +308,7 @@
 
   /**
    * Draws an editorial cartoon rounded rectangle with optional shadow,
-   * 2-tone top highlight, diagonal hatching, and bold ink outline.
+   * Paper Billions soft 2-tone shading, diagonal hatching, and bold ink outline.
    */
   function roundRect(g, x, y, w, h, r, opts) {
     const o = opts || {};
@@ -219,17 +319,18 @@
       const sx = o.shadowX !== undefined ? o.shadowX : 5;
       const sy = o.shadowY !== undefined ? o.shadowY : 6;
       pathRoundRect(g, x + sx, y + sy, w, h, rad);
-      g.fillStyle = o.shadowColor || 'rgba(0,0,0,0.22)';
+      g.fillStyle = o.shadowColor || 'rgba(0,0,0,0.20)';
       g.fill();
     }
 
     pathRoundRect(g, x, y, w, h, rad);
 
     if (o.fill !== false) {
-      if (o.grad && o.fill) {
+      const fillStr = String(o.fill || '#FFFFFF');
+      if (o.grad !== false && fillStr.startsWith('#') && h > 16) {
         const grd = g.createLinearGradient(x, y, x, y + h);
-        grd.addColorStop(0, shadeColor(o.fill, 8));
-        grd.addColorStop(1, shadeColor(o.fill, -10));
+        grd.addColorStop(0, shadeColor(fillStr, o.grad ? 8 : 4));
+        grd.addColorStop(1, shadeColor(fillStr, o.grad ? -10 : -5));
         g.fillStyle = grd;
       } else {
         g.fillStyle = o.fill || '#FFFFFF';
@@ -240,7 +341,7 @@
     if (o.hatch) {
       hatchRect(g, x, y, w, h, {
         rad: rad,
-        color: o.hatchColor || 'rgba(0,0,0,0.22)',
+        color: o.hatchColor || 'rgba(0,0,0,0.20)',
         spacing: o.hatchSpacing || 12,
         lw: o.hatchLw || 2.5,
         angle: o.hatchAngle || -45
@@ -267,7 +368,7 @@
     if (o.shadow) {
       g.beginPath();
       g.arc(x + (o.shadowX || 4), y + (o.shadowY || 5), r, 0, Math.PI * 2);
-      g.fillStyle = o.shadowColor || 'rgba(0,0,0,0.22)';
+      g.fillStyle = o.shadowColor || 'rgba(0,0,0,0.20)';
       g.fill();
     }
 
@@ -300,7 +401,7 @@
     const o = opts || {};
     const spacing = o.spacing || 12;
     const lw = o.lw || 2.5;
-    const col = o.color || 'rgba(24,24,27,0.28)';
+    const col = o.color || 'rgba(24,24,27,0.26)';
 
     g.save();
     pathRoundRect(g, x, y, w, h, o.rad || 0);
@@ -402,12 +503,17 @@
   // --- 6. Shot Wrapper for Studio Player & Renderer Compatibility ---
   function drawShot(g, s, lt, gt, u) {
     if (!s || typeof s.draw !== 'function') return;
+    _activeCam = null;
+    _inSplitPanel = false;
+    _sceneIsDark = false;
     g.save();
     s.draw(g, lt, gt, u);
     if (s.transition && window.CAM && typeof window.CAM.transition === 'function') {
       window.CAM.transition(g, lt, s.duration, s.transition);
     }
     g.restore();
+    _activeCam = null;
+    _inSplitPanel = false;
   }
 
   function linkShotTransitions(shots) {
@@ -421,6 +527,8 @@
     SAFE,
     ease,
     clamp,
+    getSafeBoundsX,
+    getSafeBoundsY,
     safeX,
     safeY,
     lerp,
@@ -434,6 +542,10 @@
     shake,
     PAL,
     hexToRgb,
+    luminance,
+    isDarkColor,
+    isCanvasDarkAt,
+    drawContrastText,
     rgba,
     shadeColor,
     inkStyle,
@@ -444,7 +556,13 @@
     line,
     arrow,
     drawShot,
-    linkShotTransitions
+    linkShotTransitions,
+    _setCam: (cam) => { _activeCam = cam; },
+    _getCam: () => _activeCam,
+    _setSplit: (flag) => { _inSplitPanel = !!flag; },
+    _isSplit: () => _inSplitPanel,
+    setSceneDark: (flag) => { _sceneIsDark = !!flag; },
+    isSceneDark: () => _sceneIsDark
   };
 
   window.CORE = CORE;

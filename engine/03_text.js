@@ -1,33 +1,24 @@
 /**
  * MODULE 03: SAFE-ZONE TEXT, BLACK PUNCHLINE SCREENS, BUBBLES & STAMPS (engine/03_text.js)
- * 9:16 Vertical (1080x1920) Typography Engine with automatic C.SAFE clamping
- * and auto-fit width scaling so text is NEVER blocked by Like/Comment buttons or Titles:
- *  1. TEXT.blackScreen    -> Pure black screen with handwritten kinetic text & color highlights
- *  2. TEXT.speechBubble   -> Safe-zone clamped speech, thought, and shout bubbles
+ * 9:16 Vertical (1080x1920) Typography Engine with camera-aware C.SAFE clamping,
+ * rotated-bounds stamp protection, and high-contrast Paper Billions callout pills:
+ *  1. TEXT.blackScreen    -> Pure black screen with handwritten brush-script kinetic text
+ *  2. TEXT.speechBubble   -> Safe-zone clamped comic speech, thought, and shout bubbles
  *  3. TEXT.subtitle       -> Floating dialogue subtitles at y=1380 (above bottom title zone)
- *  4. TEXT.stamp          -> Heavy slamming rubber stamps ("NO", "BANNED", "LOSS") + dust puffs
+ *  4. TEXT.stamp          -> Rotated-safe slamming rubber stamps ("NO", "BANNED", "LOSS")
  *  5. TEXT.highlightQuote -> Document/News quote card (w=720) with animated yellow highlighter
- *  6. TEXT.callout / badge-> Hand-drawn arrows & Top Hook Banners (y=300)
+ *  6. TEXT.callout / badge-> Measured safe-clamped arrows & Top Hook Banners (y=300)
  */
 (function () {
   const C = window.CORE;
 
   /**
-   * 1. BLACK KINETIC TEXT SCREEN (9:16 Safe-Zone Centered at x=500, y=820)
-   * Supports inline color tags inside text:
-   *   "{red:eighty billion}" or "{green:$18M}" or "{yellow:Renting a Brain}"
-   * Automatically scales down any line wider than 740px so it never touches x=860.
-   *
-   * Usage:
-   *   TEXT.blackScreen(g, lt, {
-   *     text: "That's about {green:eighteen million}\nan hour.",
-   *     sub: "— 2026 Run Rate",
-   *     t0: 0.05, dur: 0.65, size: 74, underline: true
-   *   });
+   * 1. BLACK KINETIC TEXT SCREEN (Paper Billions Handwritten Brush Style)
+   * Centered in Safe Zone (x=500, y=820) with subtle warm vignette & word-by-word reveal.
    */
   function blackScreen(g, lt, opts) {
     const o = opts || {};
-    const bg = o.bg || '#050608';
+    const bg = o.bg || '#06070B';
     const rawText = String(o.text || '');
     let size = o.size || 74;
     const t0 = o.t0 !== undefined ? o.t0 : 0.05;
@@ -35,10 +26,19 @@
     const fontName = o.font || '"Caveat", "Kalam", cursive';
     const centerX = o.x !== undefined ? C.clamp(o.x, 380, 520) : C.SAFE.cx;
     const centerY = o.y !== undefined ? C.clamp(o.y, 420, 1180) : C.SAFE.cy;
-    const maxSafeW = o.maxW || 740;
+    const maxSafeW = o.maxW || 720;
 
     g.save();
+    // Always draw black screen in clean 1080x1920 screen coordinates
+    g.setTransform(1, 0, 0, 1, 0, 0);
     g.fillStyle = bg;
+    g.fillRect(0, 0, C.W, C.H);
+
+    // Subtle Paper Billions warm center glow on black screen
+    const glow = g.createRadialGradient(centerX, centerY, 40, centerX, centerY, 720);
+    glow.addColorStop(0, 'rgba(255, 250, 240, 0.05)');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = glow;
     g.fillRect(0, 0, C.W, C.H);
 
     // Parse lines and color tokens: "{red:word here}"
@@ -92,7 +92,7 @@
     const visibleWords = o.instant ? totalWords : Math.floor(p * totalWords + 0.99);
 
     g.textBaseline = 'middle';
-    const lineH = size * 1.24;
+    const lineH = size * 1.25;
     const startY = centerY - ((parsedLines.length - 1) * lineH) / 2;
 
     let wordCounter = 0;
@@ -111,12 +111,12 @@
         wordCounter++;
         if (wordCounter <= visibleWords) {
           const wordStartT = t0 + ((wordCounter - 1) / Math.max(1, totalWords)) * dur;
-          const wp = o.instant ? 1 : C.seg(lt, wordStartT, wordStartT + 0.15, C.ease.outBack);
+          const wp = o.instant ? 1 : C.seg(lt, wordStartT, wordStartT + 0.16, C.ease.outBack);
 
           g.save();
           const wWidth = g.measureText(wObj.text + ' ').width;
-          g.translate(curX + wWidth / 2, curY + (1 - wp) * 14);
-          g.scale(0.85 + 0.15 * wp, 0.85 + 0.15 * wp);
+          g.translate(curX + wWidth / 2, curY + (1 - wp) * 12);
+          g.scale(0.88 + 0.12 * wp, 0.88 + 0.12 * wp);
           g.globalAlpha = C.clamp(wp, 0, 1);
           g.fillStyle = wObj.color;
           g.textAlign = 'center';
@@ -131,7 +131,7 @@
     // Optional hand-drawn underline scribble
     if (o.underline && p > 0.65) {
       const up = C.seg(lt, t0 + dur * 0.65, t0 + dur + 0.22, C.ease.outCubic);
-      const uw = Math.min(lastLineW * 0.92, 680) * up;
+      const uw = Math.min(lastLineW * 0.92, 660) * up;
       const ux = centerX - lastLineW * 0.46;
       const uy = lastLineY + size * 0.52;
       g.strokeStyle = o.underlineColor || '#FACC15';
@@ -148,7 +148,7 @@
       const sp = C.seg(lt, t0 + dur * 0.68, t0 + dur + 0.25, C.ease.outCubic);
       g.save();
       g.globalAlpha = sp;
-      g.font = '600 ' + Math.round(size * 0.48) + 'px ' + fontName;
+      g.font = '600 ' + Math.round(size * 0.46) + 'px ' + fontName;
       g.fillStyle = o.subColor || '#94A3B8';
       g.textAlign = 'center';
       g.fillText(o.sub, centerX, lastLineY + lineH * 0.95);
@@ -159,33 +159,27 @@
   }
 
   /**
-   * 2. SPEECH, THOUGHT & SHOUT BUBBLES (Auto-Clamped inside C.SAFE)
-   * Usage:
-   *   TEXT.speechBubble(g, lt, {
-   *     x: 480, y: 620, tailX: 480, tailY: 820,
-   *     text: "Wait. It lost how much?",
-   *     kind: 'speech', // 'speech' | 'thought' | 'shout'
-   *     t0: 0.15
-   *   });
+   * 2. SPEECH, THOUGHT & SHOUT BUBBLES (Oversimplified / Paper Billions Comic Style)
+   * Auto-Clamped inside visible C.SAFE.
    */
   function speechBubble(g, lt, opts) {
     const o = opts || {};
     const t0 = o.t0 || 0;
     if (lt < t0) return;
 
-    const sc = C.pop(lt, t0, o.dur || 0.24);
+    const sc = C.pop(lt, t0, o.dur || 0.22);
     if (sc <= 0.01) return;
 
     const kind = o.kind || 'speech';
-    let fontSize = o.size || 30;
+    let fontSize = o.size || 29;
     const rawLines = String(o.text || '').split('\n');
 
     g.save();
-    g.font = (o.italic ? 'italic ' : '') + '700 ' + fontSize + 'px "Nunito", sans-serif';
+    g.font = (o.italic ? 'italic ' : '') + '800 ' + fontSize + 'px "Nunito", sans-serif';
 
     // Auto-wrap any overly long single line so bubble stays compact on 9:16
     const lines = [];
-    const maxTextW = o.maxW || 560;
+    const maxTextW = o.maxW || 520;
     rawLines.forEach((rl) => {
       if (g.measureText(rl).width <= maxTextW || rl.indexOf(' ') === -1) {
         lines.push(rl);
@@ -211,18 +205,18 @@
       if (w > maxW) maxW = w;
     });
 
-    const padX = o.padX || 30;
-    const padY = o.padY || 20;
-    const bw = Math.min(C.SAFE.w - 20, Math.max(o.minW || 140, maxW + padX * 2));
+    const padX = o.padX || 28;
+    const padY = o.padY || 18;
+    const bw = Math.min(C.SAFE.w - 30, Math.max(o.minW || 140, maxW + padX * 2));
     const lineH = fontSize * 1.28;
     const bh = lines.length * lineH + padY * 2;
 
-    // Clamp bubble center inside C.SAFE so it never touches right UI buttons or top bar
-    const x = C.safeX(o.x !== undefined ? o.x : C.SAFE.cx, bw / 2);
-    const y = C.safeY(o.y !== undefined ? o.y : 620, bh / 2);
+    // Clamp bubble center inside visible C.SAFE
+    const x = C.safeX(o.x !== undefined ? o.x : C.SAFE.cx, bw / 2 + 12);
+    const y = C.safeY(o.y !== undefined ? o.y : 620, bh / 2 + 12);
 
-    const tailX = o.tailX !== undefined ? C.clamp(o.tailX, C.SAFE.left + 20, C.SAFE.right - 20) : x - 20;
-    const tailY = o.tailY !== undefined ? o.tailY : y + bh / 2 + 55;
+    const tailX = o.tailX !== undefined ? C.clamp(o.tailX, x - bw * 0.45, x + bw * 0.45) : x - 18;
+    const tailY = o.tailY !== undefined ? o.tailY : y + bh / 2 + 52;
 
     g.translate(x, y);
     g.scale(sc, sc);
@@ -255,6 +249,7 @@
       fill: o.fill || '#FFFFFF',
       stroke: o.stroke || C.PAL.ink,
       lw: 3.5,
+      grad: false,
       shadow: true
     });
 
@@ -293,13 +288,13 @@
     g.save();
     g.font = '700 ' + size + 'px "Caveat", "Kalam", cursive';
     let tw = g.measureText(text).width;
-    if (tw > 740 && tw > 0) {
-      size = Math.max(30, Math.floor(size * (740 / tw)));
+    if (tw > 700 && tw > 0) {
+      size = Math.max(30, Math.floor(size * (700 / tw)));
       g.font = '700 ' + size + 'px "Caveat", "Kalam", cursive';
       tw = g.measureText(text).width;
     }
 
-    const x = C.safeX(o.x !== undefined ? o.x : C.SAFE.cx, tw / 2);
+    const x = C.safeX(o.x !== undefined ? o.x : C.SAFE.cx, tw / 2 + 16);
     const y = C.clamp(o.y !== undefined ? o.y : 1380, 280, 1410);
 
     g.globalAlpha = p;
@@ -318,8 +313,9 @@
   }
 
   /**
-   * 4. SLAMMING RUBBER STAMP ("NO", "BANNED", "PUBLIC", "APPROVED", "LOSS")
-   * Default centered in Safe Zone (x=500, y=760).
+   * 4. SLAMMING RUBBER STAMP ("NO", "BANNED", "CAUGHT MID-AIR!", "APPROVED")
+   * Upgraded with Rotated Bounding-Box Clamping & Camera-Zoom Awareness so stamps
+   * NEVER clip on the left or right edge of the canvas!
    */
   function stamp(g, lt, opts) {
     const o = opts || {};
@@ -328,36 +324,47 @@
 
     const dt = lt - t0;
     const slamP = C.seg(lt, t0, t0 + 0.16, C.ease.outBack);
-    const scale = C.lerp(2.2, 1.0, C.clamp(dt / 0.13, 0, 1));
+    const scale = C.lerp(1.85, 1.0, C.clamp(dt / 0.13, 0, 1));
 
-    const angle = (o.angle !== undefined ? o.angle : -12) * (Math.PI / 180);
+    const angle = (o.angle !== undefined ? o.angle : -10) * (Math.PI / 180);
     const col = o.color || C.PAL.red;
     const text = String(o.text || 'APPROVED').toUpperCase();
-    let size = o.size || 60;
+    let size = o.size || 56;
+
+    // Determine available safe width inside current camera viewport
+    const safeB = C.getSafeBoundsX ? C.getSafeBoundsX() : { minX: C.SAFE.left, maxX: C.SAFE.right };
+    const availW = Math.min(560, (safeB.maxX - safeB.minX) * 0.84);
 
     g.save();
     g.font = '900 ' + size + 'px "Fredoka", "Nunito", sans-serif';
     let tw = g.measureText(text).width;
-    if (tw > 640 && tw > 0) {
-      size = Math.max(36, Math.floor(size * (640 / tw)));
+    if (tw > availW - 56 && tw > 0) {
+      size = Math.max(28, Math.floor(size * ((availW - 56) / tw)));
       g.font = '900 ' + size + 'px "Fredoka", "Nunito", sans-serif';
       tw = g.measureText(text).width;
     }
 
-    const w = Math.max(o.w || 0, tw + 64);
-    const h = o.h || size + 36;
-    const x = C.safeX(o.x !== undefined ? o.x : C.SAFE.cx, w / 2);
-    const y = C.safeY(o.y !== undefined ? o.y : 760, h / 2);
+    const w = Math.max(o.w || 0, tw + 52);
+    const h = o.h || size + 32;
+
+    // Compute rotated half-extents so tilted stamps never cross SAFE.left or SAFE.right
+    const cosA = Math.abs(Math.cos(angle));
+    const sinA = Math.abs(Math.sin(angle));
+    const rotHalfW = (w * cosA + h * sinA) / 2 + 14;
+    const rotHalfH = (w * sinA + h * cosA) / 2 + 14;
+
+    const x = C.safeX(o.x !== undefined ? o.x : C.SAFE.cx, rotHalfW);
+    const y = C.safeY(o.y !== undefined ? o.y : 760, rotHalfH);
 
     // Dust puff particles on impact
-    if (dt > 0.06 && dt < 0.50) {
-      const puffP = C.prog(dt, 0.06, 0.50);
+    if (dt > 0.05 && dt < 0.48) {
+      const puffP = C.prog(dt, 0.05, 0.48);
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
-        const dist = 75 + puffP * 105;
+        const dist = 70 + puffP * 95;
         const px = x + Math.cos(a) * dist;
         const py = y + Math.sin(a) * dist * 0.65;
-        const pr = (1 - puffP) * 16;
+        const pr = (1 - puffP) * 14;
         g.fillStyle = 'rgba(220, 215, 205, ' + (1 - puffP) * 0.65 + ')';
         g.beginPath();
         g.arc(px, py, pr, 0, Math.PI * 2);
@@ -371,9 +378,11 @@
     g.globalAlpha = C.clamp(slamP, 0, 1);
 
     C.roundRect(g, -w / 2, -h / 2, w, h, 10, {
-      fill: o.fill || 'rgba(255, 250, 245, 0.92)',
+      fill: o.fill || 'rgba(255, 250, 245, 0.95)',
       stroke: col,
-      lw: 6
+      grad: false,
+      lw: 6,
+      shadow: true
     });
 
     C.roundRect(g, -w / 2 + 8, -h / 2 + 8, w - 16, h - 16, 6, {
@@ -392,14 +401,13 @@
 
   /**
    * 5. HIGHLIGHTER QUOTE (Newspaper / Legal Document / Report Quote Card)
-   * Default sized to w=720, x=485, y=780 so it sits cleanly inside C.SAFE.
    */
   function highlightQuote(g, lt, opts) {
     const o = opts || {};
-    const w = Math.min(C.SAFE.w - 20, o.w || 720);
+    const w = Math.min(C.SAFE.w - 30, o.w || 700);
     const h = o.h || 250;
-    const x = C.safeX(o.x !== undefined ? o.x : 485, w / 2);
-    const y = C.safeY(o.y !== undefined ? o.y : 780, h / 2);
+    const x = C.safeX(o.x !== undefined ? o.x : 485, w / 2 + 10);
+    const y = C.safeY(o.y !== undefined ? o.y : 780, h / 2 + 10);
     const t0 = o.t0 || 0.15;
     const hp = C.seg(lt, t0, t0 + (o.dur || 0.55), C.ease.outCubic);
 
@@ -426,7 +434,6 @@
     let fontSize = o.size || 28;
     g.font = 'italic 700 ' + fontSize + 'px "Merriweather", Georgia, serif';
 
-    // Auto-fit quote lines inside card width
     const maxLineSpace = w - 76;
     lines.forEach((l) => {
       const mw = g.measureText(l).width;
@@ -461,7 +468,9 @@
   }
 
   /**
-   * 6. HAND-DRAWN CALLOUT ARROW & LABEL (Clamped to C.SAFE)
+   * 6. HAND-DRAWN CALLOUT ARROW & LABEL (Measured Safe-Zone Clamping + High-Contrast Backing)
+   * Fixes left/right edge clipping (00:28, 00:31), overlapping rocket text (00:02),
+   * and invisible dark text on space/blueprint backgrounds (00:51, 01:04).
    */
   function callout(g, lt, opts) {
     const o = opts || {};
@@ -471,33 +480,75 @@
     const p = C.seg(lt, t0, t0 + 0.30, C.ease.outCubic);
     const rawFrom = o.from || [360, 560];
     const to = o.to || [500, 740];
-    const col = o.color || C.PAL.ink;
 
-    const fx = C.safeX(rawFrom[0], 110);
-    const fy = C.safeY(rawFrom[1], 45);
+    const mainText = String(o.text || '');
+    const subText = String(o.sub || '');
+    let size = o.size || 36;
 
     g.save();
     g.globalAlpha = p;
 
-    g.font = '700 ' + (o.size || 38) + 'px "Caveat", "Kalam", cursive';
-    g.fillStyle = col;
-    g.textAlign = o.align || 'center';
-    g.textBaseline = 'bottom';
-    g.fillText(o.text || '', fx, fy - 8);
-
-    if (o.sub) {
-      g.font = '700 ' + Math.round((o.size || 38) * 0.62) + 'px "Nunito", sans-serif';
-      g.fillStyle = o.subColor || '#475569';
-      g.fillText(o.sub, fx, fy + 18);
+    // 1. Measure both lines FIRST and auto-fit within 480px max width
+    const maxAllowedW = o.maxW || 460;
+    g.font = '800 ' + size + 'px "Caveat", "Kalam", cursive';
+    let mainW = g.measureText(mainText).width;
+    if (mainW > maxAllowedW && mainW > 0) {
+      size = Math.max(24, Math.floor(size * (maxAllowedW / mainW)));
+      g.font = '800 ' + size + 'px "Caveat", "Kalam", cursive';
+      mainW = g.measureText(mainText).width;
     }
 
-    C.arrow(g, fx, fy + (o.sub ? 24 : 4), to[0], to[1], {
+    const subSize = Math.round(size * 0.60);
+    g.font = '800 ' + subSize + 'px "Nunito", sans-serif';
+    const subW = subText ? g.measureText(subText).width : 0;
+
+    const cardW = Math.max(mainW, subW) + 32;
+    const cardH = (subText ? size + subSize + 24 : size + 18);
+
+    // 2. Clamp card center inside camera-aware C.SAFE so it NEVER clips off-screen
+    const fx = C.safeX(rawFrom[0], cardW / 2 + 12);
+    const fy = C.safeY(rawFrom[1], cardH / 2 + 16);
+
+    // Detect if background behind callout/arrow is dark
+    const darkBg = C.isCanvasDarkAt ? C.isCanvasDarkAt(g, to[0], to[1]) : false;
+    let arrowCol = o.color || (darkBg ? '#FACC15' : C.PAL.ink);
+    if ((arrowCol === C.PAL.ink || arrowCol === '#18181B') && darkBg) {
+      arrowCol = '#FACC15';
+    }
+
+    // 3. Draw curved arrow from card edge toward target `to`
+    const arrowStartY = to[1] >= fy ? fy + cardH / 2 - 2 : fy - cardH / 2 + 2;
+    C.arrow(g, fx, arrowStartY, to[0], to[1], {
       p: p,
-      color: col,
-      lw: 3.5,
+      color: arrowCol,
+      lw: 4.0,
       curve: o.curve !== false,
-      curveY: o.curveY !== undefined ? o.curveY : -30
+      curveY: o.curveY !== undefined ? o.curveY : -26
     });
+
+    // 4. Draw clean Paper Billions high-contrast label card so text is 100% legible over any prop/sky
+    if (mainText || subText) {
+      C.roundRect(g, fx - cardW / 2, fy - cardH / 2, cardW, cardH, 12, {
+        fill: o.bg || 'rgba(255, 252, 245, 0.95)',
+        stroke: C.PAL.ink,
+        lw: 3.2,
+        grad: false,
+        shadow: true
+      });
+
+      const textCol = (o.color && o.color !== '#FFFFFF' && o.color !== '#F8FAFC') ? o.color : C.PAL.ink;
+      g.font = '800 ' + size + 'px "Caveat", "Kalam", cursive';
+      g.fillStyle = textCol;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(mainText, fx, subText ? fy - subSize * 0.52 : fy + 1);
+
+      if (subText) {
+        g.font = '800 ' + subSize + 'px "Nunito", sans-serif';
+        g.fillStyle = o.subColor || '#475569';
+        g.fillText(subText, fx, fy + size * 0.44);
+      }
+    }
 
     g.restore();
   }
@@ -515,19 +566,22 @@
     let size = o.size || 28;
     const text = String(o.text || '');
 
+    const safeB = C.getSafeBoundsX ? C.getSafeBoundsX() : { minX: C.SAFE.left, maxX: C.SAFE.right };
+    const maxAllowedW = Math.min(640, (safeB.maxX - safeB.minX) * 0.88);
+
     g.save();
     g.font = '800 ' + size + 'px "Nunito", sans-serif';
     let tw = g.measureText(text).width;
-    if (tw > 680 && tw > 0) {
-      size = Math.max(20, Math.floor(size * (680 / tw)));
+    if (tw > maxAllowedW - 44 && tw > 0) {
+      size = Math.max(18, Math.floor(size * ((maxAllowedW - 44) / tw)));
       g.font = '800 ' + size + 'px "Nunito", sans-serif';
       tw = g.measureText(text).width;
     }
 
-    const w = Math.max(o.w || 0, tw + 46);
+    const w = Math.max(o.w || 0, tw + 44);
     const h = o.h || size + 26;
-    const x = C.safeX(o.x !== undefined ? o.x : C.SAFE.cx, w / 2);
-    const y = C.safeY(o.y !== undefined ? o.y : 300, h / 2);
+    const x = C.safeX(o.x !== undefined ? o.x : C.SAFE.cx, w / 2 + 10);
+    const y = C.safeY(o.y !== undefined ? o.y : 300, h / 2 + 10);
 
     g.translate(x, y);
     g.scale(sc, sc);
@@ -536,6 +590,7 @@
       fill: o.fill || '#FFFFFF',
       stroke: o.stroke || C.PAL.ink,
       lw: 3.5,
+      grad: false,
       shadow: true
     });
 

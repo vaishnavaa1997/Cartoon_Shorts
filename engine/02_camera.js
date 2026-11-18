@@ -1,18 +1,15 @@
 /**
  * MODULE 02: CAMERA, VERTICAL COMIC SPLITS & UI SAFE-ZONE GUIDE (engine/02_camera.js)
- * 9:16 Vertical (1080x1920) 2D/2.5D camera pan/zoom/focus, screen shake,
- * radial & cone spotlights, edge vignette, UI-safe 2-Row / 3-Row / 2-Col
- * Comic Split-Screens, and interactive Shorts/Reels UI Safe-Zone overlay.
+ * 9:16 Vertical (1080x1920) 2D/2.5D camera pan/zoom/focus, viewport-safe bounds tracking,
+ * screen shake, Paper Billions radial & cone spotlights, edge vignette,
+ * floor-anchored 2-Row / 3-Row / 2-Col Comic Split-Screens, and Shorts/Reels UI Safe-Zone overlay.
  */
 (function () {
   const C = window.CORE;
 
   /**
-   * Begins a camera transform on the 1080x1920 vertical canvas.
-   * Usage:
-   *   CAM.begin(g, { zoom: 1.15, focusX: 500, focusY: 860, x: 0, y: 0, rot: 0, shake: 0, t: gt });
-   *   ... draw scene ...
-   *   CAM.end(g, { vignette: 0.30, spotlight: true });
+   * Begins a camera transform on the 1080x1920 vertical canvas and registers
+   * the active viewport with CORE so stamps/callouts/badges never clip off-screen.
    */
   function begin(g, cam) {
     const c = cam || {};
@@ -36,6 +33,15 @@
       }
     }
 
+    if (typeof C._setCam === 'function') {
+      C._setCam({
+        zoom,
+        fx: fx + panX,
+        fy: fy + panY,
+        rot
+      });
+    }
+
     g.save();
     g.translate(540 + shk.x, 960 + shk.y);
     if (rot) g.rotate(rot);
@@ -49,21 +55,22 @@
    */
   function end(g, opts) {
     g.restore();
-    const o = opts || {};
+    if (typeof C._setCam === 'function') C._setCam(null);
 
+    const o = opts || {};
     if (o.spotlight) {
       spotlight(g, typeof o.spotlight === 'object' ? o.spotlight : {});
     }
     if (o.vignette !== false) {
-      vignette(g, o.vignette !== undefined ? o.vignette : 0.30);
+      vignette(g, o.vignette !== undefined ? o.vignette : 0.28);
     }
-    if (o.grain) {
-      paperGrain(g, o.t || 0, o.grain === true ? 0.025 : o.grain);
+    if (o.grain !== false) {
+      paperGrain(g, o.t || 0, typeof o.grain === 'number' ? o.grain : 0.018);
     }
   }
 
   /**
-   * Draws either a soft radial studio glow OR a dramatic overhead cone spotlight
+   * Draws either a soft radial studio glow OR a Paper Billions overhead cone spotlight
    * centered on the 9:16 Safe Action Box (default x=500, y=860).
    */
   function spotlight(g, opts) {
@@ -75,13 +82,13 @@
     if (o.cone) {
       const topX = o.topX !== undefined ? o.topX : x;
       const topY = o.topY !== undefined ? o.topY : -40;
-      const topW = o.topW !== undefined ? o.topW : 90;
-      const botW = o.botW !== undefined ? o.botW : 640;
+      const topW = o.topW !== undefined ? o.topW : 96;
+      const botW = o.botW !== undefined ? o.botW : 660;
       const botY = o.botY !== undefined ? o.botY : C.FLOOR_Y + 60;
 
       const beamGrd = g.createLinearGradient(topX, topY, x, botY);
-      beamGrd.addColorStop(0, 'rgba(255, 248, 210, 0.32)');
-      beamGrd.addColorStop(1, 'rgba(255, 248, 210, 0.03)');
+      beamGrd.addColorStop(0, 'rgba(255, 248, 210, 0.30)');
+      beamGrd.addColorStop(1, 'rgba(255, 248, 210, 0.02)');
       g.fillStyle = beamGrd;
       g.beginPath();
       g.moveTo(topX - topW / 2, topY);
@@ -91,7 +98,7 @@
       g.closePath();
       g.fill();
     } else {
-      const r = o.r || 760;
+      const r = o.r || 780;
       const grd = g.createRadialGradient(x, y, r * 0.05, x, y, r);
       grd.addColorStop(0, o.color || 'rgba(255, 253, 245, 0.16)');
       grd.addColorStop(1, 'rgba(255, 253, 245, 0)');
@@ -105,10 +112,10 @@
    * Soft dark radial vignette around the 1080x1920 frame edges.
    */
   function vignette(g, intensity) {
-    const a = C.clamp(intensity !== undefined ? intensity : 0.30, 0, 0.9);
+    const a = C.clamp(intensity !== undefined ? intensity : 0.28, 0, 0.9);
     if (a <= 0.01) return;
     g.save();
-    const grd = g.createRadialGradient(540, 880, 380, 540, 960, 1180);
+    const grd = g.createRadialGradient(540, 880, 400, 540, 960, 1180);
     grd.addColorStop(0, 'rgba(0,0,0,0)');
     grd.addColorStop(1, 'rgba(10,12,16,' + a + ')');
     g.fillStyle = grd;
@@ -120,11 +127,12 @@
    * Subtle animated editorial paper texture overlay.
    */
   function paperGrain(g, t, alpha) {
-    const a = alpha || 0.025;
+    const a = alpha || 0.018;
+    if (a <= 0.002) return;
     const rand = C.rng(Math.floor((t || 0) * 12) + 101);
     g.save();
     g.fillStyle = 'rgba(20, 20, 20, ' + a + ')';
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 80; i++) {
       const gx = rand() * C.W;
       const gy = rand() * C.H;
       g.fillRect(gx, gy, 2, 2);
@@ -134,23 +142,12 @@
 
   /**
    * 9:16 VERTICAL-FIRST COMIC SPLIT-SCREEN ENGINE ('2row' | '3row' | '2col' | '3col' | 'grid4')
-   * Designed for YouTube Shorts & Instagram Reels:
-   * - Defaults to vertical stacking ('2row' or '3row') inside the active safe zone
-   *   (y: 200..1420) so the bottom panel is NEVER hidden behind the video title/caption!
-   * - Shifts panel content & titles slightly left (around x=485) so the right-side
-   *   Like/Comment/Share buttons never cover your animations!
-   * - Inside each panel's `draw(g, pw, ph)` callback, `(500, 820)` (and `(540, 960)`)
-   *   is automatically mapped to the panel's safe center!
-   *
-   * Usage:
-   *   CAM.split(g, lt, {
-   *     layout: '3row', // '2row' | '3row' | '2col' | 'grid4'
-   *     panels: [
-   *       { t0: 0.0, bg: '#D8D2C5', title: '1. CODE', draw: (g) => { ... } },
-   *       { t0: 0.35, bg: '#CBD5E1', title: '2. CLOUD', draw: (g) => { ... } },
-   *       { t0: 0.70, bg: '#E5E7EB', title: '3. USERS', draw: (g) => { ... } }
-   *     ]
-   *   });
+   * Upgraded with Floor-Line Anchoring:
+   * - World `y = C.FLOOR_Y (1320)` is mapped directly onto each panel's floor line (`fy`)
+   *   so characters, rockets, and launch towers stand on the panel floor instead of floating
+   *   or getting decapitated at the top border!
+   * - Tuned default scales (`0.52` for `'2row'`, `0.38` for `'3row'`, `0.45` for `'2col'`)
+   *   ensure full vertical and horizontal clearance inside every panel.
    */
   function split(g, lt, opts) {
     const o = opts || {};
@@ -228,7 +225,7 @@
       if (lt < t0) return;
 
       const enterP = C.seg(lt, t0, t0 + (p.enterDur || 0.22), C.ease.outCubic);
-      const slideY = p.slide === false ? 0 : (1 - enterP) * 48;
+      const slideY = p.slide === false ? 0 : (1 - enterP) * 44;
 
       g.save();
       g.beginPath();
@@ -238,17 +235,22 @@
       g.translate(0, slideY);
       g.globalAlpha = enterP;
 
+      const fy = r.y + r.h * 0.82;
+
       // Panel background + internal floor line
       if (p.bg !== false) {
-        g.fillStyle = p.bg || C.PAL.studioWall;
+        const bgCol = p.bg || C.PAL.studioWall;
+        const grd = g.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
+        grd.addColorStop(0, C.shadeColor(bgCol, 4));
+        grd.addColorStop(1, C.shadeColor(bgCol, -6));
+        g.fillStyle = grd;
         g.fillRect(r.x, r.y, r.w, r.h);
 
         if (p.floor !== false) {
-          const fy = r.y + r.h * 0.78;
           g.fillStyle = p.floorColor || C.PAL.studioFloor;
           g.beginPath();
           g.moveTo(r.x, fy);
-          g.quadraticCurveTo(r.x + r.w / 2, fy - 14, r.x + r.w, fy);
+          g.quadraticCurveTo(r.x + r.w / 2, fy - 10, r.x + r.w, fy);
           g.lineTo(r.x + r.w, r.y + r.h);
           g.lineTo(r.x, r.y + r.h);
           g.closePath();
@@ -260,30 +262,44 @@
 
       // Safe horizontal center inside panel (shifted left of right-side UI buttons if full width)
       const panelSafeCx = r.w > 900 ? 485 : r.x + r.w / 2;
-      const panelCy = r.y + r.h / 2;
 
-      // Draw panel content with (500, 820) mapped to panel's safe center
+      // Draw panel content with world FLOOR_Y (1320) anchored to panel floor `fy`
       if (typeof p.draw === 'function') {
         g.save();
-        const defaultScale = layout === '3row' ? 0.56 : (layout === '2row' ? 0.68 : 0.58);
+        if (typeof C._setSplit === 'function') C._setSplit(true);
+        const defaultScale =
+          layout === '3row' ? 0.38 :
+          layout === '2row' ? 0.52 :
+          layout === '2col' ? 0.45 :
+          layout === 'grid4' ? 0.40 : 0.46;
         const s = p.scale !== undefined ? p.scale : defaultScale;
         const refX = p.refX !== undefined ? p.refX : C.SAFE.cx;
-        const refY = p.refY !== undefined ? p.refY : 960;
-        g.translate(panelSafeCx, panelCy);
+        const refY = p.refY !== undefined ? p.refY : C.FLOOR_Y;
+        const targetY = p.refY !== undefined ? (r.y + r.h * 0.54) : fy;
+
+        g.translate(panelSafeCx, targetY);
         g.scale(s, s);
         g.translate(-refX, -refY);
         p.draw(g, r.w, r.h);
+        if (typeof C._setSplit === 'function') C._setSplit(false);
         g.restore();
       }
 
-      // Top label pill inside panel
+      // Top label pill inside panel (drawn last so it always sits cleanly on top)
       if (p.title) {
         g.save();
-        g.font = '800 26px "Nunito", sans-serif';
-        const tw = g.measureText(p.title).width + 40;
+        let titleSize = 25;
+        g.font = '800 ' + titleSize + 'px "Nunito", sans-serif';
+        const maxTitleW = Math.min(r.w - 36, r.w > 900 ? 720 : r.w - 28);
+        let tw = g.measureText(p.title).width + 36;
+        if (tw > maxTitleW && tw > 0) {
+          titleSize = Math.max(17, Math.floor(titleSize * (maxTitleW / tw)));
+          g.font = '800 ' + titleSize + 'px "Nunito", sans-serif';
+          tw = g.measureText(p.title).width + 32;
+        }
         const bx = panelSafeCx - tw / 2;
-        const by = r.y + 22;
-        C.roundRect(g, bx, by, tw, 44, 12, {
+        const by = r.y + 16;
+        C.roundRect(g, bx, by, tw, 42, 12, {
           fill: p.titleBg || '#FFFFFF',
           stroke: C.PAL.ink,
           lw: 3.5,
@@ -292,7 +308,7 @@
         g.fillStyle = p.titleColor || C.PAL.ink;
         g.textAlign = 'center';
         g.textBaseline = 'middle';
-        g.fillText(p.title, panelSafeCx, by + 23);
+        g.fillText(p.title, panelSafeCx, by + 22);
         g.restore();
       }
 
@@ -312,12 +328,6 @@
 
   /**
    * INTERACTIVE YOUTUBE SHORTS / INSTAGRAM REELS UI SAFE-ZONE OVERLAY (`CAM.safeZoneOverlay`)
-   * Toggled via the "Safe Zone UI: ON/OFF" button in the Studio Player (`shots_XX_YY.html`).
-   * Visually shows the creator:
-   *   1. Top Status/Search Dead Zone (y: 0..220)
-   *   2. Right-Side Like / Dislike / Comment / Share / Audio Button Dead Zone (x: 880..1080)
-   *   3. Bottom @Handle / Subscribe / Video Title & Caption Dead Zone (y: 1450..1920)
-   *   4. Green Dashed C.SAFE Golden Action Box (x: 90..860, y: 240..1340) + FLOOR_Y=1320 line
    */
   function safeZoneOverlay(g, show) {
     if (!show) return;
